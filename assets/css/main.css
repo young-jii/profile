@@ -3029,7 +3029,7 @@ input, select, textarea {
 
 	.popup-text {
 		font-family: "omyu_pretty", sans-serif; /* 원하는 한글 폰트 적용 */
-		color: #1b2c50;
+		color: #000000;
 		font-size: 1.0em;
 		line-height: 1.6; /* 줄 간격 조절 */
 	}
