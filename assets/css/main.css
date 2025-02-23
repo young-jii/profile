@@ -3023,14 +3023,14 @@ input, select, textarea {
 	.popup-title {
 		font-family: "ChosunGu", sans-serif; /* 원하는 한글 폰트 적용 */
 		color: #040733;
-		font-size: 1.0em;
+		font-size: 1.4em;
 		font-weight: bolder;
 	}
 
 	.popup-text {
 		font-family: "omyu_pretty", sans-serif; /* 원하는 한글 폰트 적용 */
 		color: #1b2c50;
-		font-size: 0.8em;
+		font-size: 1.0em;
 		line-height: 1.6; /* 줄 간격 조절 */
 	}
 
