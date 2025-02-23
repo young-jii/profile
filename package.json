@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "chart.js": "^4.4.7",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "debug": "^4.4.0",
+    "supports-color": "^10.0.0"
+  }
+}
