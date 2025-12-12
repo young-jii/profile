@@ -4,57 +4,59 @@ window.addEventListener('load', () => {
   const canvas = document.getElementById('gameCanvas');
   const exitBtn = document.getElementById('exitGameBtn');
 
+  const timelineModal = document.getElementById('timelineModal');
+  const timelineCloseBtn = document.getElementById('timelineCloseBtn');
+
   if (!toggle || !layer || !canvas) return;
 
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
-  const main = document.getElementById('main');
-  const header = document.getElementById('header');
-
   const W = canvas.width, H = canvas.height;
   const TILE = 16;
+
   const keys = new Set();
+  let paused = false; // 팝업/모달 열리면 이동 멈춤
 
-  // 캐릭터 픽셀 크기(이미지가 16x16이면 이대로 추천)
-  const SPRITE_W = 16;
-  const SPRITE_H = 16;
-
-  // 이동/충돌은 약간 작게 잡아도 됨(모션 깔끔해짐)
+  // ✅ 이동/충돌 박스는 작게 유지
   const player = { x: 40, y: 40, w: 12, h: 12, vx: 0, vy: 0, speed: 1.2 };
 
-  // ====== 스프라이트 로드 ======
-  const SPRITE_BASE = 'assets/css/images/';
+  // ✅ 원본 이미지 크기(대부분 16x16), 그릴 때는 2배로
+  const SRC_W = 16, SRC_H = 16;
+  const DRAW_W = 32, DRAW_H = 32; // (1) 두 배
 
+  const SPRITE_BASE = 'assets/css/images/';
   const sprites = {
     front: new Image(),
     back: new Image(),
-    side1: new Image(), // 왼쪽 걷기 1
-    side2: new Image(), // 왼쪽 걷기 2
+    side1: new Image(),
+    side2: new Image(),
   };
   sprites.front.src = SPRITE_BASE + 'dot_front.png';
   sprites.back.src  = SPRITE_BASE + 'dot_back.png';
   sprites.side1.src = SPRITE_BASE + 'dot_side(1).png';
   sprites.side2.src = SPRITE_BASE + 'dot_side(2).png';
 
-  // 스프라이트 상태
-  let facing = 'down';          // 'down' | 'up' | 'left' | 'right'
-  let walkFrame = 0;            // 0 or 1
-  let walkTimer = 0;            // 애니메이션 타이머
-  const WALK_INTERVAL = 140;    // ms (작을수록 빠르게 걷기)
-
   function allSpritesReady(){
     return Object.values(sprites).every(img => img.complete && img.naturalWidth > 0);
   }
 
-  // 팝업 트리거와 연결
+  let facing = 'down';    // down | up | left | right
+  let walkFrame = 0;      // 0 or 1
+  let walkTimer = 0;
+  const WALK_INTERVAL = 140;
+
+  // ✅ 기존 팝업 트리거 + Timeline 오브젝트 추가
   const objects = [
-    { id: 'popupTrigger1', label: 'School',   x: 80,  y: 60,  w: 18, h: 18 },
-    { id: 'popupTrigger2', label: 'Training', x: 130, y: 90,  w: 18, h: 18 },
-    { id: 'popupTrigger3', label: 'Company',  x: 190, y: 60,  w: 18, h: 18 },
-    { id: 'popupTrigger4', label: 'Award',    x: 240, y: 95,  w: 18, h: 18 },
-    { id: 'popupTrigger5', label: 'Cert',     x: 105, y: 125, w: 18, h: 18 },
-    { id: 'popupTrigger6', label: 'Lang',     x: 210, y: 130, w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger1', label:'School',   x: 80,  y: 60,  w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger2', label:'Training', x: 130, y: 90,  w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger3', label:'Company',  x: 190, y: 60,  w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger4', label:'Award',    x: 240, y: 95,  w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger5', label:'Cert',     x: 105, y: 125, w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger6', label:'Lang',     x: 210, y: 130, w: 18, h: 18 },
+
+    // (4) Timeline 표지판
+    { type:'timeline', id:'timeline',   label:'Timeline', x: 26,  y: 120, w: 18, h: 18 },
   ];
 
   const triggerToPopup = {
@@ -66,8 +68,6 @@ window.addEventListener('load', () => {
     popupTrigger6: 'popup6',
   };
 
-  let resumeGameOnPopupClose = false;
-
   function enterGame(){
     toggle.checked = true;
     toggle.dispatchEvent(new Event('change'));
@@ -77,6 +77,55 @@ window.addEventListener('load', () => {
     toggle.dispatchEvent(new Event('change'));
   }
 
+  // ====== 팝업/모달 열고 닫기 제어 ======
+  function openTimeline(){
+    if (!timelineModal) return;
+    paused = true;
+    timelineModal.classList.add('on');
+    timelineModal.setAttribute('aria-hidden', 'false');
+  }
+  function closeTimeline(){
+    if (!timelineModal) return;
+    timelineModal.classList.remove('on');
+    timelineModal.setAttribute('aria-hidden', 'true');
+    paused = false;
+  }
+  if (timelineCloseBtn) timelineCloseBtn.addEventListener('click', closeTimeline);
+  if (timelineModal){
+    timelineModal.addEventListener('click', (e) => {
+      if (e.target === timelineModal) closeTimeline();
+    });
+  }
+
+  // (3) Space → 게임 끄지 않고 팝업을 "게임 위에" 띄우기
+  function openPopupInGame(triggerId){
+    paused = true;
+    const trigger = document.getElementById(triggerId);
+    if (trigger) trigger.click(); // 기존 팝업 로직 재사용
+  }
+
+  // (3) 팝업 닫히면 자동으로 게임 계속(이동 재개)
+  function wirePopupCloseToResume(){
+    Object.entries(triggerToPopup).forEach(([triggerId, popupId]) => {
+      const overlay = document.getElementById(popupId);
+      if (!overlay) return;
+
+      const closeBtn = overlay.querySelector('.close-popup');
+      if (closeBtn){
+        closeBtn.addEventListener('click', () => {
+          paused = false;
+        });
+      }
+
+      // 오버레이 바깥 클릭 닫힘 대비
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) paused = false;
+      });
+    });
+  }
+  wirePopupCloseToResume();
+
+  // ====== 충돌/상호작용 ======
   function rectsOverlap(a, b){
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
@@ -89,7 +138,7 @@ window.addEventListener('load', () => {
     return null;
   }
 
-  // --- 렌더링 ---
+  // ====== 렌더 ======
   function drawTileBG(){
     for (let y=0; y<H; y+=TILE){
       for (let x=0; x<W; x+=TILE){
@@ -105,7 +154,7 @@ window.addEventListener('load', () => {
 
   function drawObjects(){
     for (const o of objects){
-      ctx.fillStyle = '#7aa2f7';
+      ctx.fillStyle = (o.type === 'timeline') ? '#9ece6a' : '#7aa2f7';
       ctx.fillRect(o.x, o.y, o.w, o.h);
 
       ctx.font = '10px monospace';
@@ -114,7 +163,7 @@ window.addEventListener('load', () => {
     }
   }
 
-  // (3) Space 누르기 전에 “Press Space” 말풍선 UI
+  // “Press Space” 말풍선
   function drawPressSpaceBubble(){
     const o = nearestInteractable();
     if (!o) return;
@@ -137,43 +186,38 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
-  // ====== 캐릭터 스프라이트 그리기 ======
   function drawPlayerSprite(){
-    // 스프라이트가 아직 로드 전이면 임시 사각형
     if (!allSpritesReady()){
       ctx.fillStyle = '#f7768e';
       ctx.fillRect(player.x, player.y, player.w, player.h);
       return;
     }
 
-    // 플레이어의 좌상단 기준으로 16x16을 그리되, 살짝 가운데 정렬
-    const dx = Math.round(player.x - (SPRITE_W - player.w) / 2);
-    const dy = Math.round(player.y - (SPRITE_H - player.h) / 2);
+    // ✅ 2배로 그리기: 캐릭터 중심 정렬
+    const dx = Math.round(player.x - (DRAW_W - player.w) / 2);
+    const dy = Math.round(player.y - (DRAW_H - player.h) / 2);
 
     if (facing === 'up'){
-      ctx.drawImage(sprites.back, dx, dy, SPRITE_W, SPRITE_H);
+      ctx.drawImage(sprites.back, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
     if (facing === 'down'){
-      ctx.drawImage(sprites.front, dx, dy, SPRITE_W, SPRITE_H);
+      ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
 
-    // left/right는 side 2프레임을 번갈아 사용
     const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
 
     if (facing === 'left'){
-      ctx.drawImage(sideImg, dx, dy, SPRITE_W, SPRITE_H);
+      ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
 
-    // right: 좌우 반전 (왼쪽 스프라이트를 뒤집어서 사용)
+    // right: 좌우 반전
     if (facing === 'right'){
       ctx.save();
-      // canvas를 좌우 반전시키고, x 위치를 변환해 맞춰줌
       ctx.scale(-1, 1);
-      // 뒤집힌 좌표계에서 그릴 x = -(원래 x + width)
-      ctx.drawImage(sideImg, -(dx + SPRITE_W), dy, SPRITE_W, SPRITE_H);
+      ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
       ctx.restore();
       return;
     }
@@ -187,26 +231,32 @@ window.addEventListener('load', () => {
     drawPressSpaceBubble();
   }
 
-  // ====== 업데이트(이동 + 방향 + 걷기 애니) ======
+  // ====== 업데이트 (2) Arrow 키만 ======
   let lastTs = performance.now();
 
   function update(ts){
     const dt = ts - lastTs;
     lastTs = ts;
 
+    if (paused){
+      // 멈춘 상태에서도 렌더는 유지
+      player.vx = 0; player.vy = 0;
+      walkTimer = 0; walkFrame = 0;
+      return;
+    }
+
     player.vx = 0; player.vy = 0;
 
-    const left  = keys.has('ArrowLeft') || keys.has('a');
-    const right = keys.has('ArrowRight')|| keys.has('d');
-    const up    = keys.has('ArrowUp')   || keys.has('w');
-    const down  = keys.has('ArrowDown') || keys.has('s');
+    const left  = keys.has('ArrowLeft');
+    const right = keys.has('ArrowRight');
+    const up    = keys.has('ArrowUp');
+    const down  = keys.has('ArrowDown');
 
     if (left)  player.vx = -player.speed;
     if (right) player.vx =  player.speed;
     if (up)    player.vy = -player.speed;
     if (down)  player.vy =  player.speed;
 
-    // 방향(facing) 결정: 마지막 입력 우선(원하는 규칙대로 바꿔도 됨)
     if (player.vx < 0) facing = 'left';
     else if (player.vx > 0) facing = 'right';
     else if (player.vy < 0) facing = 'up';
@@ -214,7 +264,6 @@ window.addEventListener('load', () => {
 
     const isMoving = (player.vx !== 0 || player.vy !== 0);
 
-    // 걷기 애니: 좌/우 이동일 때만 프레임 토글
     if (isMoving && (facing === 'left' || facing === 'right')){
       walkTimer += dt;
       if (walkTimer >= WALK_INTERVAL){
@@ -222,7 +271,6 @@ window.addEventListener('load', () => {
         walkFrame = (walkFrame === 0) ? 1 : 0;
       }
     } else {
-      // 멈추거나 위/아래 이동이면 걷기 프레임 초기화
       walkTimer = 0;
       walkFrame = 0;
     }
@@ -241,68 +289,30 @@ window.addEventListener('load', () => {
     requestAnimationFrame(loop);
   }
 
-  // (2) 팝업 열릴 때 fade 전환
-  function openLinkedPopupFromGame(obj){
-    resumeGameOnPopupClose = true;
-    exitGame();
-
-    setTimeout(() => {
-      const trigger = document.getElementById(obj.id);
-      if (trigger) trigger.click();
-    }, 240);
-  }
-
-  // (1) 팝업 닫으면 자동으로 게임 복귀
-  function wirePopupAutoResume(){
-    const popupIds = Object.values(triggerToPopup);
-    popupIds.forEach((pid) => {
-      const overlay = document.getElementById(pid);
-      if (!overlay) return;
-
-      const closeBtn = overlay.querySelector('.close-popup');
-      if (closeBtn){
-        closeBtn.addEventListener('click', () => {
-          if (!resumeGameOnPopupClose) return;
-          setTimeout(() => enterGame(), 120);
-          resumeGameOnPopupClose = false;
-        });
-      }
-
-      overlay.addEventListener('click', (e) => {
-        if (e.target !== overlay) return;
-        if (!resumeGameOnPopupClose) return;
-        setTimeout(() => enterGame(), 120);
-        resumeGameOnPopupClose = false;
-      });
-    });
-  }
-  wirePopupAutoResume();
-
-  // 토글로 게임 on/off (fade)
+  // 토글 on/off: 첫 랜딩 게임 ON을 위해 body class도 같이 관리
   toggle.addEventListener('change', () => {
     const on = toggle.checked;
-
     layer.classList.toggle('on', on);
     layer.setAttribute('aria-hidden', (!on).toString());
 
-    if (main) main.style.visibility = on ? 'hidden' : 'visible';
-    if (header) header.style.visibility = on ? 'hidden' : 'visible';
+    document.body.classList.toggle('game-on', on);
 
-    // 게임 진입 시, 타이머 초기화(부드럽게)
     if (on){
+      paused = false;
       lastTs = performance.now();
       requestAnimationFrame(loop);
     }
   });
 
-  // (4) Exit 버튼
+  // Exit 버튼
   if (exitBtn){
     exitBtn.addEventListener('click', () => {
-      resumeGameOnPopupClose = false;
+      paused = false;
       exitGame();
     });
   }
 
+  // 키 입력
   window.addEventListener('keydown', (e) => {
     keys.add(e.key);
 
@@ -311,15 +321,24 @@ window.addEventListener('load', () => {
     if (e.key === ' '){
       e.preventDefault();
       const o = nearestInteractable();
-      if (o) openLinkedPopupFromGame(o);
+      if (!o) return;
+
+      if (o.type === 'timeline'){
+        openTimeline();
+      } else if (o.type === 'popup'){
+        openPopupInGame(o.id);
+      }
     }
 
     if (e.key === 'Escape'){
       e.preventDefault();
-      resumeGameOnPopupClose = false;
+      paused = false;
       exitGame();
     }
   });
 
   window.addEventListener('keyup', (e) => keys.delete(e.key));
+
+  // ✅ (2) 첫 랜딩 시 게임이 메인이 되도록 자동 진입
+  enterGame();
 });
