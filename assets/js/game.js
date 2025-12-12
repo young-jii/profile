@@ -16,7 +16,36 @@ window.addEventListener('load', () => {
   const TILE = 16;
   const keys = new Set();
 
-  const player = { x: 40, y: 40, w: 10, h: 12, vx: 0, vy: 0, speed: 1.2 };
+  // 캐릭터 픽셀 크기(이미지가 16x16이면 이대로 추천)
+  const SPRITE_W = 16;
+  const SPRITE_H = 16;
+
+  // 이동/충돌은 약간 작게 잡아도 됨(모션 깔끔해짐)
+  const player = { x: 40, y: 40, w: 12, h: 12, vx: 0, vy: 0, speed: 1.2 };
+
+  // ====== 스프라이트 로드 ======
+  const SPRITE_BASE = 'assets/css/images/';
+
+  const sprites = {
+    front: new Image(),
+    back: new Image(),
+    side1: new Image(), // 왼쪽 걷기 1
+    side2: new Image(), // 왼쪽 걷기 2
+  };
+  sprites.front.src = SPRITE_BASE + 'dot_front.png';
+  sprites.back.src  = SPRITE_BASE + 'dot_back.png';
+  sprites.side1.src = SPRITE_BASE + 'dot_side(1).png';
+  sprites.side2.src = SPRITE_BASE + 'dot_side(2).png';
+
+  // 스프라이트 상태
+  let facing = 'down';          // 'down' | 'up' | 'left' | 'right'
+  let walkFrame = 0;            // 0 or 1
+  let walkTimer = 0;            // 애니메이션 타이머
+  const WALK_INTERVAL = 140;    // ms (작을수록 빠르게 걷기)
+
+  function allSpritesReady(){
+    return Object.values(sprites).every(img => img.complete && img.naturalWidth > 0);
+  }
 
   // 팝업 트리거와 연결
   const objects = [
@@ -28,7 +57,6 @@ window.addEventListener('load', () => {
     { id: 'popupTrigger6', label: 'Lang',     x: 210, y: 130, w: 18, h: 18 },
   ];
 
-  // triggerId -> popup overlay id 매핑 (너 HTML 기준)
   const triggerToPopup = {
     popupTrigger1: 'popup1',
     popupTrigger2: 'popup2',
@@ -38,14 +66,12 @@ window.addEventListener('load', () => {
     popupTrigger6: 'popup6',
   };
 
-  // 팝업이 닫히면 게임으로 자동 복귀할지 여부
   let resumeGameOnPopupClose = false;
 
   function enterGame(){
     toggle.checked = true;
     toggle.dispatchEvent(new Event('change'));
   }
-
   function exitGame(){
     toggle.checked = false;
     toggle.dispatchEvent(new Event('change'));
@@ -56,7 +82,6 @@ window.addEventListener('load', () => {
   }
 
   function nearestInteractable(){
-    // 플레이어 주변 약간 확대된 상호작용 영역
     const zone = { x: player.x - 6, y: player.y - 6, w: player.w + 12, h: player.h + 12 };
     for (const o of objects){
       if (rectsOverlap(zone, o)) return o;
@@ -73,7 +98,6 @@ window.addEventListener('load', () => {
         ctx.fillRect(x, y, TILE, TILE);
       }
     }
-    // 길
     ctx.fillStyle = '#2a3646';
     ctx.fillRect(40, 72, 240, 16);
     ctx.fillRect(120, 40, 16, 120);
@@ -88,14 +112,6 @@ window.addEventListener('load', () => {
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
       ctx.fillText(o.label, o.x - 2, o.y - 4);
     }
-  }
-
-  function drawPlayer(){
-    // TODO: 여기서 스프라이트 이미지로 교체 가능 (이미지 파일명 알려주면 바로 바꿔줄게)
-    ctx.fillStyle = '#f7768e';
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(player.x + 2, player.y + 3, 2, 2);
   }
 
   // (3) Space 누르기 전에 “Press Space” 말풍선 UI
@@ -113,31 +129,103 @@ window.addEventListener('load', () => {
     const bx = Math.max(6, Math.min(W - bw - 6, player.x + player.w/2 - bw/2));
     const by = Math.max(6, player.y - 22);
 
-    // bubble
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
     ctx.fillRect(bx, by, bw, bh);
-
-    // small tail
     ctx.fillRect(Math.floor(bx + bw/2) - 2, by + bh, 4, 3);
 
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
     ctx.fillText(text, bx + pad, by + 11);
   }
 
+  // ====== 캐릭터 스프라이트 그리기 ======
+  function drawPlayerSprite(){
+    // 스프라이트가 아직 로드 전이면 임시 사각형
+    if (!allSpritesReady()){
+      ctx.fillStyle = '#f7768e';
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+      return;
+    }
+
+    // 플레이어의 좌상단 기준으로 16x16을 그리되, 살짝 가운데 정렬
+    const dx = Math.round(player.x - (SPRITE_W - player.w) / 2);
+    const dy = Math.round(player.y - (SPRITE_H - player.h) / 2);
+
+    if (facing === 'up'){
+      ctx.drawImage(sprites.back, dx, dy, SPRITE_W, SPRITE_H);
+      return;
+    }
+    if (facing === 'down'){
+      ctx.drawImage(sprites.front, dx, dy, SPRITE_W, SPRITE_H);
+      return;
+    }
+
+    // left/right는 side 2프레임을 번갈아 사용
+    const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
+
+    if (facing === 'left'){
+      ctx.drawImage(sideImg, dx, dy, SPRITE_W, SPRITE_H);
+      return;
+    }
+
+    // right: 좌우 반전 (왼쪽 스프라이트를 뒤집어서 사용)
+    if (facing === 'right'){
+      ctx.save();
+      // canvas를 좌우 반전시키고, x 위치를 변환해 맞춰줌
+      ctx.scale(-1, 1);
+      // 뒤집힌 좌표계에서 그릴 x = -(원래 x + width)
+      ctx.drawImage(sideImg, -(dx + SPRITE_W), dy, SPRITE_W, SPRITE_H);
+      ctx.restore();
+      return;
+    }
+  }
+
   function render(){
     ctx.clearRect(0,0,W,H);
     drawTileBG();
     drawObjects();
-    drawPlayer();
+    drawPlayerSprite();
     drawPressSpaceBubble();
   }
 
-  function update(){
+  // ====== 업데이트(이동 + 방향 + 걷기 애니) ======
+  let lastTs = performance.now();
+
+  function update(ts){
+    const dt = ts - lastTs;
+    lastTs = ts;
+
     player.vx = 0; player.vy = 0;
-    if (keys.has('ArrowLeft') || keys.has('a')) player.vx = -player.speed;
-    if (keys.has('ArrowRight')|| keys.has('d')) player.vx =  player.speed;
-    if (keys.has('ArrowUp')   || keys.has('w')) player.vy = -player.speed;
-    if (keys.has('ArrowDown') || keys.has('s')) player.vy =  player.speed;
+
+    const left  = keys.has('ArrowLeft') || keys.has('a');
+    const right = keys.has('ArrowRight')|| keys.has('d');
+    const up    = keys.has('ArrowUp')   || keys.has('w');
+    const down  = keys.has('ArrowDown') || keys.has('s');
+
+    if (left)  player.vx = -player.speed;
+    if (right) player.vx =  player.speed;
+    if (up)    player.vy = -player.speed;
+    if (down)  player.vy =  player.speed;
+
+    // 방향(facing) 결정: 마지막 입력 우선(원하는 규칙대로 바꿔도 됨)
+    if (player.vx < 0) facing = 'left';
+    else if (player.vx > 0) facing = 'right';
+    else if (player.vy < 0) facing = 'up';
+    else if (player.vy > 0) facing = 'down';
+
+    const isMoving = (player.vx !== 0 || player.vy !== 0);
+
+    // 걷기 애니: 좌/우 이동일 때만 프레임 토글
+    if (isMoving && (facing === 'left' || facing === 'right')){
+      walkTimer += dt;
+      if (walkTimer >= WALK_INTERVAL){
+        walkTimer = 0;
+        walkFrame = (walkFrame === 0) ? 1 : 0;
+      }
+    } else {
+      // 멈추거나 위/아래 이동이면 걷기 프레임 초기화
+      walkTimer = 0;
+      walkFrame = 0;
+    }
 
     player.x += player.vx;
     player.y += player.vy;
@@ -146,23 +234,18 @@ window.addEventListener('load', () => {
     player.y = Math.max(0, Math.min(H - player.h, player.y));
   }
 
-  function loop(){
+  function loop(ts){
     if (!layer.classList.contains('on')) return;
-    update();
+    update(ts);
     render();
     requestAnimationFrame(loop);
   }
 
-  // (2) 팝업 열릴 때 fade 전환: 게임 -> 텍스트로 먼저 페이드아웃 후 팝업 오픈
+  // (2) 팝업 열릴 때 fade 전환
   function openLinkedPopupFromGame(obj){
-    // 팝업 닫으면 다시 게임으로 돌아오게
     resumeGameOnPopupClose = true;
-
-    // 게임 종료(페이드 아웃 시작)
     exitGame();
 
-    // 페이드가 끝난 다음 프레임쯤 팝업 오픈
-    // (CSS transition 220ms이므로 여유 있게 240ms)
     setTimeout(() => {
       const trigger = document.getElementById(obj.id);
       if (trigger) trigger.click();
@@ -180,13 +263,11 @@ window.addEventListener('load', () => {
       if (closeBtn){
         closeBtn.addEventListener('click', () => {
           if (!resumeGameOnPopupClose) return;
-          // 팝업 닫힌 뒤 자연스럽게 복귀
           setTimeout(() => enterGame(), 120);
           resumeGameOnPopupClose = false;
         });
       }
 
-      // 오버레이 바깥 클릭으로 닫는 로직이 있을 경우 대비
       overlay.addEventListener('click', (e) => {
         if (e.target !== overlay) return;
         if (!resumeGameOnPopupClose) return;
@@ -204,14 +285,17 @@ window.addEventListener('load', () => {
     layer.classList.toggle('on', on);
     layer.setAttribute('aria-hidden', (!on).toString());
 
-    // 텍스트 화면은 visibility로 토글
     if (main) main.style.visibility = on ? 'hidden' : 'visible';
     if (header) header.style.visibility = on ? 'hidden' : 'visible';
 
-    if (on) requestAnimationFrame(loop);
+    // 게임 진입 시, 타이머 초기화(부드럽게)
+    if (on){
+      lastTs = performance.now();
+      requestAnimationFrame(loop);
+    }
   });
 
-  // (4) ESC 없이도 Exit 버튼 제공
+  // (4) Exit 버튼
   if (exitBtn){
     exitBtn.addEventListener('click', () => {
       resumeGameOnPopupClose = false;
@@ -222,17 +306,14 @@ window.addEventListener('load', () => {
   window.addEventListener('keydown', (e) => {
     keys.add(e.key);
 
-    // 게임 켜져있을 때만 상호작용 처리
     if (!layer.classList.contains('on')) return;
 
-    // Space: 가까운 오브젝트 팝업 열기
     if (e.key === ' '){
       e.preventDefault();
       const o = nearestInteractable();
       if (o) openLinkedPopupFromGame(o);
     }
 
-    // ESC: 게임 종료 (팝업과 무관)
     if (e.key === 'Escape'){
       e.preventDefault();
       resumeGameOnPopupClose = false;
