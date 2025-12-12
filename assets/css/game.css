@@ -1,0 +1,30 @@
+/* 전체 화면 오버레이 */
+#gameLayer{
+  position: fixed;
+  inset: 0;
+  display: none;           /* 기본 숨김 */
+  z-index: 9999;
+  background: rgba(10, 10, 14, 0.92);
+  backdrop-filter: blur(6px);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#gameLayer.on{ display: flex; }
+
+#gameCanvas{
+  width: min(92vw, 960px);
+  height: auto;
+  image-rendering: pixelated; /* 도트 느낌 핵심 */
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.45);
+}
+
+#gameHint{
+  font-size: 14px;
+  opacity: .9;
+  color: rgba(255,255,255,.92);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
