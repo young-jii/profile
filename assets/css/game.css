@@ -1,30 +1,65 @@
-/* 전체 화면 오버레이 */
+/* 전체 화면 오버레이 (fade 전환) */
 #gameLayer{
   position: fixed;
   inset: 0;
-  display: none;           /* 기본 숨김 */
   z-index: 9999;
-  background: rgba(10, 10, 14, 0.92);
-  backdrop-filter: blur(6px);
+
+  display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   gap: 12px;
+
+  background: rgba(10, 10, 14, 0.92);
+  backdrop-filter: blur(6px);
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  transition: opacity 220ms ease, visibility 220ms ease;
 }
 
-#gameLayer.on{ display: flex; }
+#gameLayer.on{
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
 
 #gameCanvas{
   width: min(92vw, 960px);
   height: auto;
-  image-rendering: pixelated; /* 도트 느낌 핵심 */
+  image-rendering: pixelated;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0,0,0,.45);
 }
 
+.game-ui{
+  width: min(92vw, 960px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 #gameHint{
   font-size: 14px;
-  opacity: .9;
+  opacity: .92;
   color: rgba(255,255,255,.92);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+#exitGameBtn{
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.92);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#exitGameBtn:hover{
+  background: rgba(255,255,255,.14);
 }
