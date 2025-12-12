@@ -39,8 +39,34 @@
 			  <canvas id="gameCanvas" width="320" height="180"></canvas>
 			
 			  <div class="game-ui">
-			    <div id="gameHint">Move: WASD / Arrow · Interact: Space</div>
+			    <div id="gameHint">Move: Arrow Keys · Interact: Space</div>
 			    <button id="exitGameBtn" type="button">Exit Game</button>
+			  </div>
+		
+		  <!-- Timeline Modal (게임 안에서 열림) -->
+			  <div id="timelineModal" class="game-modal" aria-hidden="true">
+			    <div class="game-modal-card">
+			      <div class="game-modal-head">
+			        <div class="game-modal-title">Life Timeline</div>
+			        <button id="timelineCloseBtn" class="game-modal-close" type="button">×</button>
+			      </div>
+			      <div class="game-modal-body" id="timelineBody">
+			        <div class="tl-item"><span>은광여자고등학교 졸업 | 인문계</span><span>2012.03 ~ 2015.02</span></div>
+			        <div class="tl-item"><span>경희대학교 졸업 | 국어국문학과 | 학점: 3.92/4.5</span><span>2016.03 ~ 2022.02</span></div>
+			        <div class="tl-item"><span>워드프로세서 | 대한상공회의소</span><span>2019.09.13</span></div>
+			        <div class="tl-item"><span>GTQ그래픽기술자격 1급 | 한국생산성본부</span><span>2020.02.07</span></div>
+			        <div class="tl-item"><span>컴퓨터활용능력 1급 | 대한상공회의소</span><span>2020.08.28</span></div>
+			        <div class="tl-item"><span>천재교과서 | 콘텐츠2 국어부 초등국어팀</span><span>2021.08 ~ 2023.06</span></div>
+			        <div class="tl-item"><span>협업 필터링 및 자연어 처리 기반 A.I. 추천 분석 시스템 제작 과정 | 성균관대학교 산학협력단</span><span>2023.06 ~ 2023.12</span></div>
+			        <div class="tl-item"><span>2023 제 1회 K - 디지털플랫폼 AI 경진대회 | 특별상 수상</span><span>2023.12.13</span></div>
+			        <div class="tl-item"><span>고객경험데이터를 활용한 데이터 비즈니스 분석가 과정 | IT 여성기업인협회</span><span>2024.02 ~ 2024.07</span></div>
+			        <div class="tl-item"><span>SQL 개발자 | 한국데이터산업진흥원</span><span>2024.04.05</span></div>
+			        <div class="tl-item"><span>TOEIC | 785점</span><span>2024.06.30</span></div>
+			        <div class="tl-item"><span>EBS(한국교육방송공사) | 디지털교육서비스부</span><span>2024.07 ~ (현재)</span></div>
+			        <div class="tl-item"><span>데이터 분석 준전문가 | 한국데이터산업진흥원</span><span>2025.09.05</span></div>
+			        <div class="tl-item"><span>TOEIC Speaking | Intermediate High (Speaking Score 150)</span><span>2025.09.13</span></div>
+			      </div>
+			    </div>
 			  </div>
 			</div>
 
@@ -338,4 +364,5 @@
 
 	</body>
 </html>
+
 
