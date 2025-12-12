@@ -1,4 +1,4 @@
-/* 전체 화면 오버레이 (fade 전환) */
+/* Game layer (fade) */
 #gameLayer{
   position: fixed;
   inset: 0;
@@ -59,7 +59,87 @@
   font-size: 13px;
   cursor: pointer;
 }
+#exitGameBtn:hover{ background: rgba(255,255,255,.14); }
 
-#exitGameBtn:hover{
-  background: rgba(255,255,255,.14);
+/* ✅ 게임 모드일 때: 본문은 "투명 + 클릭 불가"로만 처리 (팝업은 보여야 함) */
+body.game-on #header,
+body.game-on #main,
+body.game-on #footer{
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
 }
+
+/* ✅ 팝업은 게임 위로 올라오게 */
+.popup-overlay{
+  z-index: 10001 !important;
+  pointer-events: auto !important;
+}
+
+/* ===== Timeline modal (게임 내 모달) ===== */
+.game-modal{
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+}
+
+.game-modal.on{ display: flex; }
+
+.game-modal-card{
+  width: min(92vw, 760px);
+  max-height: min(76vh, 620px);
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(20, 24, 32, 0.96);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 20px 60px rgba(0,0,0,.45);
+}
+
+.game-modal-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.game-modal-title{
+  color: rgba(255,255,255,0.92);
+  font-size: 15px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.game-modal-close{
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,0.92);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.game-modal-body{
+  padding: 14px 16px;
+  overflow: auto;
+  max-height: calc(min(76vh, 620px) - 56px);
+  color: rgba(255,255,255,0.88);
+  font-size: 13px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.tl-item{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.12);
+}
+.tl-item span:last-child{ opacity: .86; white-space: nowrap; }
