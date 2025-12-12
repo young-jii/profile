@@ -34,11 +34,15 @@
                 </div>
 			</header>
 
-		<!-- Game Layer (추가) -->
-		<div id="gameLayer" aria-hidden="true">
-			<canvas id="gameCanvas" width="320" height="180"></canvas>
-			<div id="gameHint">Move: WASD / Arrow · Interact: Space · Exit: Esc</div>
-		</div>
+		<!-- Game Layer -->
+			<div id="gameLayer" aria-hidden="true">
+			  <canvas id="gameCanvas" width="320" height="180"></canvas>
+			
+			  <div class="game-ui">
+			    <div id="gameHint">Move: WASD / Arrow · Interact: Space</div>
+			    <button id="exitGameBtn" type="button">Exit Game</button>
+			  </div>
+			</div>
 
 		<!-- Main -->
 			<div id="main">
@@ -334,3 +338,4 @@
 
 	</body>
 </html>
+
