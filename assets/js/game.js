@@ -1,5 +1,5 @@
 /* =========================================
-   GAME (FULL) - robust version
+   GAME (FULL) - robust version (sprite+popup fix)
    File: assets/js/game.js
 ========================================= */
 
@@ -14,6 +14,11 @@ window.addEventListener('load', () => {
 
   if (!toggle || !layer || !canvas) return;
 
+  // ✅ popup-overlay 들을 gameLayer로 "이동" (fixed/transform 이슈 완전 해결)
+  document.querySelectorAll('.popup-overlay').forEach((el) => {
+    layer.appendChild(el);
+  });
+
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
@@ -21,33 +26,40 @@ window.addEventListener('load', () => {
   const keys = new Set();
   let paused = false;
 
-  // ✅ 충돌 박스(작게)
+  // ✅ 충돌 박스
   const player = { x: 40, y: 88, w: 12, h: 12, vx: 0, vy: 0, speed: 1.25 };
 
-  // ✅ 캐릭터 스프라이트 (원본 16x16 가정)
+  // ✅ 스프라이트
   const SRC_W = 16, SRC_H = 16;
-  const DRAW_W = 32, DRAW_H = 32; // 2배
+  const DRAW_W = 32, DRAW_H = 32;
 
   const SPRITE_BASE = 'assets/css/images/';
   const sprites = {
     front: new Image(),
-    back: new Image(),
+    back:  new Image(),
     side1: new Image(),
     side2: new Image(),
   };
 
-  sprites.front.src = SPRITE_BASE + 'dot_front.png';
-  sprites.back.src  = SPRITE_BASE + 'dot_back.png';
-  sprites.side1.src = SPRITE_BASE + 'dot_side(1).png';
-  sprites.side2.src = SPRITE_BASE + 'dot_side(2).png';
+  // ✅ 로딩 성공 플래그 (complete/naturalWidth 의존 제거)
+  const spriteReady = { front:false, back:false, side1:false, side2:false };
 
-  // ✅ 안전 로더(장당 체크)
-  function imgOk(img){
-    return img && img.complete && img.naturalWidth > 0;
+  function setSprite(img, key, filename){
+    const url = new URL(SPRITE_BASE + filename, document.baseURI).href;
+    img.onload = () => { spriteReady[key] = true; };
+    img.onerror = () => { spriteReady[key] = false; console.warn('[sprite load fail]', url); };
+    img.src = url;
   }
 
-  let facing = 'right';  // down | up | left | right
-  let walkFrame = 0;     // 0/1
+  setSprite(sprites.front, 'front', 'dot_front.png');
+  setSprite(sprites.back,  'back',  'dot_back.png');
+  setSprite(sprites.side1, 'side1', 'dot_side(1).png');
+  setSprite(sprites.side2, 'side2', 'dot_side(2).png');
+
+  function imgOkKey(key){ return spriteReady[key] === true; }
+
+  let facing = 'right';
+  let walkFrame = 0;
   let walkTimer = 0;
   const WALK_INTERVAL = 140;
 
@@ -63,30 +75,36 @@ window.addEventListener('load', () => {
     timeline:      new Image(),
   };
 
-  // 파일명이 다르면 여기만 맞춰주면 돼
-  icons.popupTrigger1.src = ICON_BASE + 'icon_school.png';
-  icons.popupTrigger2.src = ICON_BASE + 'icon_training.png';
-  icons.popupTrigger3.src = ICON_BASE + 'icon_company.png';
-  icons.popupTrigger4.src = ICON_BASE + 'icon_award.png';
-  icons.popupTrigger5.src = ICON_BASE + 'icon_cert.png';
-  icons.popupTrigger6.src = ICON_BASE + 'icon_lang.png';
-  icons.timeline.src      = ICON_BASE + 'icon_timeline.png';
+  function setIcon(img, filename){
+    img.onload = () => {};
+    img.onerror = () => {};
+    img.src = new URL(ICON_BASE + filename, document.baseURI).href;
+  }
+
+  setIcon(icons.popupTrigger1, 'icon_school.png');
+  setIcon(icons.popupTrigger2, 'icon_training.png');
+  setIcon(icons.popupTrigger3, 'icon_company.png');
+  setIcon(icons.popupTrigger4, 'icon_award.png');
+  setIcon(icons.popupTrigger5, 'icon_cert.png');
+  setIcon(icons.popupTrigger6, 'icon_lang.png');
+  setIcon(icons.timeline,      'icon_timeline.png');
+
+  function iconOk(img){ return img && img.complete && img.naturalWidth > 0; }
 
   // 오브젝트 배치(좌 -> 우)
   const objects = [
-    { type:'timeline', id:'timeline',       label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
+    { type:'timeline', id:'timeline',      label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
 
-    { type:'popup',    id:'popupTrigger1',  label:'School',   x: 82,  y: 44,  w: 18, h: 18 },
-    { type:'popup',    id:'popupTrigger2',  label:'Training', x: 120, y: 128, w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger1', label:'School',   x: 82,  y: 44,  w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger2', label:'Training', x: 120, y: 128, w: 18, h: 18 },
 
-    { type:'popup',    id:'popupTrigger3',  label:'Company',  x: 180, y: 44,  w: 18, h: 18 },
-    { type:'popup',    id:'popupTrigger4',  label:'Award',    x: 220, y: 128, w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger3', label:'Company',  x: 180, y: 44,  w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger4', label:'Award',    x: 220, y: 128, w: 18, h: 18 },
 
-    { type:'popup',    id:'popupTrigger5',  label:'Cert',     x: 268, y: 44,  w: 18, h: 18 },
-    { type:'popup',    id:'popupTrigger6',  label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger5', label:'Cert',     x: 268, y: 44,  w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger6', label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
   ];
 
-  // ✅ 트리거 -> overlay id 매핑 (팝업 직접 오픈용)
   const triggerToPopup = {
     popupTrigger1: 'popup1',
     popupTrigger2: 'popup2',
@@ -125,7 +143,7 @@ window.addEventListener('load', () => {
     });
   }
 
-  // ===== Popup Open/Close (✅ overlay 직접 제어) =====
+  // ===== Popup Open/Close (overlay 직접 제어) =====
   function openPopupInGame(triggerId){
     paused = true;
 
@@ -179,14 +197,13 @@ window.addEventListener('load', () => {
     return null;
   }
 
-  // ===== 배경(길 + 분기) =====
+  // ===== 배경 =====
   function drawBG(ts){
     const t = ts / 1000;
 
     ctx.fillStyle = '#0b0f16';
     ctx.fillRect(0,0,W,H);
 
-    // 미세 그리드
     for (let y=0; y<H; y+=8){
       for (let x=0; x<W; x+=8){
         const a = ((x+y)/8) % 2 === 0 ? 0.06 : 0.04;
@@ -195,7 +212,6 @@ window.addEventListener('load', () => {
       }
     }
 
-    // 메인 길
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(12, 86, 296, 12);
 
@@ -203,7 +219,6 @@ window.addEventListener('load', () => {
     ctx.fillRect(12, 86, 296, 1);
     ctx.fillRect(12, 97, 296, 1);
 
-    // 분기
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(90, 52, 10, 46);
     ctx.fillRect(128, 86, 10, 46);
@@ -212,13 +227,11 @@ window.addEventListener('load', () => {
     ctx.fillRect(276, 52, 10, 46);
     ctx.fillRect(304, 86, 10, 46);
 
-    // 스캔 라인
     const scanY = Math.floor((t * 24) % H);
     ctx.fillStyle = 'rgba(122,162,247,0.06)';
     ctx.fillRect(0, scanY, W, 2);
   }
 
-  // ===== 오브젝트(아이콘 + 둥둥 + 반짝) =====
   function drawObjects(ts){
     const near = nearestInteractable();
     const t = ts / 1000;
@@ -235,20 +248,18 @@ window.addEventListener('load', () => {
       const dx = o.x + o.w/2 - dw/2;
       const dy = o.y + o.h/2 - dh/2 + bob;
 
-      if (imgOk(img)){
+      if (iconOk(img)){
         ctx.drawImage(img, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
       } else {
         ctx.fillStyle = (o.type === 'timeline') ? '#9ece6a' : '#7aa2f7';
         ctx.fillRect(o.x, o.y, o.w, o.h);
       }
 
-      // 라벨
       ctx.font = '10px monospace';
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
       ctx.fillText(o.label, o.x - 2, o.y - 6);
     }
 
-    // near sparkle
     if (near){
       const cx = near.x + near.w/2;
       const cy = near.y + near.h/2;
@@ -266,7 +277,6 @@ window.addEventListener('load', () => {
     }
   }
 
-  // “Press Space” 말풍선
   function drawPressSpaceBubble(){
     const o = nearestInteractable();
     if (!o) return;
@@ -289,34 +299,31 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
-  // ✅ 플레이어(무조건 fallback 먼저 그림 → 그 위에 스프라이트)
   function drawPlayerSprite(){
-    // fallback(무조건 보이게)
+    // fallback (항상)
     ctx.fillStyle = '#f7768e';
     ctx.fillRect(Math.round(player.x), Math.round(player.y), player.w, player.h);
 
-    // 중심 정렬 좌표
     const dx = Math.round(player.x - (DRAW_W - player.w) / 2);
     const dy = Math.round(player.y - (DRAW_H - player.h) / 2);
 
-    // facing별 이미지 선택 (있는 것만 그리기)
-    if (facing === 'up' && imgOk(sprites.back)){
+    if (facing === 'up' && imgOkKey('back')){
       ctx.drawImage(sprites.back, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
-    if (facing === 'down' && imgOk(sprites.front)){
+    if (facing === 'down' && imgOkKey('front')){
       ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
 
+    const sideKey = (walkFrame === 0) ? 'side1' : 'side2';
     const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
 
-    if (facing === 'left' && imgOk(sideImg)){
+    if (facing === 'left' && imgOkKey(sideKey)){
       ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
-
-    if (facing === 'right' && imgOk(sideImg)){
+    if (facing === 'right' && imgOkKey(sideKey)){
       ctx.save();
       ctx.scale(-1, 1);
       ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
@@ -324,8 +331,8 @@ window.addEventListener('load', () => {
       return;
     }
 
-    // 옆 이미지가 없더라도 front가 있으면 대체로라도 표시
-    if (imgOk(sprites.front)){
+    // 옆이 없더라도 front가 있으면 대체
+    if (imgOkKey('front')){
       ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
     }
   }
@@ -338,7 +345,7 @@ window.addEventListener('load', () => {
     drawPressSpaceBubble();
   }
 
-  // ===== 업데이트(Arrow 키만) =====
+  // ===== 업데이트 =====
   let lastTs = performance.now();
 
   function update(ts){
@@ -395,7 +402,6 @@ window.addEventListener('load', () => {
     requestAnimationFrame(loop);
   }
 
-  // 토글 on/off
   toggle.addEventListener('change', () => {
     const on = toggle.checked;
     layer.classList.toggle('on', on);
@@ -408,7 +414,6 @@ window.addEventListener('load', () => {
     }
   });
 
-  // Exit 버튼
   if (exitBtn){
     exitBtn.addEventListener('click', () => {
       paused = false;
@@ -416,7 +421,6 @@ window.addEventListener('load', () => {
     });
   }
 
-  // 키 입력
   window.addEventListener('keydown', (e) => {
     keys.add(e.key);
 
@@ -440,6 +444,5 @@ window.addEventListener('load', () => {
 
   window.addEventListener('keyup', (e) => keys.delete(e.key));
 
-  // 첫 랜딩: 게임 자동 진입
   enterGame();
 });
