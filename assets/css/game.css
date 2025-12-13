@@ -87,7 +87,7 @@
    Timeline Modal (게임 안)
 ========================================= */
 .game-modal {
-  position: fixed;
+  position: absolute; /* ✅ gameLayer 내부 기준으로 */
   inset: 0;
   display: flex;
   align-items: center;
@@ -184,11 +184,10 @@
 }
 
 /* =========================================
-   POPUP OVERLAY (popup1~6)
-   - 페이드 + 확대 애니메이션
+   POPUP OVERLAY (popup1~6) - ✅ gameLayer 내부 기준
 ========================================= */
 .popup-overlay {
-  position: fixed;
+  position: absolute; /* ✅ fixed -> absolute 로 변경 (gameLayer 기준) */
   inset: 0;
   display: flex;
   align-items: center;
@@ -288,11 +287,8 @@
   color: rgba(255,255,255,0.65);
 }
 
-/* scrollbar */
 .popup-content::-webkit-scrollbar,
-.game-modal-body::-webkit-scrollbar {
-  width: 10px;
-}
+.game-modal-body::-webkit-scrollbar { width: 10px; }
 .popup-content::-webkit-scrollbar-track,
 .game-modal-body::-webkit-scrollbar-track {
   background: rgba(0,0,0,0.15);
@@ -305,15 +301,7 @@
   border: 2px solid rgba(0,0,0,0.15);
 }
 
-/* responsive */
-@media (max-width: 840px) {
-  .game-ui { width: min(92vw, 960px); }
-}
-
-/* reduce motion */
 @media (prefers-reduced-motion: reduce) {
-  .popup-overlay,
-  .popup-content,
-  .game-modal { transition: none; }
+  .popup-overlay, .popup-content, .game-modal { transition: none; }
   #exitGameBtn, .close-popup, .game-modal-close { transition: none; }
 }
