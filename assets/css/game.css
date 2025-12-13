@@ -1,10 +1,9 @@
 /* =========================================
-   GAME LAYER + MODALS + POPUP UI (FULL)
+   GAME LAYER + MODALS (Timeline style for all)
    File: assets/css/game.css
 ========================================= */
 
-/* 게임 레이어 */
-#gameLayer {
+#gameLayer{
   position: fixed;
   inset: 0;
   display: none;
@@ -18,13 +17,9 @@
 
   z-index: 9000;
 }
+#gameLayer.on{ display:flex; }
 
-#gameLayer.on {
-  display: flex;
-}
-
-/* 캔버스 */
-#gameCanvas {
+#gameCanvas{
   width: min(92vw, 960px);
   height: auto;
 
@@ -39,8 +34,7 @@
     inset 0 0 0 1px rgba(255,255,255,0.06);
 }
 
-/* 게임 UI */
-.game-ui {
+.game-ui{
   position: absolute;
   width: min(92vw, 960px);
   display: flex;
@@ -48,12 +42,10 @@
   align-items: center;
   gap: 12px;
   padding: 10px 6px;
-
   bottom: 18px;
   pointer-events: none;
 }
-
-#gameHint {
+#gameHint{
   pointer-events: none;
   font-size: 13px;
   color: rgba(255,255,255,0.78);
@@ -64,8 +56,7 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
-
-#exitGameBtn {
+#exitGameBtn{
   pointer-events: auto;
   cursor: pointer;
   font-size: 13px;
@@ -78,16 +69,16 @@
   -webkit-backdrop-filter: blur(8px);
   transition: transform 120ms ease, background 120ms ease;
 }
-#exitGameBtn:hover {
+#exitGameBtn:hover{
   transform: translateY(-1px);
   background: rgba(255,255,255,0.08);
 }
 
 /* =========================================
-   Timeline Modal (게임 안)
+   Unified Modal (Timeline style)
 ========================================= */
-.game-modal {
-  position: absolute; /* ✅ gameLayer 내부 기준으로 */
+.game-modal{
+  position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
@@ -104,13 +95,13 @@
   pointer-events: none;
   transition: opacity 180ms ease, visibility 180ms ease;
 }
-.game-modal.on {
+.game-modal.on{
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
 }
 
-.game-modal-card {
+.game-modal-card{
   width: min(860px, 92vw);
   max-height: min(720px, 84vh);
   overflow: hidden;
@@ -126,22 +117,20 @@
   box-shadow: 0 20px 70px rgba(0,0,0,0.55);
 }
 
-.game-modal-head {
-  display: flex;
-  align-items: center;
+.game-modal-head{
+  display:flex;
+  align-items:center;
   justify-content: space-between;
   padding: 14px 14px 12px;
   border-bottom: 1px solid rgba(255,255,255,0.12);
 }
-
-.game-modal-title {
+.game-modal-title{
   font-size: 15px;
   font-weight: 800;
   color: rgba(255,255,255,0.92);
   letter-spacing: 0.4px;
 }
-
-.game-modal-close {
+.game-modal-close{
   width: 34px;
   height: 34px;
   border-radius: 12px;
@@ -152,19 +141,23 @@
   cursor: pointer;
   transition: transform 120ms ease, background 120ms ease;
 }
-.game-modal-close:hover {
+.game-modal-close:hover{
   transform: translateY(-1px);
   background: rgba(255,255,255,0.08);
 }
 
-.game-modal-body {
+.game-modal-body{
   padding: 12px 14px 14px;
   max-height: min(640px, 72vh);
   overflow: auto;
+  color: rgba(255,255,255,0.84);
+  font-size: 13px;
+  line-height: 1.55;
 }
 
-.tl-item {
-  display: flex;
+/* timeline list item */
+.tl-item{
+  display:flex;
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
@@ -173,135 +166,52 @@
   background: rgba(0,0,0,0.20);
   margin-bottom: 10px;
 }
-.tl-item span:first-child {
-  color: rgba(255,255,255,0.84);
-  font-size: 13px;
-}
-.tl-item span:last-child {
+.tl-item span:last-child{
   color: rgba(255,255,255,0.60);
   font-size: 12px;
   white-space: nowrap;
 }
 
-/* =========================================
-   POPUP OVERLAY (popup1~6) - ✅ gameLayer 내부 기준
-========================================= */
-.popup-overlay {
-  position: absolute; /* ✅ fixed -> absolute 로 변경 (gameLayer 기준) */
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-
-  z-index: 9999;
-
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 180ms ease, visibility 180ms ease;
+/* modal body inner content normalize */
+.game-modal-body h3,
+.game-modal-body .popup-title{
+  margin: 6px 0 10px;
+  font-size: 18px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.94);
 }
-
-.popup-overlay.on,
-.popup-overlay.active {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
+.game-modal-body .popup-text{
+  margin: 0;
+  color: rgba(255,255,255,0.82);
 }
-
-.popup-content {
-  width: min(880px, 92vw);
-  max-height: min(720px, 84vh);
-  overflow: auto;
-  position: relative;
-  padding: 18px 18px 16px;
-  border-radius: 16px;
-
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06)),
-    radial-gradient(1200px 400px at 10% 0%, rgba(122,162,247,0.16), transparent 55%),
-    radial-gradient(1200px 400px at 90% 0%, rgba(158,206,106,0.14), transparent 55%),
-    rgba(12,16,24,0.88);
-
-  border: 1px solid rgba(255,255,255,0.14);
-  box-shadow:
-    0 20px 70px rgba(0,0,0,0.55),
-    inset 0 0 0 1px rgba(255,255,255,0.06);
-
-  transform: translateY(8px) scale(0.98);
-  opacity: 0;
-  transition: transform 200ms ease, opacity 200ms ease;
-  will-change: transform, opacity;
-}
-
-.popup-overlay.on .popup-content,
-.popup-overlay.active .popup-content {
-  transform: translateY(0) scale(1);
-  opacity: 1;
-}
-
-.close-popup {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.35);
-  color: rgba(255,255,255,0.9);
-  font-size: 22px;
-  line-height: 34px;
-  text-align: center;
-  cursor: pointer;
-  transition: transform 120ms ease, background 120ms ease;
-}
-.close-popup:hover {
-  transform: translateY(-1px);
-  background: rgba(255,255,255,0.08);
-}
-
-.popup-title {
-  margin: 2px 0 4px;
-  font-size: 22px;
-  letter-spacing: 0.4px;
-  color: rgba(255,255,255,0.95);
-}
-
-.video-wrapper { margin: 10px 0 0; }
-.video-container {
+.game-modal-body .video-container{
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.14);
   background: rgba(0,0,0,0.35);
   box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+  margin: 10px 0 8px;
 }
-.video-container video { width: 100%; display: block; }
-.caption {
-  margin: 8px 0 0;
+.game-modal-body video{ width: 100%; display:block; }
+.game-modal-body .caption{
+  margin: 0 0 12px;
   font-size: 12px;
   color: rgba(255,255,255,0.65);
 }
 
-.popup-content::-webkit-scrollbar,
-.game-modal-body::-webkit-scrollbar { width: 10px; }
-.popup-content::-webkit-scrollbar-track,
-.game-modal-body::-webkit-scrollbar-track {
+/* scrollbars */
+.game-modal-body::-webkit-scrollbar{ width: 10px; }
+.game-modal-body::-webkit-scrollbar-track{
   background: rgba(0,0,0,0.15);
   border-radius: 10px;
 }
-.popup-content::-webkit-scrollbar-thumb,
-.game-modal-body::-webkit-scrollbar-thumb {
+.game-modal-body::-webkit-scrollbar-thumb{
   background: rgba(255,255,255,0.16);
   border-radius: 10px;
   border: 2px solid rgba(0,0,0,0.15);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .popup-overlay, .popup-content, .game-modal { transition: none; }
-  #exitGameBtn, .close-popup, .game-modal-close { transition: none; }
+@media (prefers-reduced-motion: reduce){
+  .game-modal{ transition:none; }
+  #exitGameBtn, .game-modal-close{ transition:none; }
 }
