@@ -3,7 +3,7 @@
    File: assets/css/game.css
 ========================================= */
 
-/* 게임 레이어: 기본은 숨김 */
+/* 게임 레이어 */
 #gameLayer {
   position: fixed;
   inset: 0;
@@ -11,14 +11,14 @@
   align-items: center;
   justify-content: center;
 
-  background: radial-gradient(1200px 600px at 50% 30%, rgba(122,162,247,0.16), transparent 55%),
-              radial-gradient(900px 500px at 30% 70%, rgba(158,206,106,0.12), transparent 55%),
-              rgba(8,10,15,0.96);
+  background:
+    radial-gradient(1200px 600px at 50% 30%, rgba(122,162,247,0.16), transparent 55%),
+    radial-gradient(900px 500px at 30% 70%, rgba(158,206,106,0.12), transparent 55%),
+    rgba(8,10,15,0.96);
 
   z-index: 9000;
 }
 
-/* game.js가 on 클래스를 붙이면 표시 */
 #gameLayer.on {
   display: flex;
 }
@@ -27,10 +27,11 @@
 #gameCanvas {
   width: min(92vw, 960px);
   height: auto;
+
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  border-radius: 18px;
 
+  border-radius: 18px;
   border: 1px solid rgba(255,255,255,0.14);
   background: rgba(0,0,0,0.25);
   box-shadow:
@@ -47,8 +48,8 @@
   align-items: center;
   gap: 12px;
   padding: 10px 6px;
-  top: calc(50% + min(92vw, 960px) * 0.30);
-  transform: translateY(90px);
+
+  bottom: 18px;
   pointer-events: none;
 }
 
@@ -103,7 +104,6 @@
   pointer-events: none;
   transition: opacity 180ms ease, visibility 180ms ease;
 }
-
 .game-modal.on {
   opacity: 1;
   visibility: visible;
@@ -173,7 +173,6 @@
   background: rgba(0,0,0,0.20);
   margin-bottom: 10px;
 }
-
 .tl-item span:first-child {
   color: rgba(255,255,255,0.84);
   font-size: 13px;
@@ -185,8 +184,8 @@
 }
 
 /* =========================================
-   POPUP OVERLAY (HTML popups 1~6)
-   - 페이드 + 살짝 확대 애니메이션 포함
+   POPUP OVERLAY (popup1~6)
+   - 페이드 + 확대 애니메이션
 ========================================= */
 .popup-overlay {
   position: fixed;
@@ -215,7 +214,6 @@
   pointer-events: auto;
 }
 
-/* popup card */
 .popup-content {
   width: min(880px, 92vw);
   max-height: min(720px, 84vh);
@@ -235,7 +233,6 @@
     0 20px 70px rgba(0,0,0,0.55),
     inset 0 0 0 1px rgba(255,255,255,0.06);
 
-  /* 등장 애니메이션 기본 상태 */
   transform: translateY(8px) scale(0.98);
   opacity: 0;
   transition: transform 200ms ease, opacity 200ms ease;
@@ -248,7 +245,6 @@
   opacity: 1;
 }
 
-/* 닫기 버튼 */
 .close-popup {
   position: absolute;
   top: 10px;
@@ -270,7 +266,6 @@
   background: rgba(255,255,255,0.08);
 }
 
-/* 텍스트 스타일 */
 .popup-title {
   margin: 2px 0 4px;
   font-size: 22px;
@@ -278,27 +273,6 @@
   color: rgba(255,255,255,0.95);
 }
 
-.popup-subtitle {
-  margin: 0 0 14px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: rgba(255,255,255,0.72);
-}
-
-.popup-section {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px dashed rgba(255,255,255,0.16);
-}
-.popup-h4 {
-  margin: 0 0 10px;
-  font-size: 13px;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.78);
-}
-
-/* 비디오 */
 .video-wrapper { margin: 10px 0 0; }
 .video-container {
   border-radius: 14px;
@@ -312,94 +286,6 @@
   margin: 8px 0 0;
   font-size: 12px;
   color: rgba(255,255,255,0.65);
-}
-
-/* mini cards */
-.mini-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.mini-card {
-  padding: 12px 12px 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.25);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
-}
-
-.mini-title {
-  margin: 0 0 4px;
-  font-weight: 800;
-  font-size: 14px;
-  color: rgba(255,255,255,0.92);
-}
-.mini-meta {
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.62);
-}
-
-/* skill grid */
-.skill-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.skill-card {
-  padding: 12px 12px 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.22);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
-}
-.skill-card h5 {
-  margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 900;
-  color: rgba(255,255,255,0.90);
-}
-
-/* list */
-.popup-content ul { margin: 0; padding-left: 18px; }
-.popup-content li {
-  margin: 6px 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: rgba(255,255,255,0.72);
-}
-.impact-list li { color: rgba(255,255,255,0.78); }
-
-/* cert table */
-.table-list { display: grid; gap: 8px; }
-.table-list .row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(0,0,0,0.20);
-}
-.table-list .left { font-size: 13px; color: rgba(255,255,255,0.82); }
-.table-list .right { font-size: 12px; color: rgba(255,255,255,0.60); white-space: nowrap; }
-
-/* tags */
-.popup-tags {
-  margin-top: 14px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.popup-tags .tag {
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.14);
-  color: rgba(255,255,255,0.76);
-  background: rgba(255,255,255,0.06);
 }
 
 /* scrollbar */
@@ -421,15 +307,7 @@
 
 /* responsive */
 @media (max-width: 840px) {
-  .skill-grid { grid-template-columns: 1fr; }
-  .mini-cards { grid-template-columns: 1fr; }
-  .game-ui {
-    width: min(92vw, 960px);
-    top: auto;
-    bottom: 18px;
-    transform: none;
-    padding: 10px 10px;
-  }
+  .game-ui { width: min(92vw, 960px); }
 }
 
 /* reduce motion */
