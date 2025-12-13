@@ -61,17 +61,23 @@
 }
 #exitGameBtn:hover{ background: rgba(255,255,255,.14); }
 
-/* ✅ 게임 모드일 때: 본문은 "투명 + 클릭 불가"로만 처리 (팝업은 보여야 함) */
+/* 게임 모드일 때도 #main은 투명 처리하지 않음 (팝업이 #main 안에 있음) */
 body.game-on #header,
-body.game-on #main,
 body.game-on #footer{
   opacity: 0;
   pointer-events: none;
   transition: opacity 220ms ease;
 }
 
-/* ✅ 팝업은 게임 위로 올라오게 */
+/* 본문 클릭만 막기 (팝업은 fixed+z-index로 위에 올라옴) */
+body.game-on #main{
+  pointer-events: none;
+}
+
+/* 팝업은 게임 위로 */
 .popup-overlay{
+  position: fixed !important;
+  inset: 0 !important;
   z-index: 10001 !important;
   pointer-events: auto !important;
 }
