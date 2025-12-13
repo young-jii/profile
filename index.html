@@ -1,572 +1,125 @@
 <!DOCTYPE HTML>
-<!--
-	Strata by HTML5 UP
-	html5up.net | @ajlkn
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
--->
 <html>
-	<head>
-		<title>jiyoung profile</title>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-		<link rel="stylesheet" href="assets/css/main.css" />
-
-		<!-- Game CSS (추가) -->
-		<link rel="stylesheet" href="assets/css/game.css" />
-	</head>
-	<body class="is-preload">
-
-		<!-- Header -->
-			<header id="header">
-				<div class="inner">
-					<a href="#" class="image avatar"><img src="./images/avatar.png" alt="" /></a>
-                    <h1 class="work_day"></h1>
-					<br/>
-                    <h1><strong>I am Jiyoung</strong>, passionate about<br />
-                        crafting ideas in service design and<br />
-                        exploring AI, programming, and storytelling IPs.</h1>
-				</div>
-                <div>
-                    <!-- 방문자 수 추가 -->
-                    <h5 id="visitorCount">Visitors
-                        <span style="font-size: large; font-weight: bold;">  0  </span>
-                    </h5>
-                </div>
-			</header>
-		
-		<!-- Game Layer -->
-		<div id="gameLayer" aria-hidden="true">
-		
-		  <!-- ✅ 게임 캔버스 + UI를 한 묶음으로 감싸기 -->
-		  <div class="game-stage">
-		
-		    <canvas id="gameCanvas" width="320" height="180"></canvas>
-		
-		    <!-- ✅ UI를 게임 캔버스 하단에 붙이기 -->
-			<div class="game-ui">
-			  <div class="game-left">
-			    <div id="gameHint">Move: Arrow Keys · Interact: Space</div>
-			    <div id="careerBadge">Career: --</div>
-			    <div id="progressBadge">Visited: 0/0</div>
-			  </div>
-			
-			  <div class="game-right">
-			    <button id="exitGameBtn" type="button">Exit Game</button>
-			  </div>
-			</div>
-		
-		    <!-- Timeline Modal (게임 안에서 열림) -->
-		    <div id="timelineModal" class="game-modal" aria-hidden="true">
-		      <div class="game-modal-card">
-		        <div class="game-modal-head">
-		          <div class="game-modal-title">Life Timeline</div>
-		          <button id="timelineCloseBtn" class="game-modal-close" type="button">×</button>
-		        </div>
-		        <div class="game-modal-body" id="timelineBody">
-		          <div class="tl-item"><span>은광여자고등학교 졸업 | 인문계</span><span>2012.03 ~ 2015.02</span></div>
-		          <div class="tl-item"><span>경희대학교 졸업 | 국어국문학과 | 학점: 3.92/4.5</span><span>2016.03 ~ 2022.02</span></div>
-		          <div class="tl-item"><span>워드프로세서 | 대한상공회의소</span><span>2019.09.13</span></div>
-		          <div class="tl-item"><span>GTQ그래픽기술자격 1급 | 한국생산성본부</span><span>2020.02.07</span></div>
-		          <div class="tl-item"><span>컴퓨터활용능력 1급 | 대한상공회의소</span><span>2020.08.28</span></div>
-		          <div class="tl-item"><span>천재교과서 | 콘텐츠2 국어부 초등국어팀</span><span>2021.08 ~ 2023.06</span></div>
-		          <div class="tl-item"><span>협업 필터링 및 자연어 처리 기반 A.I. 추천 분석 시스템 제작 과정 | 성균관대학교 산학협력단</span><span>2023.06 ~ 2023.12</span></div>
-		          <div class="tl-item"><span>2023 제 1회 K - 디지털플랫폼 AI 경진대회 | 특별상 수상</span><span>2023.12.13</span></div>
-		          <div class="tl-item"><span>고객경험데이터를 활용한 데이터 비즈니스 분석가 과정 | IT 여성기업인협회</span><span>2024.02 ~ 2024.07</span></div>
-		          <div class="tl-item"><span>SQL 개발자 | 한국데이터산업진흥원</span><span>2024.04.05</span></div>
-		          <div class="tl-item"><span>TOEIC | 785점</span><span>2024.06.30</span></div>
-		          <div class="tl-item"><span>EBS(한국교육방송공사) | 디지털교육서비스부</span><span>2024.07 ~ (현재)</span></div>
-		          <div class="tl-item"><span>데이터 분석 준전문가 | 한국데이터산업진흥원</span><span>2025.09.05</span></div>
-		          <div class="tl-item"><span>TOEIC Speaking | Intermediate High (Speaking Score 150)</span><span>2025.09.13</span></div>
-		        </div>
-		      </div>
-		    </div>
-		
-		  </div><!-- /.game-stage -->
-		</div>
-
-		<!-- Main -->
-			<div id="main">
-
-				<!-- One -->
-                    <section id="one">
-                        <!-- Toggle Button -->
-                        <div class="toggle-container">
-                            <label class="switch">
-                                <input type="checkbox" id="contentToggle">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <header class="major">
-                            <h2 id="sectionTitle">Exploring Ideas in Service Design, AI,<br />
-                            and the World of Storytelling IPs</h2>
-                        </header>
-                        <p id="sectionContent">
-                            Hello, I’m Jiyoung. With a background in literature and a passion for technology,
-                            I blend creativity with logic to design meaningful services and craft engaging
-                            projects. From AI-driven innovations to story-driven IP exploration, my work
-                            reflects curiosity and commitment to creating impactful solutions.
-                        </p>
-                    </section>
-
-                <!-- One-half -->
-                <section id="one-half">
-                    <h2>Life TimeLine</h2>
-                    <div class="timeline-chart-container">
-                        <div id="timelineChart"></div>
-                    </div>
-                    <ul class="actions">
-                        <li><a href="#two" class="button">See More Detail</a></li>
-                    </ul>
-                </section>
-
-				<!-- Two -->
-					<section id="two">
-						<h2>Career Journey</h2>
-						<div class="row">
-                            <!-- 01 main -->
-							<article class="col-6 col-12-xsmall work-item">
-								<a href="images/fulls/01.jpg" class="image fit thumb" id="popupTrigger1">
-                                    <img src="images/thumbs/school_girl.png" alt="school" />
-                                </a>
-                                <h3>School</h3>
-                                    <p>
-                                        <strong>고등학교 | 2012.03~2015.02</strong> <br/> 은광여자고등학교<br /><br/>
-                                        <strong>대학교 | 2016.03~2022.02</strong> <br/>경희대학교 (국어국문학 학사, GPA: 3.92/4.5)<br />
-                                        문학, 기술, AI를 융합한 다학제적 학문을 탐구
-                                    </p>
-							</article>
-
-                            <!-- 01 popup -->
-                            <div class="popup-overlay" id="popup1">
-                                <div class="popup-content">
-                                    <span class="close-popup" id="closePopup1">&times;</span>
-
-                                    <!-- <h3 class="popup-title">School</h3> -->
-                                    <p class="popup-subtitle">
-                                      문장과 구조를 다루는 기반 위에, 기술을 얹어 확장해왔습니다.
-                                    </p>
-
-                                    <div class="popup-section">
-                                      <h4 class="popup-h4">학력</h4>
-
-                                      <div class="mini-cards">
-                                        <div class="mini-card">
-                                          <p class="mini-title">은광여자고등학교</p>
-                                          <p class="mini-meta">2012.03 ~ 2015.02 · 인문계</p>
-                                        </div>
-
-                                        <div class="mini-card">
-                                          <p class="mini-title">경희대학교 · 국어국문학과</p>
-                                          <p class="mini-meta">2016.03 ~ 2022.02 · GPA 3.92/4.5</p>
-                                          <ul>
-                                            <li>콘텐츠를 구조화하고 논리를 정리하는 훈련</li>
-                                            <li>기술/데이터 기반 업무로 관심 확장</li>
-                                          </ul>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <div class="popup-tags">
-                                      <span class="tag">콘텐츠 구조화</span>
-                                      <span class="tag">문서화</span>
-                                      <span class="tag">기획</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 02 main -->
-							<article class="col-6 col-12-xsmall work-item">
-								<a href="images/fulls/02.jpg" class="image fit thumb" id="popupTrigger2"><img src="images/thumbs/ai_girl.png" alt="" /></a>
-								<!-- <h3>Professional Training</h3> -->
-                                <p>
-                                    <strong>AI 추천 시스템 과정 | 2023.06.26 ~ 2023.12.19</strong> <br/> 협업 필터링 및 자연어 처리 기반 시스템 제작<br /> <br/>
-                                    <strong>데이터 비즈니스 분석가 과정 | 2024.02.20 ~ 2024.08.09 </strong> <br/>데이터 비즈니스 분석 및 백엔드 개발 교육<br />
-                                </p>
-                            </article>
-
-                            <!-- 02 popup -->
-                            <div class="popup-overlay" id="popup2">
-                                <div class="popup-content">
-                                    <span class="close-popup" id="closePopup2">&times;</span>
-
-                                    <h3 class="popup-title">Professional Training</h3>
-                                    <p class="popup-subtitle">
-                                      비전공에서 시작해, 프로젝트 단위로 AI·데이터 역량을 쌓았습니다.
-                                    </p>
-
-                                    <div class="popup-section">
-                                      <h4 class="popup-h4">수료 과정</h4>
-
-                                      <div class="mini-cards">
-                                        <div class="mini-card">
-                                          <p class="mini-title">AI 추천 시스템 과정</p>
-                                          <p class="mini-meta">2023.06 ~ 2023.12 · 성균관대 산학협력단</p>
-                                          <ul>
-                                            <li>협업 필터링 / 자연어 처리 기반 추천 분석</li>
-                                            <li>팀 프로젝트로 구현 흐름 학습</li>
-                                          </ul>
-                                        </div>
-
-                                        <div class="mini-card">
-                                          <p class="mini-title">데이터 비즈니스 분석가 과정</p>
-                                          <p class="mini-meta">2024.02 ~ 2024.07 · IT 여성기업인협회</p>
-                                          <ul>
-                                            <li>데이터 분석 및 활용</li>
-                                            <li>서버 통신 구조 이해</li>
-                                          </ul>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <div class="popup-section">
-                                      <h4 class="popup-h4">기술 스택(학습/실습)</h4>
-
-                                      <div class="skill-grid">
-                                        <div class="skill-card">
-                                          <h5>데이터</h5>
-                                          <ul>
-                                            <li>Pandas 기반 전처리·분석</li>
-                                            <li>지표 비교 및 리포팅</li>
-                                            <li>SQL 활용</li>
-                                          </ul>
-                                        </div>
-
-                                        <div class="skill-card">
-                                          <h5>추천·NLP</h5>
-                                          <ul>
-                                            <li>협업 필터링 기반 추천</li>
-                                            <li>텍스트 기반 특징 설계 경험</li>
-                                            <li>모델 파이프라인 이해</li>
-                                          </ul>
-                                        </div>
-
-                                        <div class="skill-card">
-                                          <h5>개발 기초</h5>
-                                          <ul>
-                                            <li>Python / Git 기반 작업</li>
-                                            <li>API 구조 이해(학습)</li>
-                                            <li>문서화·실험 기록</li>
-                                          </ul>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <div class="popup-tags">
-                                      <span class="tag">Python</span>
-                                      <span class="tag">Pandas</span>
-                                      <span class="tag">SQL</span>
-                                      <span class="tag">추천</span>
-                                      <span class="tag">NLP</span>
-                                    </div>
-								</div>
-                            </div>
-
-                            <!-- 03 main -->
-							<article class="col-6 col-12-xsmall work-item">
-								<a href="images/fulls/03.jpg" class="image fit thumb" id="popupTrigger3"><img src="images/thumbs/company_girl.png" alt="" /></a>
-								<!-- <h3>Company</h3> -->
-                                <p>
-                                    <strong>천재교과서 | 2021.08.02 ~ 2023.06.23</strong> <br/> 전과목 2부 국어과 / 콘텐츠 국어부 초등국어 사원<br /><br/>
-                                    <strong>한국교육방송공사(EBS) | 2024.07.18 ~ (재직중)</strong> <br/>디지털교육서비스부<br />
-                                </p>
-							</article>
-
-                            <!-- 03 popup -->
-                            <div class="popup-overlay" id="popup3">
-                                <div class="popup-content">
-                                  <span class="close-popup" id="closePopup3">&times;</span>
-
-                                  <h3 class="popup-title">Company</h3>
-                                  <p class="popup-subtitle">
-                                    콘텐츠 기획·운영과 자동화를 연결해, 운영 효율을 만든 경험입니다.
-                                  </p>
-
-                                  <div class="popup-section">
-                                    <h4 class="popup-h4">대표 작업</h4>
-
-                                    <div class="video-wrapper">
-                                      <div class="video-container">
-                                        <video controls muted controlsList="nodownload">
-                                          <source src="vidieos/questions_program.mp4" type="video/mp4">
-                                          브라우저가 동영상을 지원하지 않습니다.
-                                        </video>
-                                      </div>
-                                      <p class="caption">문항 코드 추출 과정 자동화 프로그램</p>
-                                    </div>
-                                  </div>
-
-                                  <div class="popup-section">
-                                    <h4 class="popup-h4">업무 역량 인벤토리</h4>
-
-                                    <div class="skill-grid">
-                                      <div class="skill-card">
-                                        <h5>콘텐츠 기획 · 제작</h5>
-                                        <ul>
-                                          <li>학습자/독자 관점으로 콘텐츠 구조 설계</li>
-                                          <li>교재 기반 디지털 콘텐츠 기획·제작</li>
-                                          <li>품질 검수 및 개선 포인트 도출</li>
-                                        </ul>
-                                      </div>
-
-                                      <div class="skill-card">
-                                        <h5>서비스 운영 · 개선</h5>
-                                        <ul>
-                                          <li>운영 이슈 대응 및 재발 방지 방식 정리</li>
-                                          <li>사용자 흐름 기반 개선 의견 제시</li>
-                                          <li>운영-개발-외주 커뮤니케이션 조율</li>
-                                        </ul>
-                                      </div>
-
-                                      <div class="skill-card">
-                                        <h5>자동화 · 효율화</h5>
-                                        <ul>
-                                          <li>반복 작업 자동화로 시간·비용 절감</li>
-                                          <li>Python 기반 데이터 추출·정리</li>
-                                          <li>업무 프로세스 표준화/문서화</li>
-                                        </ul>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div class="popup-section">
-                                    <h4 class="popup-h4">한줄 성과</h4>
-                                    <ul class="impact-list">
-                                      <li>반복 업무의 작업 시간을 체감 가능한 수준으로 단축</li>
-                                      <li>업무 흐름을 분석해 “사람이 하던 일”을 도구로 전환</li>
-                                      <li>운영 관점에서 요구사항을 정리해 협업 비용을 낮춤</li>
-                                    </ul>
-                                  </div>
-
-                                  <div class="popup-tags">
-                                    <span class="tag">콘텐츠 기획</span>
-                                    <span class="tag">서비스 운영</span>
-                                    <span class="tag">자동화</span>
-                                    <span class="tag">협업</span>
-                                  </div>
-                                </div>
-                            </div>
-
-                            <!-- 04 main -->
-                            <article class="col-6 col-12-xsmall work-item">
-								<a href="images/fulls/05.jpg" class="image fit thumb"  id="popupTrigger4"><img src="images/thumbs/award_girl.png" alt="" /></a>
-								<!-- <h3>Award</h3> -->
-                                <p>
-                                    <strong>2023 제 1회 K-디지털플랫폼 AI 경진대회 | 특별상 수상 | 2023.12.13</strong> <br/>
-                                </p>
-                            </article>
-
-                            <!-- 04 popup -->
-                            <div class="popup-overlay" id="popup4">
-                                <div class="popup-content">
-                                  <span class="close-popup" id="closePopup4">&times;</span>
-
-                                  <h3 class="popup-title">Award</h3>
-                                  <p class="popup-subtitle">
-                                    제한된 시간 안에 아이디어를 구현해 “완성”까지 가져간 경험입니다.
-                                  </p>
-
-                                  <div class="popup-section">
-                                    <h4 class="popup-h4">수상</h4>
-
-                                    <div class="video-wrapper">
-                                      <div class="video-container">
-                                        <video controls muted controlsList="nodownload">
-                                          <source src="vidieos/jingum_test.mp4" type="video/mp4">
-                                          브라우저가 동영상을 지원하지 않습니다.
-                                        </video>
-                                      </div>
-                                      <p class="caption">K-디지털플랫폼 AI 경진대회 데모 영상</p>
-                                    </div>
-
-                                    <div class="mini-card">
-                                      <p class="mini-title">제 1회 K-디지털플랫폼 AI 경진대회 · 특별상</p>
-                                      <p class="mini-meta">2023.12.13</p>
-                                      <ul>
-                                        <li>해커톤 형식(1박 2일)으로 프로젝트 완성</li>
-                                        <li>아이디어 → 구현 → 데모까지 마감 내 수행</li>
-                                      </ul>
-                                    </div>
-                                  </div>
-
-                                  <div class="popup-tags">
-                                    <span class="tag">해커톤</span>
-                                    <span class="tag">프로토타이핑</span>
-                                    <span class="tag">데모</span>
-                                  </div>
-                                </div>
-                            </div>
-
-                            <!-- 05 main -->
-							<article class="col-6 col-12-xsmall work-item">
-								<a href="images/fulls/04.jpg" class="image fit thumb" id="popupTrigger5"><img src="images/thumbs/certi_girl.png" alt="" /></a>
-								<!-- <h3>Certificate</h3> -->
-                                <p>
-                                    <strong>워드프로세서</strong> | 2019.09.13 <br/><br/>
-                                    <strong>GTQ 1급</strong> | 2020.02.07 <br/><br/>
-                                    <strong>컴퓨터활용능력 1급</strong> | 2020.08.28 <br/><br/>
-                                    <strong>Azure AI Fundamentals</strong> | 2023.12.06 <br/><br/>
-                                    <strong>SQLD</strong> | 2024.04.05
-                                </p>
-							</article>
-
-                            <!-- 05 popup -->
-                            <div class="popup-overlay" id="popup5">
-                                <div class="popup-content">
-                                  <span class="close-popup" id="closePopup5">&times;</span>
-
-                                  <h3 class="popup-title">Certificate</h3>
-                                  <p class="popup-subtitle">
-                                    실무에 바로 쓰이는 기반 역량을 꾸준히 점검해왔습니다.
-                                  </p>
-
-                                  <div class="popup-section">
-                                    <h4 class="popup-h4">자격</h4>
-
-                                    <div class="table-list">
-                                      <div class="row"><span class="left">워드프로세서</span><span class="right">2019.09.13</span></div>
-                                      <div class="row"><span class="left">GTQ 1급</span><span class="right">2020.02.07</span></div>
-                                      <div class="row"><span class="left">컴퓨터활용능력 1급</span><span class="right">2020.08.28</span></div>
-                                      <div class="row"><span class="left">Azure AI Fundamentals</span><span class="right">2023.12.06</span></div>
-                                      <div class="row"><span class="left">SQLD</span><span class="right">2024.04.05</span></div>
-                                      <div class="row"><span class="left">데이터분석 준전문가(ADsP)</span><span class="right">2025.09.05</span></div>
-                                    </div>
-                                  </div>
-
-                                  <div class="popup-tags">
-                                    <span class="tag">문서</span>
-                                    <span class="tag">데이터</span>
-                                    <span class="tag">SQL</span>
-                                    <span class="tag">분석</span>
-                                  </div>
-                                </div>
-                            </div>
-
-                            <!-- 06 main -->
-							<article class="col-6 col-12-xsmall work-item">
-								<a href="images/fulls/06.jpg" class="image fit thumb" id="popupTrigger6"><img src="images/thumbs/lang.png" alt="Language" /></a>
-								<!-- <h3>Language Skills</h3> -->
-                                <p>
-                                    <strong>한국어 | 최상</strong> <br/> 국어국문학과 졸업 및 국어 교재 교정, 교열, 편집 경험 다수<br /><br/>
-                                    <strong>영어 | 상</strong> <br/>TOEIC 785점 (2024.06.30), 일상 영어에 대한 회화, 작문, 독해 가능 <br /><br/>
-                                    <strong>일본어 | 중</strong> <br/> 1년 동안 회화 교육 수료, 여행 시 길을 잃지 않고 여행을 즐길 수 있음
-                                </p>
-							</article>
-
-                            <!-- 06 popup -->
-                            <div class="popup-overlay" id="popup6">
-                                <div class="popup-content">
-                                  <span class="close-popup" id="closePopup6">&times;</span>
-
-                                  <h3 class="popup-title">Language Skills</h3>
-                                  <p class="popup-subtitle">
-                                    콘텐츠 업무에 필요한 언어 역량과, 실사용 수준의 외국어 능력입니다.
-                                  </p>
-
-                                  <div class="popup-section">
-                                    <h4 class="popup-h4">언어</h4>
-
-                                    <div class="mini-cards">
-                                      <div class="mini-card">
-                                        <p class="mini-title">한국어 · 최상</p>
-                                        <ul>
-                                          <li>국어국문학 전공</li>
-                                          <li>교재 교정·교열·편집 경험 다수</li>
-                                        </ul>
-                                      </div>
-
-                                      <div class="mini-card">
-                                        <p class="mini-title">영어 · 상</p>
-                                        <ul>
-                                          <li>TOEIC 785 (2024.06.30)</li>
-                                          <li>TOEIC Speaking IH 150 (2025.09.13)</li>
-                                        </ul>
-                                      </div>
-
-                                      <div class="mini-card">
-                                        <p class="mini-title">일본어 · 중</p>
-                                        <ul>
-                                          <li>회화 교육 수료(1년)</li>
-                                          <li>여행 상황 의사소통 가능</li>
-                                        </ul>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div class="popup-tags">
-                                    <span class="tag">문서/콘텐츠</span>
-                                    <span class="tag">커뮤니케이션</span>
-                                  </div>
-                                </div>
-                            </div>
-
-						</div>
-						<ul class="actions">
-							<li><a href="#" class="button">Full Portfolio</a></li>
-						</ul>
-					</section>
-
-				<!-- Three -->
-					<section id="three">
-						<h2>Who Am I Beyond Work?</h2>
-						<div class="facts-container">
-							<div class="fact-wrapper">
-								<div class="fact-card">
-									<h3>취미, 특기</h3>
-									<p>- 새로운 작품 찾기 <br/> - 찾은 작품 정주행하기</p>
-								</div>
-								<div class="fact-card">
-									<h3>좋아하는 가수</h3>
-									<p>IU, 윤하, 최유리, 스텔라 장</p>
-								</div>
-								<div class="fact-card">
-									<h3>집중력 유지 비결</h3>
-									<p>일을 미루는 것을 좋아하지 않아,<br/> 해야 할 일에 최선을 다하는 편</p>
-								</div>
-							</div>
-						</div>
-
-						<div class="dream">
-							<p class="dream-title">⭐️ Final Goal ⭐️</p>
-							<p class="dream-text">
-								궁극적으로 평범한 일상 속에서 행복을 찾아 삶을 살아가는 사람이고 싶습니다. <br/>
-								새로운 것에 도전하기를 두려워하지 않고, 끊임없이 나아가는 사람이 되려고 노력하고 있습니다.
-							</p>
-						</div>
-
-					</section>
-
-			</div>
-
-		<!-- Footer -->
-			<footer id="footer">
-				<div class="inner">
-					<ul class="icons">
-						<li><a href="https://github.com/young-jii" class="icon brands fa-github"><span class="label">Github</span></a></li>
-						<li><a href="mailto:forest66young@gmail.com" class="icon solid fa-envelope"><span class="label">Email</span></a></li>
-					</ul>
-					<ul class="copyright">
-						<li>&copy; Untitled</li><li>Design: <a href="http://html5up.net">HTML5 UP</a>, GPT</li>
-					</ul>
-				</div>
-			</footer>
-
-		<!-- Scripts -->
-			<script src="assets/js/jquery.min.js"></script>
-			<script src="assets/js/jquery.poptrox.min.js"></script>
-			<script src="assets/js/browser.min.js"></script>
-			<script src="assets/js/breakpoints.min.js"></script>
-			<script src="assets/js/util.js"></script>
-			<script src="assets/js/main.js"></script>
-
-            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/luxon"></script>
-            <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
-
-			<!-- Game JS (추가) -->
-			<script src="assets/js/game.js"></script>
-
-	</body>
+<head>
+  <title>jiyoung profile</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+
+  <!-- 기존 테마 CSS -->
+  <link rel="stylesheet" href="assets/css/main.css" />
+
+  <!-- Game CSS -->
+  <link rel="stylesheet" href="assets/css/game.css" />
+
+  <!-- ✅ 첫 로딩 깜빡임 방지: 게임을 즉시 on -->
+  <script>
+    document.documentElement.classList.add('game-on');
+  </script>
+</head>
+
+<body class="is-preload">
+
+  <!-- Game Layer (메인) -->
+  <div id="gameLayer" class="on" aria-hidden="false">
+    <div class="game-wrap">
+      <canvas id="gameCanvas" width="640" height="360"></canvas>
+
+      <!-- 하단 UI: 게임 캔버스에 붙게 -->
+      <div class="game-ui">
+        <div id="gameHint">Move: Arrow Keys · Interact: Space</div>
+        <div id="careerHUD">경력 계산중...</div>
+        <button id="exitGameBtn" type="button">Exit Game</button>
+      </div>
+
+      <!-- ✅ Timeline Modal -->
+      <div id="timelineModal" class="game-modal" aria-hidden="true">
+        <div class="game-modal-card">
+          <div class="game-modal-head">
+            <div class="game-modal-title">Life Timeline</div>
+            <button id="timelineCloseBtn" class="game-modal-close" type="button">×</button>
+          </div>
+
+          <div class="game-modal-body" id="timelineBody">
+            <!-- education -->
+            <div class="tl-item tl-edu"><span>은광여자고등학교 졸업 | 인문계</span><span>2012.03 ~ 2015.02</span></div>
+            <div class="tl-item tl-edu"><span>경희대학교 졸업 | 국어국문학과 | 학점: 3.92/4.5</span><span>2016.03 ~ 2022.02</span></div>
+
+            <!-- certificate -->
+            <div class="tl-item tl-cert"><span>워드프로세서 | 대한상공회의소</span><span>2019.09.13</span></div>
+            <div class="tl-item tl-cert"><span>GTQ그래픽기술자격 1급 | 한국생산성본부</span><span>2020.02.07</span></div>
+            <div class="tl-item tl-cert"><span>컴퓨터활용능력 1급 | 대한상공회의소</span><span>2020.08.28</span></div>
+
+            <!-- career -->
+            <div class="tl-item tl-career"><span>천재교과서 | 콘텐츠2 국어부 초등국어팀</span><span>2021.08 ~ 2023.06</span></div>
+
+            <!-- training -->
+            <div class="tl-item tl-train"><span>협업 필터링 및 자연어 처리 기반 A.I. 추천 분석 시스템 제작 과정 | 성균관대학교 산학협력단</span><span>2023.06 ~ 2023.12</span></div>
+
+            <!-- award -->
+            <div class="tl-item tl-award"><span>2023 제 1회 K - 디지털플랫폼 AI 경진대회 | 특별상 수상</span><span>2023.12.13</span></div>
+
+            <!-- training -->
+            <div class="tl-item tl-train"><span>고객경험데이터를 활용한 데이터 비즈니스 분석가 과정 | IT 여성기업인협회</span><span>2024.02 ~ 2024.07</span></div>
+
+            <!-- certificate -->
+            <div class="tl-item tl-cert"><span>SQL 개발자 | 한국데이터산업진흥원</span><span>2024.04.05</span></div>
+
+            <!-- language -->
+            <div class="tl-item tl-lang"><span>TOEIC | 785점</span><span>2024.06.30</span></div>
+
+            <!-- career -->
+            <div class="tl-item tl-career"><span>EBS(한국교육방송공사) | 디지털교육서비스부</span><span>2024.07 ~ (현재)</span></div>
+
+            <!-- certificate -->
+            <div class="tl-item tl-cert"><span>데이터 분석 준전문가 | 한국데이터산업진흥원</span><span>2025.09.05</span></div>
+
+            <!-- language -->
+            <div class="tl-item tl-lang"><span>TOEIC Speaking | Intermediate High (Speaking Score 150)</span><span>2025.09.13</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ Info Modal (School/Training/Company/Award/Certificate/Language) -->
+      <div id="infoModal" class="game-modal" aria-hidden="true">
+        <div class="game-modal-card">
+          <div class="game-modal-head">
+            <!-- ✅ 여기 제목은 game.js에서 한글 매핑된 제목이 들어감 -->
+            <div class="game-modal-title" id="infoModalTitle">정보</div>
+            <button id="infoCloseBtn" class="game-modal-close" type="button">×</button>
+          </div>
+          <!-- ✅ 본문에는 더 이상 h3 제목을 넣지 않음(중복 제거) -->
+          <div class="game-modal-body" id="infoModalBody"></div>
+        </div>
+      </div>
+
+      <!-- ✅ Thanks Modal (Exit Game 눌렀을 때만 등장) -->
+      <div id="thanksModal" class="game-modal" aria-hidden="true">
+        <div class="game-modal-card">
+          <div class="game-modal-head">
+            <div class="game-modal-title">Thanks for playing</div>
+            <button id="thanksCloseBtn" class="game-modal-close" type="button">×</button>
+          </div>
+
+          <div class="game-modal-body">
+            <p class="thanks-text typewrite" data-text="봐주셔서 감사합니다. 저의 이력서를 게임 형태로 제작해보았는데, 즐겁게 봐주셨으면 좋겠습니다. 저와 함께 일하고 싶으시다면, 연락 부탁드립니다."></p>
+
+            <div class="thanks-actions">
+              <a class="thanks-btn" href="mailto:jiyoung16park@gmail.com">Email 보내기</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- game-wrap -->
+  </div><!-- gameLayer -->
+
+
+  <!-- ✅ 기존 페이지(텍스트/섹션)는 유지하되, 기본은 게임만 보여주고 싶다면 game.css에서 숨김 처리함 -->
+  <div id="main">
+    <!-- 필요하면 남겨두되, 게임이 메인이라면 아래 섹션은 굳이 수정 안 해도 됨 -->
+  </div>
+
+  <!-- Scripts -->
+  <script src="assets/js/game.js"></script>
+</body>
 </html>
-
-
-
