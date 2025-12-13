@@ -1,3 +1,8 @@
+/* =========================================
+   GAME (FULL)
+   File: assets/js/game.js
+========================================= */
+
 window.addEventListener('load', () => {
   const toggle = document.getElementById('contentToggle');
   const layer  = document.getElementById('gameLayer');
@@ -13,18 +18,16 @@ window.addEventListener('load', () => {
   ctx.imageSmoothingEnabled = false;
 
   const W = canvas.width, H = canvas.height;
-  const TILE = 16;
 
   const keys = new Set();
   let paused = false;
 
-  /* ===============================
-     PLAYER
-  =============================== */
-  const player = { x: 20, y: 84, w: 12, h: 12, vx: 0, vy: 0, speed: 1.2 };
+  // 충돌 박스(작게 유지)
+  const player = { x: 40, y: 88, w: 12, h: 12, vx: 0, vy: 0, speed: 1.25 };
 
-  const DRAW_W = 32;
-  const DRAW_H = 32;
+  // 캐릭터 스프라이트 (원본 16x16 가정)
+  const SRC_W = 16, SRC_H = 16;
+  const DRAW_W = 32, DRAW_H = 32; // 2배 렌더
 
   const SPRITE_BASE = 'assets/css/images/';
   const sprites = {
@@ -33,6 +36,7 @@ window.addEventListener('load', () => {
     side1: new Image(),
     side2: new Image(),
   };
+
   sprites.front.src = SPRITE_BASE + 'dot_front.png';
   sprites.back.src  = SPRITE_BASE + 'dot_back.png';
   sprites.side1.src = SPRITE_BASE + 'dot_side(1).png';
@@ -42,72 +46,47 @@ window.addEventListener('load', () => {
     return Object.values(sprites).every(img => img.complete && img.naturalWidth > 0);
   }
 
-  let facing = 'right'; // 시작은 오른쪽 바라보는 느낌
-  let walkFrame = 0;
-  let walkTimer = 0;
-  const WALK_INTERVAL = 140;
-
-  /* ===============================
-     ICONS (fallback: box)
-  =============================== */
+  // ====== MAP ICONS ======
+  const ICON_BASE = 'assets/css/images/';
   const icons = {
-    school:   new Image(),
-    training: new Image(),
-    company:  new Image(),
-    award:    new Image(),
-    cert:     new Image(),
-    lang:     new Image(),
-    timeline: new Image(),
+    popupTrigger1: new Image(),
+    popupTrigger2: new Image(),
+    popupTrigger3: new Image(),
+    popupTrigger4: new Image(),
+    popupTrigger5: new Image(),
+    popupTrigger6: new Image(),
+    timeline:      new Image(),
   };
 
-  icons.school.src   = SPRITE_BASE + 'icon_school.png';
-  icons.training.src = SPRITE_BASE + 'icon_training.png';
-  icons.company.src  = SPRITE_BASE + 'icon_company.png';
-  icons.award.src    = SPRITE_BASE + 'icon_award.png';
-  icons.cert.src     = SPRITE_BASE + 'icon_cert.png';
-  icons.lang.src     = SPRITE_BASE + 'icon_lang.png';
-  icons.timeline.src = SPRITE_BASE + 'icon_timeline.png';
+  icons.popupTrigger1.src = ICON_BASE + 'icon_school.png';
+  icons.popupTrigger2.src = ICON_BASE + 'icon_training.png';
+  icons.popupTrigger3.src = ICON_BASE + 'icon_company.png';
+  icons.popupTrigger4.src = ICON_BASE + 'icon_award.png';
+  icons.popupTrigger5.src = ICON_BASE + 'icon_cert.png';
+  icons.popupTrigger6.src = ICON_BASE + 'icon_lang.png';
+  icons.timeline.src      = ICON_BASE + 'icon_timeline.png';
 
   function iconReady(img){
     return img && img.complete && img.naturalWidth > 0;
   }
 
-  /* ===============================
-     MAP (Horizontal main road + vertical branches)
-     - main road: left -> right
-     - branches: up/down
-  =============================== */
-  const ROAD = {
-    y: 88,       // main road y
-    h: 12,
-    left: 16,
-    right: 304,  // 조금 여유 두고 끝
-    // branch x positions
-    branches: [
-      { key: 'school',   x: 64,  dir: 'up',   len: 52 },
-      { key: 'training', x: 104, dir: 'down', len: 52 },
-      { key: 'company',  x: 150, dir: 'up',   len: 60 },
-      { key: 'award',    x: 196, dir: 'down', len: 44 },
-      { key: 'cert',     x: 232, dir: 'up',   len: 40 },
-      { key: 'lang',     x: 268, dir: 'down', len: 40 },
-    ]
-  };
+  let facing = 'right'; // down | up | left | right
+  let walkFrame = 0;
+  let walkTimer = 0;
+  const WALK_INTERVAL = 140;
 
-  function branchEndY(branch){
-    if (branch.dir === 'up') return ROAD.y - branch.len - 18;
-    return ROAD.y + ROAD.h + branch.len - 18;
-  }
-
+  // 오브젝트 배치(좌->우 진행)
   const objects = [
-    { type:'popup', id:'popupTrigger1', key:'school',   label:'School',   x: ROAD.branches[0].x - 9, y: branchEndY(ROAD.branches[0]), w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger2', key:'training', label:'Training', x: ROAD.branches[1].x - 9, y: branchEndY(ROAD.branches[1]), w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger3', key:'company',  label:'Company',  x: ROAD.branches[2].x - 9, y: branchEndY(ROAD.branches[2]), w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger4', key:'award',    label:'Award',    x: ROAD.branches[3].x - 9, y: branchEndY(ROAD.branches[3]), w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger5', key:'cert',     label:'Cert',     x: ROAD.branches[4].x - 9, y: branchEndY(ROAD.branches[4]), w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger6', key:'lang',     label:'Lang',     x: ROAD.branches[5].x - 9, y: branchEndY(ROAD.branches[5]), w: 18, h: 18 },
+    { type:'timeline', id:'timeline',       label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
 
-    // timeline at the end of main road (ending gate)
-    { type:'timeline', id:'timeline', key:'timeline', label:'Timeline', x: ROAD.right - 6, y: ROAD.y - 18, w: 18, h: 18 },
+    { type:'popup',    id:'popupTrigger1',  label:'School',   x: 82,  y: 44,  w: 18, h: 18 },
+    { type:'popup',    id:'popupTrigger2',  label:'Training', x: 120, y: 128, w: 18, h: 18 },
+
+    { type:'popup',    id:'popupTrigger3',  label:'Company',  x: 180, y: 44,  w: 18, h: 18 },
+    { type:'popup',    id:'popupTrigger4',  label:'Award',    x: 220, y: 128, w: 18, h: 18 },
+
+    { type:'popup',    id:'popupTrigger5',  label:'Cert',     x: 268, y: 44,  w: 18, h: 18 },
+    { type:'popup',    id:'popupTrigger6',  label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
   ];
 
   const triggerToPopup = {
@@ -119,9 +98,6 @@ window.addEventListener('load', () => {
     popupTrigger6: 'popup6',
   };
 
-  /* ===============================
-     GAME STATE
-  =============================== */
   function enterGame(){
     toggle.checked = true;
     toggle.dispatchEvent(new Event('change'));
@@ -131,157 +107,152 @@ window.addEventListener('load', () => {
     toggle.dispatchEvent(new Event('change'));
   }
 
-  /* ===============================
-     POPUP / MODAL CONTROL
-  =============================== */
+  // ===== Timeline Modal =====
   function openTimeline(){
+    if (!timelineModal) return;
     paused = true;
-    timelineModal?.classList.add('on');
+    timelineModal.classList.add('on');
+    timelineModal.setAttribute('aria-hidden', 'false');
   }
   function closeTimeline(){
+    if (!timelineModal) return;
+    timelineModal.classList.remove('on');
+    timelineModal.setAttribute('aria-hidden', 'true');
     paused = false;
-    timelineModal?.classList.remove('on');
+  }
+  if (timelineCloseBtn) timelineCloseBtn.addEventListener('click', closeTimeline);
+  if (timelineModal){
+    timelineModal.addEventListener('click', (e) => {
+      if (e.target === timelineModal) closeTimeline();
+    });
   }
 
-  timelineCloseBtn?.addEventListener('click', closeTimeline);
-  timelineModal?.addEventListener('click', e => {
-    if (e.target === timelineModal) closeTimeline();
-  });
-
+  // ===== 팝업 오픈/닫기 =====
   function openPopupInGame(triggerId){
     paused = true;
-    document.getElementById(triggerId)?.click();
+    const trigger = document.getElementById(triggerId);
+    if (trigger) trigger.click();
   }
 
-  Object.entries(triggerToPopup).forEach(([_, popupId]) => {
-    const overlay = document.getElementById(popupId);
-    if (!overlay) return;
+  function wirePopupCloseToResume(){
+    Object.entries(triggerToPopup).forEach(([triggerId, popupId]) => {
+      const overlay = document.getElementById(popupId);
+      if (!overlay) return;
 
-    overlay.querySelector('.close-popup')?.addEventListener('click', () => {
-      paused = false;
+      const closeBtn = overlay.querySelector('.close-popup');
+      if (closeBtn){
+        closeBtn.addEventListener('click', () => { paused = false; });
+      }
+
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) paused = false;
+      });
     });
+  }
+  wirePopupCloseToResume();
 
-    overlay.addEventListener('click', e => {
-      if (e.target === overlay) paused = false;
-    });
-  });
-
-  /* ===============================
-     COLLISION
-  =============================== */
+  // ===== 충돌/상호작용 =====
   function rectsOverlap(a, b){
-    return (
-      a.x < b.x + b.w &&
-      a.x + a.w > b.x &&
-      a.y < b.y + b.h &&
-      a.y + a.h > b.y
-    );
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
   function nearestInteractable(){
     const zone = { x: player.x - 6, y: player.y - 6, w: player.w + 12, h: player.h + 12 };
-    return objects.find(o => rectsOverlap(zone, o)) || null;
-  }
-
-  /* ===============================
-     VISUAL FX: particles + bounce
-  =============================== */
-  const particles = [];
-  function spawnParticles(x, y){
-    for (let i=0; i<6; i++){
-      particles.push({
-        x, y,
-        vx: (Math.random()*2 - 1) * 0.6,
-        vy: -Math.random()*1.2 - 0.2,
-        life: 18 + Math.floor(Math.random()*10),
-      });
-    }
-  }
-
-  let bounce = 0;
-  function doBounce(){ bounce = 4; }
-
-  function updateParticles(){
-    for (let i=particles.length-1; i>=0; i--){
-      const p = particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.06;
-      p.life -= 1;
-      if (p.life <= 0) particles.splice(i,1);
-    }
-    if (bounce > 0) bounce -= 1;
-  }
-
-  function drawParticles(){
-    for (const p of particles){
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2);
-    }
-  }
-
-  /* ===============================
-     RENDER: background + road
-  =============================== */
-  function drawTileBG(){
-    for (let y=0; y<H; y+=TILE){
-      for (let x=0; x<W; x+=TILE){
-        const even = ((x/TILE + y/TILE) % 2 === 0);
-        ctx.fillStyle = even ? '#1b2430' : '#18202b';
-        ctx.fillRect(x,y,TILE,TILE);
-      }
-    }
-  }
-
-  function drawRoad(){
-    // main road
-    ctx.fillStyle = '#2a3646';
-    ctx.fillRect(ROAD.left, ROAD.y, ROAD.right - ROAD.left, ROAD.h);
-
-    // dashed line
-    ctx.fillStyle = 'rgba(255,255,255,0.20)';
-    for (let x = ROAD.left; x < ROAD.right; x += 14){
-      ctx.fillRect(x, ROAD.y + 5, 6, 2);
-    }
-
-    // branches
-    for (const b of ROAD.branches){
-      const bx = b.x;
-      const by = (b.dir === 'up') ? (ROAD.y - b.len) : (ROAD.y + ROAD.h);
-      const bh = b.len;
-
-      ctx.fillStyle = '#2a3646';
-      ctx.fillRect(bx, by, 10, bh);
-
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
-      for (let y = by + 4; y < by + bh - 4; y += 12){
-        ctx.fillRect(bx + 4, y, 2, 6);
-      }
-    }
-
-    // markers
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.font = '10px monospace';
-    ctx.fillText('START', ROAD.left - 2, ROAD.y - 6);
-    ctx.fillText('END', ROAD.right - 10, ROAD.y + 24);
-  }
-
-  function drawObjects(){
     for (const o of objects){
-      const img = icons[o.key];
-      if (iconReady(img)){
-        ctx.drawImage(img, o.x, o.y, o.w, o.h);
+      if (rectsOverlap(zone, o)) return o;
+    }
+    return null;
+  }
+
+  // ===== 배경(길 + 분기) =====
+  function drawBG(ts){
+    const t = ts / 1000;
+
+    // 바탕
+    ctx.fillStyle = '#0b0f16';
+    ctx.fillRect(0,0,W,H);
+
+    // 미세 그리드 (밋밋함 방지)
+    for (let y=0; y<H; y+=8){
+      for (let x=0; x<W; x+=8){
+        const a = ((x+y)/8) % 2 === 0 ? 0.06 : 0.04;
+        ctx.fillStyle = `rgba(255,255,255,${a})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+
+    // 길(메인: 가로)
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(12, 86, 296, 12);
+
+    // 길 가장자리 라인
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.fillRect(12, 86, 296, 1);
+    ctx.fillRect(12, 97, 296, 1);
+
+    // 분기(위/아래로)
+    ctx.fillRect(90, 52, 10, 46);
+    ctx.fillRect(128, 86, 10, 46);
+    ctx.fillRect(188, 52, 10, 46);
+    ctx.fillRect(228, 86, 10, 46);
+    ctx.fillRect(276, 52, 10, 46);
+    ctx.fillRect(304, 86, 10, 46);
+
+    // 은은한 스캔라인(액션 느낌)
+    const scanY = Math.floor((t * 24) % H);
+    ctx.fillStyle = 'rgba(122,162,247,0.06)';
+    ctx.fillRect(0, scanY, W, 2);
+  }
+
+  // ===== 오브젝트(아이콘 + 둥둥 + 근처 스파클) =====
+  function drawObjects(ts){
+    const near = nearestInteractable();
+    const t = ts / 1000;
+
+    for (const o of objects){
+      const img = icons[o.id];
+      const bob = Math.sin(t * 3 + o.x * 0.05 + o.y * 0.08) * 2;
+      const isNear = near && near.id === o.id;
+      const scale = isNear ? 1.12 : 1.0;
+
+      const size = 22;
+      const dw = size * scale;
+      const dh = size * scale;
+      const dx = o.x + o.w/2 - dw/2;
+      const dy = o.y + o.h/2 - dh/2 + bob;
+
+      if (img && iconReady(img)){
+        ctx.drawImage(img, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
       } else {
-        ctx.fillStyle = o.type === 'timeline' ? '#9ece6a' : '#7aa2f7';
-        ctx.fillRect(o.x,o.y,o.w,o.h);
+        ctx.fillStyle = (o.type === 'timeline') ? '#9ece6a' : '#7aa2f7';
+        ctx.fillRect(o.x, o.y, o.w, o.h);
       }
 
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      // 라벨
       ctx.font = '10px monospace';
-      ctx.fillText(o.label, o.x - 2, o.y - 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillText(o.label, o.x - 2, o.y - 6);
+    }
+
+    // sparkle particles (근처 오브젝트 주변)
+    if (near){
+      const cx = near.x + near.w/2;
+      const cy = near.y + near.h/2;
+
+      for (let i=0; i<7; i++){
+        const ang = (t*2 + i) * 1.55;
+        const r = 10 + (i%3)*4;
+        const px = cx + Math.cos(ang) * r;
+        const py = cy + Math.sin(ang) * r;
+
+        const a = 0.35 + 0.45 * Math.sin(t*6 + i);
+        ctx.fillStyle = `rgba(255,255,255,${a})`;
+        ctx.fillRect(Math.round(px), Math.round(py), 2, 2);
+      }
     }
   }
 
+  // “Press Space” 말풍선
   function drawPressSpaceBubble(){
     const o = nearestInteractable();
     if (!o) return;
@@ -304,50 +275,51 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
+  // 플레이어 스프라이트
   function drawPlayerSprite(){
-    const dx = Math.round(player.x - (DRAW_W - player.w) / 2);
-    const dy = Math.round(player.y - (DRAW_H - player.h) / 2) - bounce;
-
     if (!allSpritesReady()){
       ctx.fillStyle = '#f7768e';
-      ctx.fillRect(player.x, player.y - bounce, player.w, player.h);
+      ctx.fillRect(player.x, player.y, player.w, player.h);
       return;
     }
 
+    const dx = Math.round(player.x - (DRAW_W - player.w) / 2);
+    const dy = Math.round(player.y - (DRAW_H - player.h) / 2);
+
     if (facing === 'up'){
-      ctx.drawImage(sprites.back, dx, dy, DRAW_W, DRAW_H);
+      ctx.drawImage(sprites.back, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
     if (facing === 'down'){
-      ctx.drawImage(sprites.front, dx, dy, DRAW_W, DRAW_H);
+      ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
 
-    const img = (walkFrame === 0) ? sprites.side1 : sprites.side2;
+    const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
 
     if (facing === 'left'){
-      ctx.drawImage(img, dx, dy, DRAW_W, DRAW_H);
-    } else {
+      ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
+      return;
+    }
+
+    if (facing === 'right'){
       ctx.save();
       ctx.scale(-1, 1);
-      ctx.drawImage(img, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
+      ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
       ctx.restore();
+      return;
     }
   }
 
-  function render(){
+  function render(ts){
     ctx.clearRect(0,0,W,H);
-    drawTileBG();
-    drawRoad();
-    drawObjects();
-    drawParticles();
+    drawBG(ts);
+    drawObjects(ts);
     drawPlayerSprite();
     drawPressSpaceBubble();
   }
 
-  /* ===============================
-     UPDATE
-  =============================== */
+  // ===== 업데이트: Arrow 키만 =====
   let lastTs = performance.now();
 
   function update(ts){
@@ -357,16 +329,20 @@ window.addEventListener('load', () => {
     if (paused){
       player.vx = 0; player.vy = 0;
       walkTimer = 0; walkFrame = 0;
-      updateParticles();
       return;
     }
 
     player.vx = 0; player.vy = 0;
 
-    if (keys.has('ArrowLeft'))  player.vx = -player.speed;
-    if (keys.has('ArrowRight')) player.vx =  player.speed;
-    if (keys.has('ArrowUp'))    player.vy = -player.speed;
-    if (keys.has('ArrowDown'))  player.vy =  player.speed;
+    const left  = keys.has('ArrowLeft');
+    const right = keys.has('ArrowRight');
+    const up    = keys.has('ArrowUp');
+    const down  = keys.has('ArrowDown');
+
+    if (left)  player.vx = -player.speed;
+    if (right) player.vx =  player.speed;
+    if (up)    player.vy = -player.speed;
+    if (down)  player.vy =  player.speed;
 
     if (player.vx < 0) facing = 'left';
     else if (player.vx > 0) facing = 'right';
@@ -391,25 +367,20 @@ window.addEventListener('load', () => {
 
     player.x = Math.max(0, Math.min(W - player.w, player.x));
     player.y = Math.max(0, Math.min(H - player.h, player.y));
-
-    updateParticles();
   }
 
   function loop(ts){
     if (!layer.classList.contains('on')) return;
     update(ts);
-    render();
+    render(ts);
     requestAnimationFrame(loop);
   }
 
-  /* ===============================
-     EVENTS
-  =============================== */
+  // 토글 on/off
   toggle.addEventListener('change', () => {
     const on = toggle.checked;
     layer.classList.toggle('on', on);
     layer.setAttribute('aria-hidden', (!on).toString());
-    document.body.classList.toggle('game-on', on);
 
     if (on){
       paused = false;
@@ -418,14 +389,18 @@ window.addEventListener('load', () => {
     }
   });
 
-  exitBtn?.addEventListener('click', () => {
-    paused = false;
-    toggle.checked = false;
-    toggle.dispatchEvent(new Event('change'));
-  });
+  // Exit 버튼
+  if (exitBtn){
+    exitBtn.addEventListener('click', () => {
+      paused = false;
+      exitGame();
+    });
+  }
 
+  // 키 입력
   window.addEventListener('keydown', (e) => {
     keys.add(e.key);
+
     if (!layer.classList.contains('on')) return;
 
     if (e.key === ' '){
@@ -433,25 +408,19 @@ window.addEventListener('load', () => {
       const o = nearestInteractable();
       if (!o) return;
 
-      doBounce();
-      spawnParticles(player.x + 8, player.y);
-
       if (o.type === 'timeline') openTimeline();
-      else openPopupInGame(o.id);
+      else if (o.type === 'popup') openPopupInGame(o.id);
     }
 
     if (e.key === 'Escape'){
       e.preventDefault();
       paused = false;
-      toggle.checked = false;
-      toggle.dispatchEvent(new Event('change'));
+      exitGame();
     }
   });
 
   window.addEventListener('keyup', (e) => keys.delete(e.key));
 
-  /* ===============================
-     AUTO START
-  =============================== */
+  // 첫 랜딩: 게임 자동 진입
   enterGame();
 });
