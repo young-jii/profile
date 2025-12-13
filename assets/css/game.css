@@ -1,217 +1,202 @@
-/* =========================================
-   GAME LAYER + MODALS (Timeline style for all)
-   File: assets/css/game.css
-========================================= */
-
-#gameLayer{
+/* ===== Game Layer Layout ===== */
+#gameLayer {
   position: fixed;
   inset: 0;
   display: none;
   align-items: center;
   justify-content: center;
-
-  background:
-    radial-gradient(1200px 600px at 50% 30%, rgba(122,162,247,0.16), transparent 55%),
-    radial-gradient(900px 500px at 30% 70%, rgba(158,206,106,0.12), transparent 55%),
-    rgba(8,10,15,0.96);
-
-  z-index: 9000;
+  flex-direction: column;
+  background: rgba(0,0,0,0.78);
+  z-index: 9999;
+  padding: 24px 16px;
 }
-#gameLayer.on{ display:flex; }
 
+#gameLayer.on { display: flex; }
+
+/* Canvas centered */
 #gameCanvas{
-  width: min(92vw, 960px);
+  width: min(920px, 92vw);
   height: auto;
-
   image-rendering: pixelated;
-  image-rendering: crisp-edges;
-
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.25);
-  box-shadow:
-    0 24px 90px rgba(0,0,0,0.55),
-    inset 0 0 0 1px rgba(255,255,255,0.06);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(10,14,22,0.85);
 }
 
+/* ===== UI UNDER CANVAS (2번 요청) ===== */
 .game-ui{
-  position: absolute;
-  width: min(92vw, 960px);
+  width: min(920px, 92vw);
+  margin-top: 10px;         /* 캔버스 바로 아래 */
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 10px 6px;
-  bottom: 18px;
-  pointer-events: none;
 }
+
 #gameHint{
-  pointer-events: none;
-  font-size: 13px;
-  color: rgba(255,255,255,0.78);
-  background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(255,255,255,0.14);
-  padding: 8px 10px;
-  border-radius: 999px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  color: rgba(255,255,255,0.82);
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(6px);
 }
+
 #exitGameBtn{
-  pointer-events: auto;
-  cursor: pointer;
-  font-size: 13px;
-  color: rgba(255,255,255,0.92);
-  background: rgba(0,0,0,0.35);
+  font-size: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.10);
   border: 1px solid rgba(255,255,255,0.14);
-  padding: 8px 12px;
-  border-radius: 999px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: transform 120ms ease, background 120ms ease;
+  color: rgba(255,255,255,0.88);
+  cursor: pointer;
 }
 #exitGameBtn:hover{
-  transform: translateY(-1px);
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.16);
 }
 
-/* =========================================
-   Unified Modal (Timeline style)
-========================================= */
+/* ===== Modal Base (timeline style) ===== */
 .game-modal{
-  position: absolute;
+  position: fixed;
   inset: 0;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
-
+  z-index: 10000;
+  padding: 24px 14px;
   background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-
-  z-index: 9500;
-
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 180ms ease, visibility 180ms ease;
-}
-.game-modal.on{
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
 }
 
+.game-modal.on{ display: flex; }
+
+/* Card */
 .game-modal-card{
   width: min(860px, 92vw);
-  max-height: min(720px, 84vh);
-  overflow: hidden;
-  border-radius: 16px;
-
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06)),
-    radial-gradient(1200px 400px at 10% 0%, rgba(122,162,247,0.16), transparent 55%),
-    radial-gradient(1200px 400px at 90% 0%, rgba(158,206,106,0.14), transparent 55%),
-    rgba(12,16,24,0.88);
-
+  max-height: min(78vh, 720px);
+  background: rgba(16, 20, 30, 0.92);
   border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: 0 20px 70px rgba(0,0,0,0.55);
+  border-radius: 18px;
+  box-shadow: 0 22px 70px rgba(0,0,0,0.65);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
 }
 
 .game-modal-head{
-  display:flex;
-  align-items:center;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: 14px 14px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.12);
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
 }
+
 .game-modal-title{
-  font-size: 15px;
-  font-weight: 800;
-  color: rgba(255,255,255,0.92);
-  letter-spacing: 0.4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.95);
+  letter-spacing: 0.2px;
 }
+
 .game-modal-close{
   width: 34px;
   height: 34px;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.35);
-  color: rgba(255,255,255,0.9);
-  font-size: 20px;
-  cursor: pointer;
-  transition: transform 120ms ease, background 120ms ease;
-}
-.game-modal-close:hover{
-  transform: translateY(-1px);
   background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.90);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
 }
 
+.game-modal-close:hover{
+  background: rgba(255,255,255,0.14);
+}
+
+/* ===== Modal Body (3번 요청: 글씨 키움) ===== */
 .game-modal-body{
-  padding: 12px 14px 14px;
-  max-height: min(640px, 72vh);
+  padding: 16px;
   overflow: auto;
-  color: rgba(255,255,255,0.84);
-  font-size: 13px;
-  line-height: 1.55;
+  color: rgba(255,255,255,0.88);
+  font-size: 15px;        /* 🔥 기존보다 키움 */
+  line-height: 1.65;      /* 🔥 가독성 */
 }
 
-/* timeline list item */
+/* popup clone content 보정 */
+.game-modal-body .popup-title{ display:none; }
+.game-modal-body .popup-text{
+  font-size: 15px;
+  line-height: 1.7;
+}
+.game-modal-body .caption{
+  margin-top: 8px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.70);
+}
+.game-modal-body video{
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+/* ===== Timeline items ===== */
 .tl-item{
-  display:flex;
+  display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(0,0,0,0.20);
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
   margin-bottom: 10px;
 }
+
+.tl-item span:first-child{
+  flex: 1;
+}
+
 .tl-item span:last-child{
-  color: rgba(255,255,255,0.60);
-  font-size: 12px;
+  color: rgba(255,255,255,0.75);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+  font-size: 13px;
   white-space: nowrap;
 }
 
-/* modal body inner content normalize */
-.game-modal-body h3,
-.game-modal-body .popup-title{
-  margin: 6px 0 10px;
-  font-size: 18px;
-  font-weight: 800;
-  color: rgba(255,255,255,0.94);
-}
-.game-modal-body .popup-text{
-  margin: 0;
-  color: rgba(255,255,255,0.82);
-}
-.game-modal-body .video-container{
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.35);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.35);
-  margin: 10px 0 8px;
-}
-.game-modal-body video{ width: 100%; display:block; }
-.game-modal-body .caption{
-  margin: 0 0 12px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.65);
+/* ===== (4번 요청) 카테고리별 색상 ===== */
+/* 학력: 노랑 */
+.tl-item.tl-edu{
+  background: rgba(255, 205, 90, 0.16);
+  border-color: rgba(255, 205, 90, 0.22);
 }
 
-/* scrollbars */
-.game-modal-body::-webkit-scrollbar{ width: 10px; }
-.game-modal-body::-webkit-scrollbar-track{
-  background: rgba(0,0,0,0.15);
-  border-radius: 10px;
-}
-.game-modal-body::-webkit-scrollbar-thumb{
-  background: rgba(255,255,255,0.16);
-  border-radius: 10px;
-  border: 2px solid rgba(0,0,0,0.15);
+/* 자격증: 파랑 */
+.tl-item.tl-cert{
+  background: rgba(122, 162, 247, 0.18);
+  border-color: rgba(122, 162, 247, 0.26);
 }
 
-@media (prefers-reduced-motion: reduce){
-  .game-modal{ transition:none; }
-  #exitGameBtn, .game-modal-close{ transition:none; }
+/* 경력: 초록 */
+.tl-item.tl-career{
+  background: rgba(158, 206, 106, 0.16);
+  border-color: rgba(158, 206, 106, 0.22);
+}
+
+/* 수상: 보라 */
+.tl-item.tl-award{
+  background: rgba(187, 154, 247, 0.16);
+  border-color: rgba(187, 154, 247, 0.22);
+}
+
+/* 교육/훈련: 민트 */
+.tl-item.tl-train{
+  background: rgba(125, 211, 252, 0.14);
+  border-color: rgba(125, 211, 252, 0.22);
+}
+
+/* 어학/시험: 핑크 */
+.tl-item.tl-test{
+  background: rgba(247, 118, 142, 0.14);
+  border-color: rgba(247, 118, 142, 0.22);
 }
