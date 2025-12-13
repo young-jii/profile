@@ -21,7 +21,7 @@ window.addEventListener('load', () => {
   /* ===============================
      PLAYER
   =============================== */
-  const player = { x: 24, y: 24, w: 12, h: 12, vx: 0, vy: 0, speed: 1.2 };
+  const player = { x: 20, y: 84, w: 12, h: 12, vx: 0, vy: 0, speed: 1.2 };
 
   const DRAW_W = 32;
   const DRAW_H = 32;
@@ -42,7 +42,7 @@ window.addEventListener('load', () => {
     return Object.values(sprites).every(img => img.complete && img.naturalWidth > 0);
   }
 
-  let facing = 'down';
+  let facing = 'right'; // 시작은 오른쪽 바라보는 느낌
   let walkFrame = 0;
   let walkTimer = 0;
   const WALK_INTERVAL = 140;
@@ -73,45 +73,41 @@ window.addEventListener('load', () => {
   }
 
   /* ===============================
-     MAP (Road + Branches)
-     - main road: vertical
-     - branches: horizontal
+     MAP (Horizontal main road + vertical branches)
+     - main road: left -> right
+     - branches: up/down
   =============================== */
   const ROAD = {
-    x: 152, // road center-ish
-    w: 16,
-    top: 16,
-    bottom: 160,
-    // branch y positions
+    y: 88,       // main road y
+    h: 12,
+    left: 16,
+    right: 304,  // 조금 여유 두고 끝
+    // branch x positions
     branches: [
-      { key: 'school',   y: 40,  dir: 'left',  len: 60 },
-      { key: 'training', y: 64,  dir: 'right', len: 64 },
-      { key: 'company',  y: 88,  dir: 'left',  len: 72 },
-      { key: 'award',    y: 112, dir: 'right', len: 60 },
-      { key: 'cert',     y: 136, dir: 'left',  len: 56 },
-      { key: 'lang',     y: 152, dir: 'right', len: 56 },
+      { key: 'school',   x: 64,  dir: 'up',   len: 52 },
+      { key: 'training', x: 104, dir: 'down', len: 52 },
+      { key: 'company',  x: 150, dir: 'up',   len: 60 },
+      { key: 'award',    x: 196, dir: 'down', len: 44 },
+      { key: 'cert',     x: 232, dir: 'up',   len: 40 },
+      { key: 'lang',     x: 268, dir: 'down', len: 40 },
     ]
   };
 
-  /* ===============================
-     INTERACTABLE OBJECTS (repositioned)
-     - placed at the end of each branch
-  =============================== */
-  function branchEndX(branch){
-    if (branch.dir === 'left') return ROAD.x - branch.len;
-    return ROAD.x + ROAD.w + branch.len - 18;
+  function branchEndY(branch){
+    if (branch.dir === 'up') return ROAD.y - branch.len - 18;
+    return ROAD.y + ROAD.h + branch.len - 18;
   }
 
   const objects = [
-    { type:'popup', id:'popupTrigger1', key:'school',   label:'School',   x: branchEndX(ROAD.branches[0]), y: ROAD.branches[0].y - 10, w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger2', key:'training', label:'Training', x: branchEndX(ROAD.branches[1]), y: ROAD.branches[1].y - 10, w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger3', key:'company',  label:'Company',  x: branchEndX(ROAD.branches[2]), y: ROAD.branches[2].y - 10, w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger4', key:'award',    label:'Award',    x: branchEndX(ROAD.branches[3]), y: ROAD.branches[3].y - 10, w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger5', key:'cert',     label:'Cert',     x: branchEndX(ROAD.branches[4]), y: ROAD.branches[4].y - 10, w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger6', key:'lang',     label:'Lang',     x: branchEndX(ROAD.branches[5]), y: ROAD.branches[5].y - 10, w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger1', key:'school',   label:'School',   x: ROAD.branches[0].x - 9, y: branchEndY(ROAD.branches[0]), w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger2', key:'training', label:'Training', x: ROAD.branches[1].x - 9, y: branchEndY(ROAD.branches[1]), w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger3', key:'company',  label:'Company',  x: ROAD.branches[2].x - 9, y: branchEndY(ROAD.branches[2]), w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger4', key:'award',    label:'Award',    x: ROAD.branches[3].x - 9, y: branchEndY(ROAD.branches[3]), w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger5', key:'cert',     label:'Cert',     x: ROAD.branches[4].x - 9, y: branchEndY(ROAD.branches[4]), w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger6', key:'lang',     label:'Lang',     x: ROAD.branches[5].x - 9, y: branchEndY(ROAD.branches[5]), w: 18, h: 18 },
 
-    // timeline at the end of main road (like an "ending gate")
-    { type:'timeline', id:'timeline', key:'timeline', label:'Timeline', x: ROAD.x - 10, y: ROAD.bottom - 18, w: 18, h: 18 },
+    // timeline at the end of main road (ending gate)
+    { type:'timeline', id:'timeline', key:'timeline', label:'Timeline', x: ROAD.right - 6, y: ROAD.y - 18, w: 18, h: 18 },
   ];
 
   const triggerToPopup = {
@@ -183,12 +179,7 @@ window.addEventListener('load', () => {
   }
 
   function nearestInteractable(){
-    const zone = {
-      x: player.x - 6,
-      y: player.y - 6,
-      w: player.w + 12,
-      h: player.h + 12
-    };
+    const zone = { x: player.x - 6, y: player.y - 6, w: player.w + 12, h: player.h + 12 };
     return objects.find(o => rectsOverlap(zone, o)) || null;
   }
 
@@ -208,9 +199,7 @@ window.addEventListener('load', () => {
   }
 
   let bounce = 0;
-  function doBounce(){
-    bounce = 4; // small hop
-  }
+  function doBounce(){ bounce = 4; }
 
   function updateParticles(){
     for (let i=particles.length-1; i>=0; i--){
@@ -247,40 +236,34 @@ window.addEventListener('load', () => {
   function drawRoad(){
     // main road
     ctx.fillStyle = '#2a3646';
-    ctx.fillRect(ROAD.x, ROAD.top, ROAD.w, ROAD.bottom - ROAD.top);
+    ctx.fillRect(ROAD.left, ROAD.y, ROAD.right - ROAD.left, ROAD.h);
 
-    // simple dashed center line
+    // dashed line
     ctx.fillStyle = 'rgba(255,255,255,0.20)';
-    for (let y = ROAD.top; y < ROAD.bottom; y += 12){
-      ctx.fillRect(ROAD.x + 7, y, 2, 6);
+    for (let x = ROAD.left; x < ROAD.right; x += 14){
+      ctx.fillRect(x, ROAD.y + 5, 6, 2);
     }
 
     // branches
     for (const b of ROAD.branches){
-      const by = b.y;
-      const bx = (b.dir === 'left')
-        ? (ROAD.x - b.len)
-        : (ROAD.x + ROAD.w);
-      const bw = b.len;
+      const bx = b.x;
+      const by = (b.dir === 'up') ? (ROAD.y - b.len) : (ROAD.y + ROAD.h);
+      const bh = b.len;
 
       ctx.fillStyle = '#2a3646';
-      ctx.fillRect(bx, by, bw, 10);
+      ctx.fillRect(bx, by, 10, bh);
 
-      // branch dash
       ctx.fillStyle = 'rgba(255,255,255,0.18)';
-      for (let x = bx + 4; x < bx + bw - 4; x += 12){
-        ctx.fillRect(x, by + 4, 6, 2);
+      for (let y = by + 4; y < by + bh - 4; y += 12){
+        ctx.fillRect(bx + 4, y, 2, 6);
       }
     }
 
-    // start marker
+    // markers
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
     ctx.font = '10px monospace';
-    ctx.fillText('START', ROAD.x - 6, ROAD.top - 4);
-
-    // end marker
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillText('END', ROAD.x + 2, ROAD.bottom + 10);
+    ctx.fillText('START', ROAD.left - 2, ROAD.y - 6);
+    ctx.fillText('END', ROAD.right - 10, ROAD.y + 24);
   }
 
   function drawObjects(){
@@ -289,7 +272,6 @@ window.addEventListener('load', () => {
       if (iconReady(img)){
         ctx.drawImage(img, o.x, o.y, o.w, o.h);
       } else {
-        // fallback box
         ctx.fillStyle = o.type === 'timeline' ? '#9ece6a' : '#7aa2f7';
         ctx.fillRect(o.x,o.y,o.w,o.h);
       }
@@ -364,7 +346,7 @@ window.addEventListener('load', () => {
   }
 
   /* ===============================
-     UPDATE (Arrow keys only)
+     UPDATE
   =============================== */
   let lastTs = performance.now();
 
@@ -438,12 +420,12 @@ window.addEventListener('load', () => {
 
   exitBtn?.addEventListener('click', () => {
     paused = false;
-    exitGame();
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event('change'));
   });
 
   window.addEventListener('keydown', (e) => {
     keys.add(e.key);
-
     if (!layer.classList.contains('on')) return;
 
     if (e.key === ' '){
@@ -451,21 +433,18 @@ window.addEventListener('load', () => {
       const o = nearestInteractable();
       if (!o) return;
 
-      // ✅ 미니 액션 + 파티클
       doBounce();
       spawnParticles(player.x + 8, player.y);
 
-      if (o.type === 'timeline'){
-        openTimeline();
-      } else if (o.type === 'popup'){
-        openPopupInGame(o.id);
-      }
+      if (o.type === 'timeline') openTimeline();
+      else openPopupInGame(o.id);
     }
 
     if (e.key === 'Escape'){
       e.preventDefault();
       paused = false;
-      exitGame();
+      toggle.checked = false;
+      toggle.dispatchEvent(new Event('change'));
     }
   });
 
