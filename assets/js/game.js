@@ -10,12 +10,9 @@ window.addEventListener('load', () => {
   const timelineCloseBtn = document.getElementById('timelineCloseBtn');
   const timelineBody = document.getElementById('timelineBody');
 
-  const careerBadge = document.getElementById('careerBadge');
-
   if (!toggle || !layer || !canvas || !stage) return;
 
-  // ====== ensure UI has missing elements (progress + skip) ======
-  // (혹시 index에서 빼먹어도 JS가 자동으로 붙여줌)
+  // ====== ensure UI elements exist (career/progress) ======
   const ui = stage.querySelector('.game-ui');
   if (ui) {
     let left = ui.querySelector('.game-left');
@@ -44,23 +41,13 @@ window.addEventListener('load', () => {
     if (!right) {
       right = document.createElement('div');
       right.className = 'game-right';
-      // 기존 exit 버튼이 ui 직속이면 right로 이동
       const ex = ui.querySelector('#exitGameBtn');
-      if (ex) { right.appendChild(ex); }
+      if (ex) right.appendChild(ex);
       ui.appendChild(right);
-    }
-
-    if (!document.getElementById('skipResumeBtn')) {
-      const s = document.createElement('button');
-      s.id = 'skipResumeBtn';
-      s.type = 'button';
-      s.textContent = 'Skip → Resume';
-      right.insertBefore(s, right.firstChild);
     }
   }
 
   const progressBadge = document.getElementById('progressBadge');
-  const skipResumeBtn = document.getElementById('skipResumeBtn');
 
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
@@ -113,7 +100,7 @@ window.addEventListener('load', () => {
       playBeep({ freq: 660, duration: 0.10, type: 'triangle', volume: 0.07, detune: -6 });
       return;
     }
-    if (id === 'popupTrigger2'){ // training tech
+    if (id === 'popupTrigger2'){ // training
       playBeep({ freq: 760, duration: 0.11, type: 'sine', volume: 0.09 });
       playBeep({ freq: 980, duration: 0.09, type: 'sine', volume: 0.06, detune: 8 });
       return;
@@ -129,12 +116,12 @@ window.addEventListener('load', () => {
       playBeep({ freq: 1760, duration: 0.12, type: 'sine', volume: 0.06 });
       return;
     }
-    if (id === 'popupTrigger5'){ // cert click
+    if (id === 'popupTrigger5'){ // cert
       playBeep({ freq: 680, duration: 0.09, type: 'square', volume: 0.08 });
       playBeep({ freq: 520, duration: 0.08, type: 'square', volume: 0.06 });
       return;
     }
-    if (id === 'popupTrigger6'){ // lang soft
+    if (id === 'popupTrigger6'){ // lang
       playBeep({ freq: 600, duration: 0.12, type: 'sine', volume: 0.09 });
       playBeep({ freq: 740, duration: 0.10, type: 'sine', volume: 0.06 });
       return;
@@ -147,7 +134,7 @@ window.addEventListener('load', () => {
   }
 
   // =========================================================
-  // ✅ Career months calculation (천재 + EBS 합산)
+  // ✅ Career months (천재 + EBS)
   // =========================================================
   function monthDiffInclusive(startY, startM, endY, endM){
     return (endY - startY) * 12 + (endM - startM) + 1;
@@ -163,11 +150,12 @@ window.addEventListener('load', () => {
     const endY = now.getFullYear();
     const endM = now.getMonth() + 1;
     const ebs = monthDiffInclusive(2024, 7, endY, endM);
+
     const total = chunjae + ebs;
     const { years, months } = toYM(total);
-    const text = `Career: ${years}년 ${months}개월`;
+
     const el = document.getElementById('careerBadge');
-    if (el) el.textContent = text;
+    if (el) el.textContent = `Career: ${years}년 ${months}개월`;
   }
   updateCareerBadge();
 
@@ -202,10 +190,11 @@ window.addEventListener('load', () => {
   }
 
   // =========================================================
-  // ✅ particles (colored per icon)
+  // ✅ particles
   // =========================================================
   const dust = [];
   const stars = [];
+
   function spawnDust(){
     dust.push({
       x: player.x + player.w/2,
@@ -223,7 +212,7 @@ window.addEventListener('load', () => {
     if (id === 'popupTrigger4') return [255, 140, 190]; // award
     if (id === 'popupTrigger5') return [120, 170, 255]; // cert
     if (id === 'popupTrigger6') return [110, 255, 190]; // lang
-    return [255,255,255]; // timeline/other
+    return [255,255,255];
   }
 
   function spawnStarBurst(cx, cy, id=''){
@@ -236,7 +225,6 @@ window.addEventListener('load', () => {
         vx: (Math.random()-0.5)*0.7,
         vy: (Math.random()-0.9)*0.9,
         life: 16 + Math.random()*14,
-        seed: Math.random(),
         r,g,b
       });
     }
@@ -387,7 +375,7 @@ window.addEventListener('load', () => {
   }
 
   // =========================================================
-  // ✅ start modal + end modal
+  // ✅ start modal (오프닝)
   // =========================================================
   const startModal = document.createElement('div');
   startModal.className = 'game-modal';
@@ -401,42 +389,17 @@ window.addEventListener('load', () => {
       </div>
       <div class="game-modal-body">
         <p class="popup-text">
-          Hi, I’m Jiyoung. This is my resume — playable.
-          Walk the road, meet the icons, and press Space to explore.
+          안녕하세요, 박지영입니다.
+          제 이력서를 ‘플레이 가능한 게임’ 형태로 구성해보았습니다.
+          방향키로 이동하고, 아이콘 근처에서 Space로 확인해보세요.
         </p>
         <div class="game-cta">
-          <button id="startBtn" type="button">Press Space / Start</button>
-          <button id="startSkipBtn" type="button">Skip → Resume</button>
+          <a href="#" id="startBtn">Press Space / Start</a>
         </div>
       </div>
     </div>
   `;
   stage.appendChild(startModal);
-
-  const endModal = document.createElement('div');
-  endModal.className = 'game-modal';
-  endModal.id = 'endModal';
-  endModal.setAttribute('aria-hidden', 'true');
-  endModal.innerHTML = `
-    <div class="game-modal-card">
-      <div class="game-modal-head">
-        <div class="game-modal-title">Thanks for playing</div>
-        <button class="game-modal-close" id="endCloseBtn" type="button">×</button>
-      </div>
-      <div class="game-modal-body">
-        <p class="popup-text">
-          This game is my resume.
-          If you want to work together, let’s talk.
-        </p>
-        <div class="game-cta">
-          <a href="mailto:forest66young@gmail.com">Contact (Email)</a>
-          <a href="https://github.com/young-jii" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <button id="endToResumeBtn" type="button">Go to Resume</button>
-        </div>
-      </div>
-    </div>
-  `;
-  stage.appendChild(endModal);
 
   function openModal(el){
     paused = true;
@@ -456,11 +419,50 @@ window.addEventListener('load', () => {
   }
 
   const startBtn = startModal.querySelector('#startBtn');
-  const startSkipBtn = startModal.querySelector('#startSkipBtn');
   const startCloseBtn = startModal.querySelector('#startCloseBtn');
 
-  const endCloseBtn = endModal.querySelector('#endCloseBtn');
-  const endToResumeBtn = endModal.querySelector('#endToResumeBtn');
+  startBtn.addEventListener('click', (e) => { e.preventDefault(); closeModal(startModal); });
+  startCloseBtn.addEventListener('click', () => closeModal(startModal));
+  startModal.addEventListener('click', (e) => { if (e.target === startModal) closeModal(startModal); });
+
+  // =========================================================
+  // ✅ Exit Game → Thanks modal (요청사항 반영)
+  // =========================================================
+  const thanksModal = document.createElement('div');
+  thanksModal.className = 'game-modal';
+  thanksModal.id = 'thanksModal';
+  thanksModal.setAttribute('aria-hidden','true');
+  thanksModal.innerHTML = `
+    <div class="game-modal-card">
+      <div class="game-modal-head">
+        <div class="game-modal-title">Thanks</div>
+        <button class="game-modal-close" id="thanksCloseBtn" type="button">×</button>
+      </div>
+      <div class="game-modal-body">
+        <p class="popup-text">
+          봐주셔서 감사합니다.
+          저의 이력서를 게임 형태로 제작해보았는데, 즐겁게 봐주셨으면 좋겠습니다.
+          저와 함께 일하고 싶으시다면, 연락 부탁드립니다.
+        </p>
+        <div class="game-cta">
+          <a href="mailto:jiyoung16park@gmail.com">Email</a>
+        </div>
+      </div>
+    </div>
+  `;
+  stage.appendChild(thanksModal);
+
+  const thanksCloseBtn = thanksModal.querySelector('#thanksCloseBtn');
+  function openThanks(){
+    shake = 8;
+    playBeep({ freq: 740, duration: 0.12, type: 'triangle', volume: 0.09 });
+    openModal(thanksModal);
+  }
+  function closeThanks(){
+    closeModal(thanksModal);
+  }
+  thanksCloseBtn.addEventListener('click', closeThanks);
+  thanksModal.addEventListener('click', (e) => { if (e.target === thanksModal) closeThanks(); });
 
   // =========================================================
   // ✅ original popups -> timeline style modal
@@ -497,27 +499,24 @@ window.addEventListener('load', () => {
   // =========================================================
   const objects = [
     { type:'timeline', id:'timeline',      label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
-
     { type:'popup', id:'popupTrigger1', label:'School',   x: 82,  y: 44,  w: 18, h: 18 },
     { type:'popup', id:'popupTrigger2', label:'Training', x: 120, y: 128, w: 18, h: 18 },
-
     { type:'popup', id:'popupTrigger3', label:'Company',  x: 180, y: 44,  w: 18, h: 18 },
     { type:'popup', id:'popupTrigger4', label:'Award',    x: 220, y: 128, w: 18, h: 18 },
-
     { type:'popup', id:'popupTrigger5', label:'Cert',     x: 268, y: 44,  w: 18, h: 18 },
     { type:'popup', id:'popupTrigger6', label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
   ];
 
-  const interactables = objects.map(o => o.id); // 엔딩 조건: 전부 방문
-  const visited = new Set();
+  const visited = new Set(objects.map(o => o.id)); // 숫자 표현용: "몇 개나 있는지"
+  const visitedNow = new Set();
   function updateProgress(){
     if (!progressBadge) return;
-    progressBadge.textContent = `Visited: ${visited.size}/${interactables.length}`;
+    progressBadge.textContent = `Visited: ${visitedNow.size}/${visited.size}`;
   }
   updateProgress();
 
   // =========================================================
-  // ✅ icons (네가 저장한 파일명으로 바꿔도 됨)
+  // ✅ icons
   // =========================================================
   const BASES = ['assets/css/images/', 'assets/images/', 'images/', './assets/css/images/', './images/'];
 
@@ -561,6 +560,7 @@ window.addEventListener('load', () => {
   // =========================================================
   const sprites = { front:new Image(), back:new Image(), side1:new Image(), side2:new Image() };
   const spriteReady = { front:false, back:false, side1:false, side2:false };
+
   const FILES = {
     front: ['dot_front.png'],
     back:  ['dot_back.png'],
@@ -588,6 +588,7 @@ window.addEventListener('load', () => {
   tryLoadSprite(sprites.back,  'back',  0, 0);
   tryLoadSprite(sprites.side1, 'side1', 0, 0);
   tryLoadSprite(sprites.side2, 'side2', 0, 0);
+
   const ok = (k) => spriteReady[k] === true;
 
   // =========================================================
@@ -656,8 +657,6 @@ window.addEventListener('load', () => {
         ctx.strokeStyle = 'rgba(255,255,255,0.55)';
         ctx.lineWidth = 1;
         ctx.strokeRect(o.x - 3, o.y - 3, o.w + 6, o.h + 6);
-
-        // sparkle near
         if (Math.random() < 0.10) spawnStarBurst(o.x + o.w/2, o.y - 2, o.id);
       }
 
@@ -825,7 +824,7 @@ window.addEventListener('load', () => {
   }
 
   // =========================================================
-  // ✅ enter / exit / skip to resume
+  // ✅ enter / exit
   // =========================================================
   function enterGame(){
     toggle.checked = true;
@@ -836,24 +835,29 @@ window.addEventListener('load', () => {
     toggle.dispatchEvent(new Event('change'));
   }
 
-  function skipToResume(){
-    // 게임 끄고(페이지 보이게)
-    exitGame();
-    // 포트폴리오 본문으로 스크롤(원하면 #two 등으로 변경 가능)
-    setTimeout(() => {
-      const target = document.getElementById('two') || document.getElementById('main');
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
-  }
-
-  if (skipResumeBtn) skipResumeBtn.addEventListener('click', skipToResume);
-
+  // Exit 버튼: ✅ "게임 종료" 대신 Thanks 모달 먼저 보여주기
   if (exitBtn){
     exitBtn.addEventListener('click', () => {
-      paused = false;
-      exitGame();
+      // 모달이 열려 있으면 닫고
+      if (timelineModal && timelineModal.classList.contains('on')) closeTimeline();
+      if (infoModal.classList.contains('on')) closeInfoModal();
+
+      openThanks();
     });
   }
+
+  // Thanks 모달 닫히면 -> 실제 게임 종료
+  const originalCloseThanks = closeThanks;
+  function closeThanksAndExit(){
+    originalCloseThanks();
+    // 게임 끄기
+    paused = false;
+    exitGame();
+  }
+  // X 버튼/바깥 클릭/ESC로 닫을 때 게임도 종료되게
+  thanksCloseBtn.removeEventListener('click', closeThanks);
+  thanksCloseBtn.addEventListener('click', closeThanksAndExit);
+  thanksModal.addEventListener('click', (e) => { if (e.target === thanksModal) closeThanksAndExit(); });
 
   // =========================================================
   // ✅ toggle game layer
@@ -872,36 +876,10 @@ window.addEventListener('load', () => {
   });
 
   // =========================================================
-  // ✅ start/end modal actions
-  // =========================================================
-  function showStart(){
-    openModal(startModal);
-  }
-  function hideStart(){
-    closeModal(startModal);
-  }
-  function showEnd(){
-    openModal(endModal);
-  }
-  function hideEnd(){
-    closeModal(endModal);
-  }
-
-  startBtn.addEventListener('click', () => { hideStart(); });
-  startCloseBtn.addEventListener('click', () => { hideStart(); });
-  startSkipBtn.addEventListener('click', () => { hideStart(); skipToResume(); });
-
-  endCloseBtn.addEventListener('click', () => { hideEnd(); });
-  endToResumeBtn.addEventListener('click', () => { hideEnd(); skipToResume(); });
-
-  startModal.addEventListener('click', (e) => { if (e.target === startModal) hideStart(); });
-  endModal.addEventListener('click', (e) => { if (e.target === endModal) hideEnd(); });
-
-  // =========================================================
   // ✅ key controls
   // =========================================================
   window.addEventListener('keydown', (e) => {
-    getAudioCtx(); // unlock audio on first input
+    getAudioCtx(); // unlock audio
     keys.add(e.key);
 
     if (!layer.classList.contains('on')) return;
@@ -909,7 +887,7 @@ window.addEventListener('load', () => {
     // start modal: Space -> start
     if (startModal.classList.contains('on') && e.key === ' '){
       e.preventDefault();
-      hideStart();
+      closeModal(startModal);
       return;
     }
 
@@ -918,34 +896,21 @@ window.addEventListener('load', () => {
       const o = nearestInteractable();
       if (!o) return;
 
-      // 캐릭터가 아이콘을 바라보는 연출 + 파티클
       setFaceTowardObject(o);
       spawnStarBurst(o.x + o.w/2, o.y - 2, o.id);
 
-      // 방문 기록 + 진행률
-      if (!visited.has(o.id)){
-        visited.add(o.id);
+      if (!visitedNow.has(o.id)){
+        visitedNow.add(o.id);
         updateProgress();
       }
 
-      // 아이콘별 열기
       if (o.type === 'timeline') openTimeline();
       else if (o.type === 'popup') openPopupLikeTimeline(o.id);
-
-      // 모두 방문하면 엔딩
-      if (visited.size === interactables.length){
-        // 살짝 딜레이 주면 “마지막 열기 → 엔딩” 흐름이 자연스러움
-        setTimeout(() => {
-          // 모달 열려있으면 닫은 뒤 엔딩
-          if (timelineModal && timelineModal.classList.contains('on')) closeTimeline();
-          if (infoModal.classList.contains('on')) closeInfoModal();
-          showEnd();
-        }, 450);
-      }
     }
 
     if (e.key === 'Escape'){
       e.preventDefault();
+      // ESC는 바로 종료(Thanks 없이)
       paused = false;
       exitGame();
     }
@@ -954,9 +919,8 @@ window.addEventListener('load', () => {
   window.addEventListener('keyup', (e) => keys.delete(e.key));
 
   // =========================================================
-  // ✅ first landing: always enter game + show start modal
+  // ✅ first landing: enter + show start modal
   // =========================================================
   enterGame();
-  // 시작 시 “오프닝”부터
-  setTimeout(() => showStart(), 60);
+  setTimeout(() => openModal(startModal), 60);
 });
