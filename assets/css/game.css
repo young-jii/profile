@@ -1,180 +1,221 @@
-/* Game layer (fade) */
-#gameLayer{
+/* =========================================
+   GAME LAYER + MODALS + POPUP UI (FULL)
+   File: assets/css/game.css
+========================================= */
+
+/* 게임 레이어: 기본은 숨김 */
+#gameLayer {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
 
+  background: radial-gradient(1200px 600px at 50% 30%, rgba(122,162,247,0.16), transparent 55%),
+              radial-gradient(900px 500px at 30% 70%, rgba(158,206,106,0.12), transparent 55%),
+              rgba(8,10,15,0.96);
+
+  z-index: 9000;
+}
+
+/* game.js가 on 클래스를 붙이면 표시 */
+#gameLayer.on {
+  display: flex;
+}
+
+/* 캔버스 */
+#gameCanvas {
+  width: min(92vw, 960px);
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-radius: 18px;
+
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.25);
+  box-shadow:
+    0 24px 90px rgba(0,0,0,0.55),
+    inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+/* 게임 UI */
+.game-ui {
+  position: absolute;
+  width: min(92vw, 960px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 6px;
+  top: calc(50% + min(92vw, 960px) * 0.30);
+  transform: translateY(90px);
+  pointer-events: none;
+}
+
+#gameHint {
+  pointer-events: none;
+  font-size: 13px;
+  color: rgba(255,255,255,0.78);
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.14);
+  padding: 8px 10px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#exitGameBtn {
+  pointer-events: auto;
+  cursor: pointer;
+  font-size: 13px;
+  color: rgba(255,255,255,0.92);
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.14);
+  padding: 8px 12px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 120ms ease, background 120ms ease;
+}
+#exitGameBtn:hover {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,0.08);
+}
+
+/* =========================================
+   Timeline Modal (게임 안)
+========================================= */
+.game-modal {
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  gap: 12px;
 
-  background: rgba(10, 10, 14, 0.92);
+  background: rgba(0,0,0,0.55);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  z-index: 9500;
 
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-
-  transition: opacity 220ms ease, visibility 220ms ease;
+  transition: opacity 180ms ease, visibility 180ms ease;
 }
 
-#gameLayer.on{
+.game-modal.on {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
 }
 
-#gameCanvas{
-  width: min(92vw, 960px);
-  height: auto;
-  image-rendering: pixelated;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.45);
-}
-
-.game-ui{
-  width: min(92vw, 960px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-#gameHint{
-  font-size: 14px;
-  opacity: .92;
-  color: rgba(255,255,255,.92);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-#exitGameBtn{
-  appearance: none;
-  border: 1px solid rgba(255,255,255,.22);
-  background: rgba(255,255,255,.08);
-  color: rgba(255,255,255,.92);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 13px;
-  cursor: pointer;
-}
-#exitGameBtn:hover{ background: rgba(255,255,255,.14); }
-
-/* 게임 모드일 때도 #main은 투명 처리하지 않음 (팝업이 #main 안에 있음) */
-body.game-on #header,
-body.game-on #footer{
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 220ms ease;
-}
-
-/* 본문 클릭만 막기 (팝업은 fixed+z-index로 위에 올라옴) */
-body.game-on #main{
-  pointer-events: none;
-}
-
-/* 팝업은 게임 위로 */
-.popup-overlay{
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 10001 !important;
-  pointer-events: auto !important;
-}
-
-/* ===== Timeline modal (게임 내 모달) ===== */
-.game-modal{
-  position: fixed;
-  inset: 0;
-  z-index: 10002;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(4px);
-}
-
-.game-modal.on{ display: flex; }
-
-.game-modal-card{
-  width: min(92vw, 760px);
-  max-height: min(76vh, 620px);
+.game-modal-card {
+  width: min(860px, 92vw);
+  max-height: min(720px, 84vh);
   overflow: hidden;
   border-radius: 16px;
-  background: rgba(20, 24, 32, 0.96);
+
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06)),
+    radial-gradient(1200px 400px at 10% 0%, rgba(122,162,247,0.16), transparent 55%),
+    radial-gradient(1200px 400px at 90% 0%, rgba(158,206,106,0.14), transparent 55%),
+    rgba(12,16,24,0.88);
+
   border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  box-shadow: 0 20px 70px rgba(0,0,0,0.55);
 }
 
-.game-modal-head{
+.game-modal-head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 14px 16px;
+  justify-content: space-between;
+  padding: 14px 14px 12px;
   border-bottom: 1px solid rgba(255,255,255,0.12);
 }
 
-.game-modal-title{
-  color: rgba(255,255,255,0.92);
+.game-modal-title {
   font-size: 15px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 800;
+  color: rgba(255,255,255,0.92);
+  letter-spacing: 0.4px;
 }
 
-.game-modal-close{
+.game-modal-close {
   width: 34px;
   height: 34px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: rgba(255,255,255,.08);
-  color: rgba(255,255,255,0.92);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.35);
+  color: rgba(255,255,255,0.9);
+  font-size: 20px;
   cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.game-modal-close:hover {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,0.08);
 }
 
-.game-modal-body{
-  padding: 14px 16px;
+.game-modal-body {
+  padding: 12px 14px 14px;
+  max-height: min(640px, 72vh);
   overflow: auto;
-  max-height: calc(min(76vh, 620px) - 56px);
-  color: rgba(255,255,255,0.88);
-  font-size: 13px;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
-.tl-item{
-  display: grid;
-  grid-template-columns: 1fr auto;
+.tl-item {
+  display: flex;
+  justify-content: space-between;
   gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px dashed rgba(255,255,255,0.12);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.20);
+  margin-bottom: 10px;
 }
-.tl-item span:last-child{ opacity: .86; white-space: nowrap; }
 
-/* =========================
-   POPUP UI: Game-style Cards
-   붙여넣기 위치: assets/css/game.css 맨 아래
-========================= */
+.tl-item span:first-child {
+  color: rgba(255,255,255,0.84);
+  font-size: 13px;
+}
+.tl-item span:last-child {
+  color: rgba(255,255,255,0.60);
+  font-size: 12px;
+  white-space: nowrap;
+}
 
-/* overlay: 부드러운 딤 + 블러 */
+/* =========================================
+   POPUP OVERLAY (HTML popups 1~6)
+   - 페이드 + 살짝 확대 애니메이션 포함
+========================================= */
 .popup-overlay {
   position: fixed;
   inset: 0;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: 18px;
+
   background: rgba(0,0,0,0.55);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+
   z-index: 9999;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 180ms ease, visibility 180ms ease;
 }
 
 .popup-overlay.on,
 .popup-overlay.active {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
-/* content: 유리 느낌 + 픽셀 감성 테두리 */
+/* popup card */
 .popup-content {
   width: min(880px, 92vw);
   max-height: min(720px, 84vh);
@@ -187,27 +228,24 @@ body.game-on #main{
     linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06)),
     radial-gradient(1200px 400px at 10% 0%, rgba(122,162,247,0.16), transparent 55%),
     radial-gradient(1200px 400px at 90% 0%, rgba(158,206,106,0.14), transparent 55%),
-    rgba(12,16,24,0.85);
+    rgba(12,16,24,0.88);
 
   border: 1px solid rgba(255,255,255,0.14);
   box-shadow:
     0 20px 70px rgba(0,0,0,0.55),
     inset 0 0 0 1px rgba(255,255,255,0.06);
+
+  /* 등장 애니메이션 기본 상태 */
+  transform: translateY(8px) scale(0.98);
+  opacity: 0;
+  transition: transform 200ms ease, opacity 200ms ease;
+  will-change: transform, opacity;
 }
 
-/* 상단 픽셀 헤더 라인 */
-.popup-content::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: 16px;
-  background:
-    linear-gradient(90deg,
-      rgba(255,255,255,0.0) 0%,
-      rgba(255,255,255,0.18) 50%,
-      rgba(255,255,255,0.0) 100%);
-  opacity: 0.08;
+.popup-overlay.on .popup-content,
+.popup-overlay.active .popup-content {
+  transform: translateY(0) scale(1);
+  opacity: 1;
 }
 
 /* 닫기 버튼 */
@@ -232,7 +270,7 @@ body.game-on #main{
   background: rgba(255,255,255,0.08);
 }
 
-/* 제목/서브타이틀 */
+/* 텍스트 스타일 */
 .popup-title {
   margin: 2px 0 4px;
   font-size: 22px;
@@ -247,7 +285,6 @@ body.game-on #main{
   color: rgba(255,255,255,0.72);
 }
 
-/* 섹션 */
 .popup-section {
   margin-top: 14px;
   padding-top: 12px;
@@ -261,10 +298,8 @@ body.game-on #main{
   color: rgba(255,255,255,0.78);
 }
 
-/* 비디오 영역도 카드처럼 */
-.video-wrapper {
-  margin: 10px 0 0;
-}
+/* 비디오 */
+.video-wrapper { margin: 10px 0 0; }
 .video-container {
   border-radius: 14px;
   overflow: hidden;
@@ -272,18 +307,14 @@ body.game-on #main{
   background: rgba(0,0,0,0.35);
   box-shadow: 0 10px 25px rgba(0,0,0,0.35);
 }
-.video-container video {
-  width: 100%;
-  height: auto;
-  display: block;
-}
+.video-container video { width: 100%; display: block; }
 .caption {
   margin: 8px 0 0;
   font-size: 12px;
   color: rgba(255,255,255,0.65);
 }
 
-/* 카드: mini */
+/* mini cards */
 .mini-cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -300,18 +331,17 @@ body.game-on #main{
 
 .mini-title {
   margin: 0 0 4px;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 14px;
   color: rgba(255,255,255,0.92);
 }
-
 .mini-meta {
   margin: 0 0 8px;
   font-size: 12px;
   color: rgba(255,255,255,0.62);
 }
 
-/* 카드: skill */
+/* skill grid */
 .skill-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -325,40 +355,25 @@ body.game-on #main{
   background: rgba(0,0,0,0.22);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
 }
-
 .skill-card h5 {
   margin: 0 0 8px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 900;
   color: rgba(255,255,255,0.90);
 }
 
-/* 리스트 공통 */
-.popup-content ul {
-  margin: 0;
-  padding-left: 18px;
-}
+/* list */
+.popup-content ul { margin: 0; padding-left: 18px; }
 .popup-content li {
   margin: 6px 0;
   font-size: 13px;
   line-height: 1.45;
   color: rgba(255,255,255,0.72);
 }
+.impact-list li { color: rgba(255,255,255,0.78); }
 
-/* 성과 리스트 */
-.impact-list {
-  padding-left: 18px;
-}
-.impact-list li {
-  color: rgba(255,255,255,0.78);
-}
-
-/* 자격 테이블 */
-.table-list {
-  display: grid;
-  gap: 8px;
-}
-
+/* cert table */
+.table-list { display: grid; gap: 8px; }
 .table-list .row {
   display: flex;
   justify-content: space-between;
@@ -368,25 +383,16 @@ body.game-on #main{
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(0,0,0,0.20);
 }
+.table-list .left { font-size: 13px; color: rgba(255,255,255,0.82); }
+.table-list .right { font-size: 12px; color: rgba(255,255,255,0.60); white-space: nowrap; }
 
-.table-list .left {
-  font-size: 13px;
-  color: rgba(255,255,255,0.82);
-}
-.table-list .right {
-  font-size: 12px;
-  color: rgba(255,255,255,0.60);
-  white-space: nowrap;
-}
-
-/* 태그 칩 */
+/* tags */
 .popup-tags {
   margin-top: 14px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-
 .popup-tags .tag {
   font-size: 12px;
   padding: 6px 10px;
@@ -396,27 +402,40 @@ body.game-on #main{
   background: rgba(255,255,255,0.06);
 }
 
-/* 스크롤바 미니멀 */
-.popup-content::-webkit-scrollbar {
+/* scrollbar */
+.popup-content::-webkit-scrollbar,
+.game-modal-body::-webkit-scrollbar {
   width: 10px;
 }
-.popup-content::-webkit-scrollbar-track {
+.popup-content::-webkit-scrollbar-track,
+.game-modal-body::-webkit-scrollbar-track {
   background: rgba(0,0,0,0.15);
   border-radius: 10px;
 }
-.popup-content::-webkit-scrollbar-thumb {
+.popup-content::-webkit-scrollbar-thumb,
+.game-modal-body::-webkit-scrollbar-thumb {
   background: rgba(255,255,255,0.16);
   border-radius: 10px;
   border: 2px solid rgba(0,0,0,0.15);
 }
 
-/* 반응형 */
+/* responsive */
 @media (max-width: 840px) {
   .skill-grid { grid-template-columns: 1fr; }
   .mini-cards { grid-template-columns: 1fr; }
+  .game-ui {
+    width: min(92vw, 960px);
+    top: auto;
+    bottom: 18px;
+    transform: none;
+    padding: 10px 10px;
+  }
 }
 
-/* 접근성: 모션 줄이기 */
+/* reduce motion */
 @media (prefers-reduced-motion: reduce) {
-  .close-popup { transition: none; }
+  .popup-overlay,
+  .popup-content,
+  .game-modal { transition: none; }
+  #exitGameBtn, .close-popup, .game-modal-close { transition: none; }
 }
