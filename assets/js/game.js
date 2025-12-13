@@ -1,5 +1,5 @@
 /* =========================================
-   GAME (FULL)
+   GAME (FULL) - robust version
    File: assets/js/game.js
 ========================================= */
 
@@ -18,16 +18,15 @@ window.addEventListener('load', () => {
   ctx.imageSmoothingEnabled = false;
 
   const W = canvas.width, H = canvas.height;
-
   const keys = new Set();
   let paused = false;
 
-  // 충돌 박스(작게 유지)
+  // ✅ 충돌 박스(작게)
   const player = { x: 40, y: 88, w: 12, h: 12, vx: 0, vy: 0, speed: 1.25 };
 
-  // 캐릭터 스프라이트 (원본 16x16 가정)
+  // ✅ 캐릭터 스프라이트 (원본 16x16 가정)
   const SRC_W = 16, SRC_H = 16;
-  const DRAW_W = 32, DRAW_H = 32; // 2배 렌더
+  const DRAW_W = 32, DRAW_H = 32; // 2배
 
   const SPRITE_BASE = 'assets/css/images/';
   const sprites = {
@@ -42,11 +41,17 @@ window.addEventListener('load', () => {
   sprites.side1.src = SPRITE_BASE + 'dot_side(1).png';
   sprites.side2.src = SPRITE_BASE + 'dot_side(2).png';
 
-  function allSpritesReady(){
-    return Object.values(sprites).every(img => img.complete && img.naturalWidth > 0);
+  // ✅ 안전 로더(장당 체크)
+  function imgOk(img){
+    return img && img.complete && img.naturalWidth > 0;
   }
 
-  // ====== MAP ICONS ======
+  let facing = 'right';  // down | up | left | right
+  let walkFrame = 0;     // 0/1
+  let walkTimer = 0;
+  const WALK_INTERVAL = 140;
+
+  // ===== MAP ICONS =====
   const ICON_BASE = 'assets/css/images/';
   const icons = {
     popupTrigger1: new Image(),
@@ -58,6 +63,7 @@ window.addEventListener('load', () => {
     timeline:      new Image(),
   };
 
+  // 파일명이 다르면 여기만 맞춰주면 돼
   icons.popupTrigger1.src = ICON_BASE + 'icon_school.png';
   icons.popupTrigger2.src = ICON_BASE + 'icon_training.png';
   icons.popupTrigger3.src = ICON_BASE + 'icon_company.png';
@@ -66,16 +72,7 @@ window.addEventListener('load', () => {
   icons.popupTrigger6.src = ICON_BASE + 'icon_lang.png';
   icons.timeline.src      = ICON_BASE + 'icon_timeline.png';
 
-  function iconReady(img){
-    return img && img.complete && img.naturalWidth > 0;
-  }
-
-  let facing = 'right'; // down | up | left | right
-  let walkFrame = 0;
-  let walkTimer = 0;
-  const WALK_INTERVAL = 140;
-
-  // 오브젝트 배치(좌->우 진행)
+  // 오브젝트 배치(좌 -> 우)
   const objects = [
     { type:'timeline', id:'timeline',       label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
 
@@ -89,6 +86,7 @@ window.addEventListener('load', () => {
     { type:'popup',    id:'popupTrigger6',  label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
   ];
 
+  // ✅ 트리거 -> overlay id 매핑 (팝업 직접 오픈용)
   const triggerToPopup = {
     popupTrigger1: 'popup1',
     popupTrigger2: 'popup2',
@@ -127,25 +125,41 @@ window.addEventListener('load', () => {
     });
   }
 
-  // ===== 팝업 오픈/닫기 =====
+  // ===== Popup Open/Close (✅ overlay 직접 제어) =====
   function openPopupInGame(triggerId){
     paused = true;
-    const trigger = document.getElementById(triggerId);
-    if (trigger) trigger.click();
+
+    const popupId = triggerToPopup[triggerId];
+    const overlay = popupId ? document.getElementById(popupId) : null;
+
+    if (!overlay){
+      paused = false;
+      return;
+    }
+
+    overlay.classList.add('on');
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
   }
 
   function wirePopupCloseToResume(){
-    Object.entries(triggerToPopup).forEach(([triggerId, popupId]) => {
+    Object.values(triggerToPopup).forEach((popupId) => {
       const overlay = document.getElementById(popupId);
       if (!overlay) return;
 
       const closeBtn = overlay.querySelector('.close-popup');
-      if (closeBtn){
-        closeBtn.addEventListener('click', () => { paused = false; });
-      }
+
+      const close = () => {
+        overlay.classList.remove('on');
+        overlay.classList.remove('active');
+        overlay.setAttribute('aria-hidden', 'true');
+        paused = false;
+      };
+
+      if (closeBtn) closeBtn.addEventListener('click', close);
 
       overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) paused = false;
+        if (e.target === overlay) close();
       });
     });
   }
@@ -153,7 +167,8 @@ window.addEventListener('load', () => {
 
   // ===== 충돌/상호작용 =====
   function rectsOverlap(a, b){
-    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    return a.x < b.x + b.w && a.x + a.w > b.x &&
+           a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
   function nearestInteractable(){
@@ -168,11 +183,10 @@ window.addEventListener('load', () => {
   function drawBG(ts){
     const t = ts / 1000;
 
-    // 바탕
     ctx.fillStyle = '#0b0f16';
     ctx.fillRect(0,0,W,H);
 
-    // 미세 그리드 (밋밋함 방지)
+    // 미세 그리드
     for (let y=0; y<H; y+=8){
       for (let x=0; x<W; x+=8){
         const a = ((x+y)/8) % 2 === 0 ? 0.06 : 0.04;
@@ -181,16 +195,16 @@ window.addEventListener('load', () => {
       }
     }
 
-    // 길(메인: 가로)
+    // 메인 길
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(12, 86, 296, 12);
 
-    // 길 가장자리 라인
     ctx.fillStyle = 'rgba(255,255,255,0.10)';
     ctx.fillRect(12, 86, 296, 1);
     ctx.fillRect(12, 97, 296, 1);
 
-    // 분기(위/아래로)
+    // 분기
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(90, 52, 10, 46);
     ctx.fillRect(128, 86, 10, 46);
     ctx.fillRect(188, 52, 10, 46);
@@ -198,13 +212,13 @@ window.addEventListener('load', () => {
     ctx.fillRect(276, 52, 10, 46);
     ctx.fillRect(304, 86, 10, 46);
 
-    // 은은한 스캔라인(액션 느낌)
+    // 스캔 라인
     const scanY = Math.floor((t * 24) % H);
     ctx.fillStyle = 'rgba(122,162,247,0.06)';
     ctx.fillRect(0, scanY, W, 2);
   }
 
-  // ===== 오브젝트(아이콘 + 둥둥 + 근처 스파클) =====
+  // ===== 오브젝트(아이콘 + 둥둥 + 반짝) =====
   function drawObjects(ts){
     const near = nearestInteractable();
     const t = ts / 1000;
@@ -221,7 +235,7 @@ window.addEventListener('load', () => {
       const dx = o.x + o.w/2 - dw/2;
       const dy = o.y + o.h/2 - dh/2 + bob;
 
-      if (img && iconReady(img)){
+      if (imgOk(img)){
         ctx.drawImage(img, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
       } else {
         ctx.fillStyle = (o.type === 'timeline') ? '#9ece6a' : '#7aa2f7';
@@ -234,7 +248,7 @@ window.addEventListener('load', () => {
       ctx.fillText(o.label, o.x - 2, o.y - 6);
     }
 
-    // sparkle particles (근처 오브젝트 주변)
+    // near sparkle
     if (near){
       const cx = near.x + near.w/2;
       const cy = near.y + near.h/2;
@@ -275,39 +289,44 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
-  // 플레이어 스프라이트
+  // ✅ 플레이어(무조건 fallback 먼저 그림 → 그 위에 스프라이트)
   function drawPlayerSprite(){
-    if (!allSpritesReady()){
-      ctx.fillStyle = '#f7768e';
-      ctx.fillRect(player.x, player.y, player.w, player.h);
-      return;
-    }
+    // fallback(무조건 보이게)
+    ctx.fillStyle = '#f7768e';
+    ctx.fillRect(Math.round(player.x), Math.round(player.y), player.w, player.h);
 
+    // 중심 정렬 좌표
     const dx = Math.round(player.x - (DRAW_W - player.w) / 2);
     const dy = Math.round(player.y - (DRAW_H - player.h) / 2);
 
-    if (facing === 'up'){
+    // facing별 이미지 선택 (있는 것만 그리기)
+    if (facing === 'up' && imgOk(sprites.back)){
       ctx.drawImage(sprites.back, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
-    if (facing === 'down'){
+    if (facing === 'down' && imgOk(sprites.front)){
       ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
 
     const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
 
-    if (facing === 'left'){
+    if (facing === 'left' && imgOk(sideImg)){
       ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
 
-    if (facing === 'right'){
+    if (facing === 'right' && imgOk(sideImg)){
       ctx.save();
       ctx.scale(-1, 1);
       ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
       ctx.restore();
       return;
+    }
+
+    // 옆 이미지가 없더라도 front가 있으면 대체로라도 표시
+    if (imgOk(sprites.front)){
+      ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
     }
   }
 
@@ -319,7 +338,7 @@ window.addEventListener('load', () => {
     drawPressSpaceBubble();
   }
 
-  // ===== 업데이트: Arrow 키만 =====
+  // ===== 업데이트(Arrow 키만) =====
   let lastTs = performance.now();
 
   function update(ts){
