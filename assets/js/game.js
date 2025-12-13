@@ -1,8 +1,3 @@
-/* =========================================
-   GAME (FULL) - Sprite auto-path resolver + on-canvas debug
-   File: assets/js/game.js
-========================================= */
-
 window.addEventListener('load', () => {
   const toggle = document.getElementById('contentToggle');
   const layer  = document.getElementById('gameLayer');
@@ -21,17 +16,26 @@ window.addEventListener('load', () => {
   const keys = new Set();
   let paused = false;
 
-  // ✅ 플레이어 hitbox
+  // ===== player =====
   const player = { x: 40, y: 88, w: 12, h: 12, vx: 0, vy: 0, speed: 1.25 };
 
-  // ✅ 스프라이트 (16x16 -> 32x32)
-  const SRC_W = 16, SRC_H = 16;
+  // draw size (캐릭터 화면 표시 크기)
   const DRAW_W = 32, DRAW_H = 32;
 
   let facing = 'right';
   let walkFrame = 0;
   let walkTimer = 0;
   const WALK_INTERVAL = 140;
+
+  // ===== debug =====
+  const debug = {
+    enabled: true,
+    lines: [],
+    push(msg){
+      this.lines.unshift(msg);
+      if (this.lines.length > 10) this.lines.pop();
+    }
+  };
 
   // =========================================
   // ✅ Unified Info Modal (timeline 스타일)
@@ -40,7 +44,6 @@ window.addEventListener('load', () => {
   infoModal.id = 'infoModal';
   infoModal.className = 'game-modal';
   infoModal.setAttribute('aria-hidden', 'true');
-
   infoModal.innerHTML = `
     <div class="game-modal-card">
       <div class="game-modal-head">
@@ -73,7 +76,7 @@ window.addEventListener('load', () => {
     if (e.target === infoModal) closeInfoModal();
   });
 
-  // ===== Timeline Modal =====
+  // ===== Timeline modal =====
   function openTimeline(){
     if (!timelineModal) return;
     paused = true;
@@ -93,9 +96,7 @@ window.addEventListener('load', () => {
     });
   }
 
-  // =========================================
-  // ✅ 기존 popup1~6 내용을 가져와 모달로 표시
-  // =========================================
+  // ===== popups -> timeline style =====
   const triggerToPopup = {
     popupTrigger1: 'popup1',
     popupTrigger2: 'popup2',
@@ -124,7 +125,7 @@ window.addEventListener('load', () => {
   }
 
   // =========================================
-  // ✅ 오브젝트 배치(좌->우)
+  // ✅ objects (좌->우)
   // =========================================
   const objects = [
     { type:'timeline', id:'timeline',      label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
@@ -140,7 +141,67 @@ window.addEventListener('load', () => {
   ];
 
   // =========================================
-  // ✅ Sprite loader: "경로 후보"를 자동 탐색
+  // ✅ icon images (지도에 다시 표시)
+  // =========================================
+  const ICON_BASE_CANDIDATES = [
+    'assets/css/images/',
+    'assets/images/',
+    'images/',
+    './assets/css/images/',
+    './images/',
+  ];
+
+  const icons = {
+    popupTrigger1: new Image(),
+    popupTrigger2: new Image(),
+    popupTrigger3: new Image(),
+    popupTrigger4: new Image(),
+    popupTrigger5: new Image(),
+    popupTrigger6: new Image(),
+    timeline:      new Image(),
+  };
+  const iconReady = {
+    popupTrigger1:false, popupTrigger2:false, popupTrigger3:false,
+    popupTrigger4:false, popupTrigger5:false, popupTrigger6:false,
+    timeline:false,
+  };
+
+  // ⚠️ 여기 파일명은 네 폴더에 있는 실제 파일명으로 맞춰줘!
+  // (지금은 예시)
+  const ICON_FILES = {
+    popupTrigger1: 'icon_school.png',
+    popupTrigger2: 'icon_training.png',
+    popupTrigger3: 'icon_company.png',
+    popupTrigger4: 'icon_award.png',
+    popupTrigger5: 'icon_cert.png',
+    popupTrigger6: 'icon_lang.png',
+    timeline:      'icon_timeline.png',
+  };
+
+  function tryLoadFromBases(img, key, bases, filename){
+    let i = 0;
+    const attempt = () => {
+      if (i >= bases.length){
+        iconReady[key] = false;
+        return;
+      }
+      const base = bases[i++];
+      const url = new URL(base + filename, document.baseURI).href;
+      img.onload = () => { iconReady[key] = true; };
+      img.onerror = () => attempt();
+      img.src = url;
+    };
+    attempt();
+  }
+
+  Object.keys(icons).forEach(k => {
+    tryLoadFromBases(icons[k], k, ICON_BASE_CANDIDATES, ICON_FILES[k]);
+  });
+
+  const iconOk = (k) => iconReady[k] && icons[k].complete && icons[k].naturalWidth > 0;
+
+  // =========================================
+  // ✅ sprites (캐릭터)
   // =========================================
   const sprites = {
     front: new Image(),
@@ -150,16 +211,8 @@ window.addEventListener('load', () => {
   };
   const spriteReady = { front:false, back:false, side1:false, side2:false };
 
-  // 🔥 여기서 경로를 여러 개 후보로 둠 (너의 실제 위치를 자동으로 맞춤)
-  const SPRITE_BASE_CANDIDATES = [
-    'assets/css/images/',   // 네가 말한 위치
-    'assets/images/',
-    'images/',
-    './assets/css/images/',
-    './images/',
-  ];
+  const SPRITE_BASE_CANDIDATES = ICON_BASE_CANDIDATES; // 같은 경로 후보 사용
 
-  // 파일 후보(괄호 버전 + 언더스코어 버전)
   const FILE_CANDIDATES = {
     front: ['dot_front.png'],
     back:  ['dot_back.png'],
@@ -167,61 +220,37 @@ window.addEventListener('load', () => {
     side2: ['dot_side_2.png', 'dot_side(2).png'],
   };
 
-  // ✅ 디버그 로그(캔버스에 찍어줌)
-  const debug = {
-    enabled: true,
-    lines: [],
-    push(msg){
-      this.lines.unshift(msg);
-      if (this.lines.length > 10) this.lines.pop();
-    }
-  };
-
-  function tryLoadImage(img, key, baseIdx, fileIdx){
+  function tryLoadSprite(img, key, baseIdx, fileIdx){
     const base = SPRITE_BASE_CANDIDATES[baseIdx];
     const file = FILE_CANDIDATES[key][fileIdx];
-
     const url = new URL(base + file, document.baseURI).href;
 
     img.onload = () => {
       spriteReady[key] = true;
-      debug.push(`✅ ${key}: LOADED -> ${base}${file}`);
+      debug.push(`✅ ${key}: ${base}${file}`);
     };
     img.onerror = () => {
-      debug.push(`❌ ${key}: FAIL   -> ${base}${file}`);
-
-      // 다음 파일 후보
-      const nextFileIdx = fileIdx + 1;
-      if (nextFileIdx < FILE_CANDIDATES[key].length){
-        tryLoadImage(img, key, baseIdx, nextFileIdx);
-        return;
-      }
-
-      // 다음 base 경로 후보
-      const nextBaseIdx = baseIdx + 1;
-      if (nextBaseIdx < SPRITE_BASE_CANDIDATES.length){
-        tryLoadImage(img, key, nextBaseIdx, 0);
-        return;
-      }
-
-      // 전부 실패
+      debug.push(`❌ ${key}: ${base}${file}`);
+      const nf = fileIdx + 1;
+      if (nf < FILE_CANDIDATES[key].length) return tryLoadSprite(img, key, baseIdx, nf);
+      const nb = baseIdx + 1;
+      if (nb < SPRITE_BASE_CANDIDATES.length) return tryLoadSprite(img, key, nb, 0);
       spriteReady[key] = false;
-      debug.push(`🛑 ${key}: ALL CANDIDATES FAILED`);
+      debug.push(`🛑 ${key}: ALL FAILED`);
     };
 
     img.src = url;
   }
 
-  // 로딩 시작
-  tryLoadImage(sprites.front, 'front', 0, 0);
-  tryLoadImage(sprites.back,  'back',  0, 0);
-  tryLoadImage(sprites.side1, 'side1', 0, 0);
-  tryLoadImage(sprites.side2, 'side2', 0, 0);
+  tryLoadSprite(sprites.front, 'front', 0, 0);
+  tryLoadSprite(sprites.back,  'back',  0, 0);
+  tryLoadSprite(sprites.side1, 'side1', 0, 0);
+  tryLoadSprite(sprites.side2, 'side2', 0, 0);
 
   const ok = (k) => spriteReady[k] === true;
 
   // =========================================
-  // ✅ 충돌/상호작용
+  // ✅ interaction
   // =========================================
   function rectsOverlap(a, b){
     return a.x < b.x + b.w && a.x + a.w > b.x &&
@@ -236,11 +265,10 @@ window.addEventListener('load', () => {
   }
 
   // =========================================
-  // ✅ 배경 & 오브젝트 렌더
+  // ✅ render
   // =========================================
   function drawBG(ts){
     const t = ts / 1000;
-
     ctx.fillStyle = '#0b0f16';
     ctx.fillRect(0,0,W,H);
 
@@ -255,7 +283,6 @@ window.addEventListener('load', () => {
     // 길
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(12, 86, 296, 12);
-
     ctx.fillStyle = 'rgba(255,255,255,0.10)';
     ctx.fillRect(12, 86, 296, 1);
     ctx.fillRect(12, 97, 296, 1);
@@ -269,16 +296,33 @@ window.addEventListener('load', () => {
     ctx.fillRect(276, 52, 10, 46);
     ctx.fillRect(304, 86, 10, 46);
 
-    // 스캔 라인
+    // scan line
     const scanY = Math.floor((t * 24) % H);
     ctx.fillStyle = 'rgba(122,162,247,0.06)';
     ctx.fillRect(0, scanY, W, 2);
   }
 
   function drawObjects(ts){
+    const near = nearestInteractable();
+    const t = ts / 1000;
+
     for (const o of objects){
-      ctx.fillStyle = (o.type === 'timeline') ? '#9ece6a' : '#7aa2f7';
-      ctx.fillRect(o.x, o.y, o.w, o.h);
+      const bob = Math.sin(t * 3 + o.x * 0.05 + o.y * 0.08) * 2;
+      const isNear = near && near.id === o.id;
+      const scale = isNear ? 1.12 : 1.0;
+
+      const size = 22;
+      const dw = size * scale;
+      const dh = size * scale;
+      const dx = o.x + o.w/2 - dw/2;
+      const dy = o.y + o.h/2 - dh/2 + bob;
+
+      if (iconOk(o.id)){
+        ctx.drawImage(icons[o.id], Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
+      } else {
+        ctx.fillStyle = (o.type === 'timeline') ? '#9ece6a' : '#7aa2f7';
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+      }
 
       ctx.font = '10px monospace';
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
@@ -308,41 +352,37 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
+  // ✅ 핵심: 크롭 없이 "이미지 전체"를 그린다
   function drawPlayerSprite(){
-    // fallback
+    // fallback box
     ctx.fillStyle = '#f7768e';
     ctx.fillRect(Math.round(player.x), Math.round(player.y), player.w, player.h);
 
     const dx = Math.round(player.x - (DRAW_W - player.w) / 2);
     const dy = Math.round(player.y - (DRAW_H - player.h) / 2);
 
-    if (facing === 'up' && ok('back')){
-      ctx.drawImage(sprites.back, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
-      return;
-    }
-    if (facing === 'down' && ok('front')){
-      ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
-      return;
+    // 어떤 이미지로 그릴지 선택
+    let img = null;
+
+    if (facing === 'up' && ok('back')) img = sprites.back;
+    else if (facing === 'down' && ok('front')) img = sprites.front;
+    else {
+      const sideKey = (walkFrame === 0) ? 'side1' : 'side2';
+      if (facing === 'left' && ok(sideKey)) img = (walkFrame === 0) ? sprites.side1 : sprites.side2;
+      if (facing === 'right' && ok(sideKey)) img = (walkFrame === 0) ? sprites.side1 : sprites.side2;
+      if (!img && ok('front')) img = sprites.front;
     }
 
-    const sideKey = (walkFrame === 0) ? 'side1' : 'side2';
-    const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
+    if (!img) return;
 
-    if (facing === 'left' && ok(sideKey)){
-      ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
-      return;
-    }
-    if (facing === 'right' && ok(sideKey)){
+    // right는 좌우반전
+    if (facing === 'right'){
       ctx.save();
       ctx.scale(-1, 1);
-      ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
+      ctx.drawImage(img, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
       ctx.restore();
-      return;
-    }
-
-    // side가 안 되면 front로 대체
-    if (ok('front')){
-      ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
+    } else {
+      ctx.drawImage(img, dx, dy, DRAW_W, DRAW_H);
     }
   }
 
@@ -355,7 +395,10 @@ window.addEventListener('load', () => {
     ctx.fillRect(6, 6, 308, 52);
 
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.fillText(`SPRITES: front=${ok('front')} back=${ok('back')} side1=${ok('side1')} side2=${ok('side2')}`, 10, 18);
+    ctx.fillText(
+      `SPRITES: front=${ok('front')} back=${ok('back')} side1=${ok('side1')} side2=${ok('side2')}`,
+      10, 18
+    );
 
     for (let i=0; i<Math.min(debug.lines.length, 4); i++){
       ctx.fillText(debug.lines[i], 10, 30 + i*10);
@@ -369,11 +412,11 @@ window.addEventListener('load', () => {
     drawObjects(ts);
     drawPlayerSprite();
     drawPressSpaceBubble();
-    drawDebug(); // ✅ 여기
+    drawDebug();
   }
 
   // =========================================
-  // ✅ 업데이트 루프
+  // ✅ update loop
   // =========================================
   let lastTs = performance.now();
 
