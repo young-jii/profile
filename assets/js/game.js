@@ -1,5 +1,5 @@
 /* =========================================
-   GAME (FULL) - robust version (sprite+popup fix)
+   GAME (FULL) - All popups use Timeline-style modal
    File: assets/js/game.js
 ========================================= */
 
@@ -14,11 +14,6 @@ window.addEventListener('load', () => {
 
   if (!toggle || !layer || !canvas) return;
 
-  // ✅ popup-overlay 들을 gameLayer로 "이동" (fixed/transform 이슈 완전 해결)
-  document.querySelectorAll('.popup-overlay').forEach((el) => {
-    layer.appendChild(el);
-  });
-
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
@@ -26,10 +21,10 @@ window.addEventListener('load', () => {
   const keys = new Set();
   let paused = false;
 
-  // ✅ 충돌 박스
+  // ✅ 플레이어 hitbox (작게)
   const player = { x: 40, y: 88, w: 12, h: 12, vx: 0, vy: 0, speed: 1.25 };
 
-  // ✅ 스프라이트
+  // ✅ 스프라이트 (원본 16x16 가정)
   const SRC_W = 16, SRC_H = 16;
   const DRAW_W = 32, DRAW_H = 32;
 
@@ -40,30 +35,42 @@ window.addEventListener('load', () => {
     side1: new Image(),
     side2: new Image(),
   };
-
-  // ✅ 로딩 성공 플래그 (complete/naturalWidth 의존 제거)
   const spriteReady = { front:false, back:false, side1:false, side2:false };
 
-  function setSprite(img, key, filename){
-    const url = new URL(SPRITE_BASE + filename, document.baseURI).href;
-    img.onload = () => { spriteReady[key] = true; };
-    img.onerror = () => { spriteReady[key] = false; console.warn('[sprite load fail]', url); };
-    img.src = url;
+  // ✅ "여러 후보 파일명"으로 시도 (괄호 이슈 대비)
+  function loadTry(img, key, candidates){
+    let idx = 0;
+    const tryNext = () => {
+      if (idx >= candidates.length){
+        spriteReady[key] = false;
+        console.warn(`[sprite fail] ${key}`, candidates);
+        return;
+      }
+      const filename = candidates[idx++];
+      const url = new URL(SPRITE_BASE + filename, document.baseURI).href;
+
+      img.onload = () => { spriteReady[key] = true; };
+      img.onerror = () => { tryNext(); };
+      img.src = url;
+    };
+    tryNext();
   }
 
-  setSprite(sprites.front, 'front', 'dot_front.png');
-  setSprite(sprites.back,  'back',  'dot_back.png');
-  setSprite(sprites.side1, 'side1', 'dot_side(1).png');
-  setSprite(sprites.side2, 'side2', 'dot_side(2).png');
+  // ✅ 권장: 괄호 없는 파일을 하나 더 만들어두면 100% 해결됨
+  // dot_side_1.png / dot_side_2.png (없어도 괄호 버전으로 시도함)
+  loadTry(sprites.front, 'front', ['dot_front.png']);
+  loadTry(sprites.back,  'back',  ['dot_back.png']);
+  loadTry(sprites.side1, 'side1', ['dot_side_1.png', 'dot_side(1).png']);
+  loadTry(sprites.side2, 'side2', ['dot_side_2.png', 'dot_side(2).png']);
 
-  function imgOkKey(key){ return spriteReady[key] === true; }
+  const ok = (k) => spriteReady[k] === true;
 
   let facing = 'right';
   let walkFrame = 0;
   let walkTimer = 0;
   const WALK_INTERVAL = 140;
 
-  // ===== MAP ICONS =====
+  // ===== Icons (optional) =====
   const ICON_BASE = 'assets/css/images/';
   const icons = {
     popupTrigger1: new Image(),
@@ -74,13 +81,9 @@ window.addEventListener('load', () => {
     popupTrigger6: new Image(),
     timeline:      new Image(),
   };
-
   function setIcon(img, filename){
-    img.onload = () => {};
-    img.onerror = () => {};
     img.src = new URL(ICON_BASE + filename, document.baseURI).href;
   }
-
   setIcon(icons.popupTrigger1, 'icon_school.png');
   setIcon(icons.popupTrigger2, 'icon_training.png');
   setIcon(icons.popupTrigger3, 'icon_company.png');
@@ -89,9 +92,9 @@ window.addEventListener('load', () => {
   setIcon(icons.popupTrigger6, 'icon_lang.png');
   setIcon(icons.timeline,      'icon_timeline.png');
 
-  function iconOk(img){ return img && img.complete && img.naturalWidth > 0; }
+  const iconOk = (img) => img && img.complete && img.naturalWidth > 0;
 
-  // 오브젝트 배치(좌 -> 우)
+  // ===== 오브젝트 배치(좌->우) =====
   const objects = [
     { type:'timeline', id:'timeline',      label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
 
@@ -105,6 +108,7 @@ window.addEventListener('load', () => {
     { type:'popup', id:'popupTrigger6', label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
   ];
 
+  // 트리거 -> 기존 popup overlay id
   const triggerToPopup = {
     popupTrigger1: 'popup1',
     popupTrigger2: 'popup2',
@@ -122,6 +126,48 @@ window.addEventListener('load', () => {
     toggle.checked = false;
     toggle.dispatchEvent(new Event('change'));
   }
+
+  // =========================================
+  // ✅ Unified Info Modal (timeline과 같은 스타일)
+  //  - 기존 popup1~6 내용을 "복사"해서 모달에 표시
+  // =========================================
+  const infoModal = document.createElement('div');
+  infoModal.id = 'infoModal';
+  infoModal.className = 'game-modal';
+  infoModal.setAttribute('aria-hidden', 'true');
+
+  infoModal.innerHTML = `
+    <div class="game-modal-card">
+      <div class="game-modal-head">
+        <div class="game-modal-title" id="infoModalTitle">Info</div>
+        <button class="game-modal-close" id="infoModalClose" type="button">×</button>
+      </div>
+      <div class="game-modal-body" id="infoModalBody"></div>
+    </div>
+  `;
+  layer.appendChild(infoModal);
+
+  const infoModalTitle = infoModal.querySelector('#infoModalTitle');
+  const infoModalBody  = infoModal.querySelector('#infoModalBody');
+  const infoModalClose = infoModal.querySelector('#infoModalClose');
+
+  function openInfoModal(title, html){
+    paused = true;
+    infoModalTitle.textContent = title || 'Info';
+    infoModalBody.innerHTML = html || '';
+    infoModal.classList.add('on');
+    infoModal.setAttribute('aria-hidden', 'false');
+  }
+  function closeInfoModal(){
+    infoModal.classList.remove('on');
+    infoModal.setAttribute('aria-hidden', 'true');
+    paused = false;
+  }
+
+  infoModalClose.addEventListener('click', closeInfoModal);
+  infoModal.addEventListener('click', (e) => {
+    if (e.target === infoModal) closeInfoModal();
+  });
 
   // ===== Timeline Modal =====
   function openTimeline(){
@@ -143,52 +189,39 @@ window.addEventListener('load', () => {
     });
   }
 
-  // ===== Popup Open/Close (overlay 직접 제어) =====
-  function openPopupInGame(triggerId){
-    paused = true;
-
+  // ✅ popup1~6의 내용을 가져와서 InfoModal로 보여줌
+  function openPopupLikeTimeline(triggerId){
     const popupId = triggerToPopup[triggerId];
     const overlay = popupId ? document.getElementById(popupId) : null;
-
     if (!overlay){
       paused = false;
       return;
     }
 
-    overlay.classList.add('on');
-    overlay.classList.add('active');
-    overlay.setAttribute('aria-hidden', 'false');
+    const content = overlay.querySelector('.popup-content');
+    if (!content){
+      paused = false;
+      return;
+    }
+
+    // popup-content를 복제해서 X버튼 제거 후 내용만 사용
+    const clone = content.cloneNode(true);
+    const closeBtn = clone.querySelector('.close-popup');
+    if (closeBtn) closeBtn.remove();
+
+    // 제목 텍스트 추출
+    const h3 = clone.querySelector('.popup-title');
+    const title = h3 ? h3.textContent.trim() : (triggerId || 'Info');
+
+    // body에는 clone의 내부만 넣기
+    openInfoModal(title, clone.innerHTML);
   }
-
-  function wirePopupCloseToResume(){
-    Object.values(triggerToPopup).forEach((popupId) => {
-      const overlay = document.getElementById(popupId);
-      if (!overlay) return;
-
-      const closeBtn = overlay.querySelector('.close-popup');
-
-      const close = () => {
-        overlay.classList.remove('on');
-        overlay.classList.remove('active');
-        overlay.setAttribute('aria-hidden', 'true');
-        paused = false;
-      };
-
-      if (closeBtn) closeBtn.addEventListener('click', close);
-
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) close();
-      });
-    });
-  }
-  wirePopupCloseToResume();
 
   // ===== 충돌/상호작용 =====
   function rectsOverlap(a, b){
     return a.x < b.x + b.w && a.x + a.w > b.x &&
            a.y < b.y + b.h && a.y + a.h > b.y;
   }
-
   function nearestInteractable(){
     const zone = { x: player.x - 6, y: player.y - 6, w: player.w + 12, h: player.h + 12 };
     for (const o of objects){
@@ -200,7 +233,6 @@ window.addEventListener('load', () => {
   // ===== 배경 =====
   function drawBG(ts){
     const t = ts / 1000;
-
     ctx.fillStyle = '#0b0f16';
     ctx.fillRect(0,0,W,H);
 
@@ -259,22 +291,6 @@ window.addEventListener('load', () => {
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
       ctx.fillText(o.label, o.x - 2, o.y - 6);
     }
-
-    if (near){
-      const cx = near.x + near.w/2;
-      const cy = near.y + near.h/2;
-
-      for (let i=0; i<7; i++){
-        const ang = (t*2 + i) * 1.55;
-        const r = 10 + (i%3)*4;
-        const px = cx + Math.cos(ang) * r;
-        const py = cy + Math.sin(ang) * r;
-
-        const a = 0.35 + 0.45 * Math.sin(t*6 + i);
-        ctx.fillStyle = `rgba(255,255,255,${a})`;
-        ctx.fillRect(Math.round(px), Math.round(py), 2, 2);
-      }
-    }
   }
 
   function drawPressSpaceBubble(){
@@ -307,11 +323,11 @@ window.addEventListener('load', () => {
     const dx = Math.round(player.x - (DRAW_W - player.w) / 2);
     const dy = Math.round(player.y - (DRAW_H - player.h) / 2);
 
-    if (facing === 'up' && imgOkKey('back')){
+    if (facing === 'up' && ok('back')){
       ctx.drawImage(sprites.back, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
-    if (facing === 'down' && imgOkKey('front')){
+    if (facing === 'down' && ok('front')){
       ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
@@ -319,11 +335,11 @@ window.addEventListener('load', () => {
     const sideKey = (walkFrame === 0) ? 'side1' : 'side2';
     const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
 
-    if (facing === 'left' && imgOkKey(sideKey)){
+    if (facing === 'left' && ok(sideKey)){
       ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
       return;
     }
-    if (facing === 'right' && imgOkKey(sideKey)){
+    if (facing === 'right' && ok(sideKey)){
       ctx.save();
       ctx.scale(-1, 1);
       ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
@@ -331,8 +347,7 @@ window.addEventListener('load', () => {
       return;
     }
 
-    // 옆이 없더라도 front가 있으면 대체
-    if (imgOkKey('front')){
+    if (ok('front')){
       ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
     }
   }
@@ -432,7 +447,7 @@ window.addEventListener('load', () => {
       if (!o) return;
 
       if (o.type === 'timeline') openTimeline();
-      else if (o.type === 'popup') openPopupInGame(o.id);
+      else if (o.type === 'popup') openPopupLikeTimeline(o.id);
     }
 
     if (e.key === 'Escape'){
