@@ -29,7 +29,7 @@ window.addEventListener('load', () => {
 
   // ===== debug =====
   const debug = {
-    enabled: true,
+    enabled: false,
     lines: [],
     push(msg){
       this.lines.unshift(msg);
@@ -412,7 +412,7 @@ window.addEventListener('load', () => {
     drawObjects(ts);
     drawPlayerSprite();
     drawPressSpaceBubble();
-    drawDebug();
+    // drawDebug();
   }
 
   // =========================================
