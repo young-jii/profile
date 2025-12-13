@@ -43,15 +43,18 @@
 		    <canvas id="gameCanvas" width="320" height="180"></canvas>
 		
 		    <!-- ✅ UI를 게임 캔버스 하단에 붙이기 -->
-		    <div class="game-ui">
-		      <div class="game-left">
-		        <div id="gameHint">Move: Arrow Keys · Interact: Space</div>
-		        <!-- ✅ (추가) 연차 표시용 -->
-		        <div id="careerBadge">Career: --</div>
-		      </div>
-		
-		      <button id="exitGameBtn" type="button">Exit Game</button>
-		    </div>
+			<div class="game-ui">
+			  <div class="game-left">
+			    <div id="gameHint">Move: Arrow Keys · Interact: Space</div>
+			    <div id="careerBadge">Career: --</div>
+			    <div id="progressBadge">Visited: 0/0</div>
+			  </div>
+			
+			  <div class="game-right">
+			    <button id="skipResumeBtn" type="button">Skip → Resume</button>
+			    <button id="exitGameBtn" type="button">Exit Game</button>
+			  </div>
+			</div>
 		
 		    <!-- Timeline Modal (게임 안에서 열림) -->
 		    <div id="timelineModal" class="game-modal" aria-hidden="true">
@@ -565,4 +568,5 @@
 
 	</body>
 </html>
+
 
