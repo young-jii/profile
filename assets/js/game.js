@@ -3,6 +3,7 @@ window.addEventListener('load', () => {
   const layer  = document.getElementById('gameLayer');
   const stage  = document.querySelector('.game-stage');
   const canvas = document.getElementById('gameCanvas');
+
   const exitBtn = document.getElementById('exitGameBtn');
 
   const timelineModal = document.getElementById('timelineModal');
@@ -13,6 +14,54 @@ window.addEventListener('load', () => {
 
   if (!toggle || !layer || !canvas || !stage) return;
 
+  // ====== ensure UI has missing elements (progress + skip) ======
+  // (혹시 index에서 빼먹어도 JS가 자동으로 붙여줌)
+  const ui = stage.querySelector('.game-ui');
+  if (ui) {
+    let left = ui.querySelector('.game-left');
+    if (!left) {
+      left = document.createElement('div');
+      left.className = 'game-left';
+      const hint = ui.querySelector('#gameHint');
+      if (hint) left.appendChild(hint);
+      ui.insertBefore(left, ui.firstChild);
+    }
+
+    if (!document.getElementById('careerBadge')) {
+      const b = document.createElement('div');
+      b.id = 'careerBadge';
+      b.textContent = 'Career: --';
+      left.appendChild(b);
+    }
+    if (!document.getElementById('progressBadge')) {
+      const p = document.createElement('div');
+      p.id = 'progressBadge';
+      p.textContent = 'Visited: 0/0';
+      left.appendChild(p);
+    }
+
+    let right = ui.querySelector('.game-right');
+    if (!right) {
+      right = document.createElement('div');
+      right.className = 'game-right';
+      // 기존 exit 버튼이 ui 직속이면 right로 이동
+      const ex = ui.querySelector('#exitGameBtn');
+      if (ex) { right.appendChild(ex); }
+      ui.appendChild(right);
+    }
+
+    if (!document.getElementById('skipResumeBtn')) {
+      const s = document.createElement('button');
+      s.id = 'skipResumeBtn';
+      s.type = 'button';
+      s.textContent = 'Skip → Resume';
+      right.insertBefore(s, right.firstChild);
+    }
+  }
+
+  const progressBadge = document.getElementById('progressBadge');
+  const skipResumeBtn = document.getElementById('skipResumeBtn');
+
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
@@ -21,7 +70,7 @@ window.addEventListener('load', () => {
   let paused = false;
 
   // =========================================================
-  // ✅ Web Audio API (No files) + icon-specific sounds
+  // ✅ Web Audio API (No files)
   // =========================================================
   let audioCtx = null;
   function getAudioCtx(){
@@ -57,51 +106,43 @@ window.addEventListener('load', () => {
     playBeep({ freq: 180, duration: 0.06, type: 'square', volume: 0.05 });
   }
 
-  // ✅ 아이콘별 “열림” 음색
+  // ✅ 아이콘별 음색
   function playOpenBy(id){
-    // school: warm
-    if (id === 'popupTrigger1'){
+    if (id === 'popupTrigger1'){ // school warm
       playBeep({ freq: 520, duration: 0.14, type: 'triangle', volume: 0.10 });
       playBeep({ freq: 660, duration: 0.10, type: 'triangle', volume: 0.07, detune: -6 });
       return;
     }
-    // training: bright tech
-    if (id === 'popupTrigger2'){
+    if (id === 'popupTrigger2'){ // training tech
       playBeep({ freq: 760, duration: 0.11, type: 'sine', volume: 0.09 });
       playBeep({ freq: 980, duration: 0.09, type: 'sine', volume: 0.06, detune: 8 });
       return;
     }
-    // company: "쿵"
-    if (id === 'popupTrigger3'){
+    if (id === 'popupTrigger3'){ // company "쿵"
       playBeep({ freq: 120, duration: 0.16, type: 'square', volume: 0.12 });
       playBeep({ freq: 90,  duration: 0.12, type: 'square', volume: 0.08, detune: -10 });
       return;
     }
-    // award: sparkle
-    if (id === 'popupTrigger4'){
+    if (id === 'popupTrigger4'){ // award sparkle
       playBeep({ freq: 1040, duration: 0.08, type: 'triangle', volume: 0.11 });
       playBeep({ freq: 1320, duration: 0.10, type: 'triangle', volume: 0.08, detune: 6 });
       playBeep({ freq: 1760, duration: 0.12, type: 'sine', volume: 0.06 });
       return;
     }
-    // cert: clean click
-    if (id === 'popupTrigger5'){
+    if (id === 'popupTrigger5'){ // cert click
       playBeep({ freq: 680, duration: 0.09, type: 'square', volume: 0.08 });
       playBeep({ freq: 520, duration: 0.08, type: 'square', volume: 0.06 });
       return;
     }
-    // lang: soft chime
-    if (id === 'popupTrigger6'){
+    if (id === 'popupTrigger6'){ // lang soft
       playBeep({ freq: 600, duration: 0.12, type: 'sine', volume: 0.09 });
       playBeep({ freq: 740, duration: 0.10, type: 'sine', volume: 0.06 });
       return;
     }
-    // timeline
     if (id === 'timeline'){
       playBeep({ freq: 880, duration: 0.12, type: 'triangle', volume: 0.10 });
       return;
     }
-    // fallback
     playBeep({ freq: 880, duration: 0.12, type: 'triangle', volume: 0.10 });
   }
 
@@ -109,31 +150,24 @@ window.addEventListener('load', () => {
   // ✅ Career months calculation (천재 + EBS 합산)
   // =========================================================
   function monthDiffInclusive(startY, startM, endY, endM){
-    // month is 1~12
     return (endY - startY) * 12 + (endM - startM) + 1;
   }
-
   function toYM(totalMonths){
     const years = Math.floor(totalMonths / 12);
     const months = totalMonths % 12;
     return { years, months };
   }
-
   function updateCareerBadge(){
-    // 천재교과서: 2021.08 ~ 2023.06 (inclusive)
     const chunjae = monthDiffInclusive(2021, 8, 2023, 6);
-
-    // EBS: 2024.07 ~ 현재 (inclusive)
     const now = new Date();
     const endY = now.getFullYear();
     const endM = now.getMonth() + 1;
     const ebs = monthDiffInclusive(2024, 7, endY, endM);
-
     const total = chunjae + ebs;
     const { years, months } = toYM(total);
-
     const text = `Career: ${years}년 ${months}개월`;
-    if (careerBadge) careerBadge.textContent = text;
+    const el = document.getElementById('careerBadge');
+    if (el) el.textContent = text;
   }
   updateCareerBadge();
 
@@ -168,7 +202,7 @@ window.addEventListener('load', () => {
   }
 
   // =========================================================
-  // ✅ particles
+  // ✅ particles (colored per icon)
   // =========================================================
   const dust = [];
   const stars = [];
@@ -181,7 +215,19 @@ window.addEventListener('load', () => {
       life: 18 + Math.random()*10
     });
   }
-  function spawnStarBurst(cx, cy){
+
+  function iconColor(id){
+    if (id === 'popupTrigger1') return [255, 220, 120]; // school
+    if (id === 'popupTrigger2') return [180, 150, 255]; // training
+    if (id === 'popupTrigger3') return [122, 162, 247]; // company
+    if (id === 'popupTrigger4') return [255, 140, 190]; // award
+    if (id === 'popupTrigger5') return [120, 170, 255]; // cert
+    if (id === 'popupTrigger6') return [110, 255, 190]; // lang
+    return [255,255,255]; // timeline/other
+  }
+
+  function spawnStarBurst(cx, cy, id=''){
+    const [r,g,b] = iconColor(id);
     const n = 6 + Math.floor(Math.random()*4);
     for (let i=0;i<n;i++){
       stars.push({
@@ -190,10 +236,12 @@ window.addEventListener('load', () => {
         vx: (Math.random()-0.5)*0.7,
         vy: (Math.random()-0.9)*0.9,
         life: 16 + Math.random()*14,
-        seed: Math.random()
+        seed: Math.random(),
+        r,g,b
       });
     }
   }
+
   function drawDust(){
     for (let i=dust.length-1;i>=0;i--){
       const p=dust[i];
@@ -204,28 +252,27 @@ window.addEventListener('load', () => {
       if (p.life<=0) dust.splice(i,1);
     }
   }
+
   function drawStars(){
     for (let i=stars.length-1;i>=0;i--){
       const s=stars[i];
       s.x+=s.vx; s.y+=s.vy; s.life-=1;
       const a=Math.max(0,s.life/30);
       const x=Math.round(s.x), y=Math.round(s.y);
-      ctx.fillStyle=`rgba(255,255,255,${0.85*a})`;
+      ctx.fillStyle=`rgba(${s.r},${s.g},${s.b},${0.85*a})`;
       ctx.fillRect(x,y,1,1);
       ctx.fillRect(x-1,y,1,1);
       ctx.fillRect(x+1,y,1,1);
       ctx.fillRect(x,y-1,1,1);
       ctx.fillRect(x,y+1,1,1);
-      ctx.fillStyle=`rgba(122,162,247,${0.35*a})`;
-      if (s.seed>0.6) ctx.fillRect(x+2,y,1,1);
-      if (s.seed<0.35) ctx.fillRect(x,y+2,1,1);
       if (s.life<=0) stars.splice(i,1);
     }
   }
+
   let shake = 0;
 
   // =========================================================
-  // ✅ timeline classify
+  // ✅ timeline classify colors
   // =========================================================
   function classifyTimeline(){
     if (!timelineBody) return;
@@ -270,13 +317,10 @@ window.addEventListener('load', () => {
   const infoModalClose = infoModal.querySelector('#infoModalClose');
 
   let typingTimer = null;
-
-  function typeWriter(el, fullText, speed=14){
-    // speed: ms/char
+  function typeWriter(el, fullText, speed=12){
     if (typingTimer) { clearInterval(typingTimer); typingTimer = null; }
     el.textContent = '';
     el.classList.add('typing');
-
     let i = 0;
     typingTimer = setInterval(() => {
       i++;
@@ -284,7 +328,6 @@ window.addEventListener('load', () => {
       if (i >= fullText.length){
         clearInterval(typingTimer);
         typingTimer = null;
-        // cursor 제거(원하면 유지해도 됨)
         el.classList.remove('typing');
       }
     }, speed);
@@ -298,7 +341,6 @@ window.addEventListener('load', () => {
     infoModalTitle.textContent = title || 'Info';
     infoModalBody.innerHTML = html || '';
 
-    // ✅ 타자기 효과: popup-text(있으면)만 적용
     const p = infoModalBody.querySelector('.popup-text');
     if (p){
       const text = (p.textContent || '').trim();
@@ -344,7 +386,85 @@ window.addEventListener('load', () => {
     });
   }
 
-  // ===== original popups -> timeline style =====
+  // =========================================================
+  // ✅ start modal + end modal
+  // =========================================================
+  const startModal = document.createElement('div');
+  startModal.className = 'game-modal';
+  startModal.id = 'startModal';
+  startModal.setAttribute('aria-hidden', 'true');
+  startModal.innerHTML = `
+    <div class="game-modal-card">
+      <div class="game-modal-head">
+        <div class="game-modal-title">Welcome</div>
+        <button class="game-modal-close" id="startCloseBtn" type="button">×</button>
+      </div>
+      <div class="game-modal-body">
+        <p class="popup-text">
+          Hi, I’m Jiyoung. This is my resume — playable.
+          Walk the road, meet the icons, and press Space to explore.
+        </p>
+        <div class="game-cta">
+          <button id="startBtn" type="button">Press Space / Start</button>
+          <button id="startSkipBtn" type="button">Skip → Resume</button>
+        </div>
+      </div>
+    </div>
+  `;
+  stage.appendChild(startModal);
+
+  const endModal = document.createElement('div');
+  endModal.className = 'game-modal';
+  endModal.id = 'endModal';
+  endModal.setAttribute('aria-hidden', 'true');
+  endModal.innerHTML = `
+    <div class="game-modal-card">
+      <div class="game-modal-head">
+        <div class="game-modal-title">Thanks for playing</div>
+        <button class="game-modal-close" id="endCloseBtn" type="button">×</button>
+      </div>
+      <div class="game-modal-body">
+        <p class="popup-text">
+          This game is my resume.
+          If you want to work together, let’s talk.
+        </p>
+        <div class="game-cta">
+          <a href="mailto:forest66young@gmail.com">Contact (Email)</a>
+          <a href="https://github.com/young-jii" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <button id="endToResumeBtn" type="button">Go to Resume</button>
+        </div>
+      </div>
+    </div>
+  `;
+  stage.appendChild(endModal);
+
+  function openModal(el){
+    paused = true;
+    el.classList.add('on');
+    el.setAttribute('aria-hidden','false');
+    const p = el.querySelector('.popup-text');
+    if (p){
+      const text = (p.textContent || '').trim();
+      p.textContent = '';
+      typeWriter(p, text, 10);
+    }
+  }
+  function closeModal(el){
+    el.classList.remove('on');
+    el.setAttribute('aria-hidden','true');
+    paused = false;
+  }
+
+  const startBtn = startModal.querySelector('#startBtn');
+  const startSkipBtn = startModal.querySelector('#startSkipBtn');
+  const startCloseBtn = startModal.querySelector('#startCloseBtn');
+
+  const endCloseBtn = endModal.querySelector('#endCloseBtn');
+  const endToResumeBtn = endModal.querySelector('#endToResumeBtn');
+
+  // =========================================================
+  // ✅ original popups -> timeline style modal
+  // =========================================================
   const triggerToPopup = {
     popupTrigger1: 'popup1',
     popupTrigger2: 'popup2',
@@ -373,7 +493,7 @@ window.addEventListener('load', () => {
   }
 
   // =========================================================
-  // ✅ objects (좌->우)
+  // ✅ objects (좌 -> 우 진행)
   // =========================================================
   const objects = [
     { type:'timeline', id:'timeline',      label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
@@ -388,8 +508,16 @@ window.addEventListener('load', () => {
     { type:'popup', id:'popupTrigger6', label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
   ];
 
+  const interactables = objects.map(o => o.id); // 엔딩 조건: 전부 방문
+  const visited = new Set();
+  function updateProgress(){
+    if (!progressBadge) return;
+    progressBadge.textContent = `Visited: ${visited.size}/${interactables.length}`;
+  }
+  updateProgress();
+
   // =========================================================
-  // ✅ icons (keep your filenames in ICON_FILES)
+  // ✅ icons (네가 저장한 파일명으로 바꿔도 됨)
   // =========================================================
   const BASES = ['assets/css/images/', 'assets/images/', 'images/', './assets/css/images/', './images/'];
 
@@ -485,6 +613,7 @@ window.addEventListener('load', () => {
     ctx.fillStyle = '#0b0f16';
     ctx.fillRect(0,0,W,H);
 
+    // pixel stars
     for (let y=0;y<H;y+=8){
       for (let x=0;x<W;x+=8){
         const a = ((x+y)/8)%2===0 ? 0.06 : 0.04;
@@ -493,14 +622,14 @@ window.addEventListener('load', () => {
       }
     }
 
-    // 길
+    // main road
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(12, 86, 296, 12);
     ctx.fillStyle = 'rgba(255,255,255,0.10)';
     ctx.fillRect(12, 86, 296, 1);
     ctx.fillRect(12, 97, 296, 1);
 
-    // 세로 길
+    // branches
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(90, 52, 10, 46);
     ctx.fillRect(128, 86, 10, 46);
@@ -515,13 +644,6 @@ window.addEventListener('load', () => {
     ctx.fillRect(0, scanY, W, 2);
   }
 
-  function ambientStars(){
-    if (Math.random() < 0.03){
-      const o = objects[Math.floor(Math.random()*objects.length)];
-      spawnStarBurst(o.x + o.w/2, o.y - 2);
-    }
-  }
-
   function drawObjects(ts){
     const near = nearestInteractable();
     const t = ts / 1000;
@@ -534,10 +656,9 @@ window.addEventListener('load', () => {
         ctx.strokeStyle = 'rgba(255,255,255,0.55)';
         ctx.lineWidth = 1;
         ctx.strokeRect(o.x - 3, o.y - 3, o.w + 6, o.h + 6);
-        ctx.strokeStyle = 'rgba(122,162,247,0.35)';
-        ctx.strokeRect(o.x - 6, o.y - 6, o.w + 12, o.h + 12);
 
-        if (Math.random() < 0.08) spawnStarBurst(o.x + o.w/2, o.y - 2);
+        // sparkle near
+        if (Math.random() < 0.10) spawnStarBurst(o.x + o.w/2, o.y - 2, o.id);
       }
 
       const size = 22;
@@ -614,8 +735,6 @@ window.addEventListener('load', () => {
   }
 
   function render(ts){
-    ambientStars();
-
     let sx=0, sy=0;
     if (shake > 0){
       sx = (Math.random()-0.5)*2;
@@ -706,7 +825,38 @@ window.addEventListener('load', () => {
   }
 
   // =========================================================
-  // ✅ toggle -> game on/off (but we make game MAIN)
+  // ✅ enter / exit / skip to resume
+  // =========================================================
+  function enterGame(){
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+  }
+  function exitGame(){
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event('change'));
+  }
+
+  function skipToResume(){
+    // 게임 끄고(페이지 보이게)
+    exitGame();
+    // 포트폴리오 본문으로 스크롤(원하면 #two 등으로 변경 가능)
+    setTimeout(() => {
+      const target = document.getElementById('two') || document.getElementById('main');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }
+
+  if (skipResumeBtn) skipResumeBtn.addEventListener('click', skipToResume);
+
+  if (exitBtn){
+    exitBtn.addEventListener('click', () => {
+      paused = false;
+      exitGame();
+    });
+  }
+
+  // =========================================================
+  // ✅ toggle game layer
   // =========================================================
   toggle.addEventListener('change', () => {
     const on = toggle.checked;
@@ -721,45 +871,92 @@ window.addEventListener('load', () => {
     }
   });
 
-  if (exitBtn){
-    exitBtn.addEventListener('click', () => {
-      paused = false;
-      toggle.checked = false;
-      toggle.dispatchEvent(new Event('change'));
-    });
+  // =========================================================
+  // ✅ start/end modal actions
+  // =========================================================
+  function showStart(){
+    openModal(startModal);
   }
+  function hideStart(){
+    closeModal(startModal);
+  }
+  function showEnd(){
+    openModal(endModal);
+  }
+  function hideEnd(){
+    closeModal(endModal);
+  }
+
+  startBtn.addEventListener('click', () => { hideStart(); });
+  startCloseBtn.addEventListener('click', () => { hideStart(); });
+  startSkipBtn.addEventListener('click', () => { hideStart(); skipToResume(); });
+
+  endCloseBtn.addEventListener('click', () => { hideEnd(); });
+  endToResumeBtn.addEventListener('click', () => { hideEnd(); skipToResume(); });
+
+  startModal.addEventListener('click', (e) => { if (e.target === startModal) hideStart(); });
+  endModal.addEventListener('click', (e) => { if (e.target === endModal) hideEnd(); });
 
   // =========================================================
   // ✅ key controls
   // =========================================================
   window.addEventListener('keydown', (e) => {
-    getAudioCtx(); // first user input unlock audio
+    getAudioCtx(); // unlock audio on first input
     keys.add(e.key);
 
     if (!layer.classList.contains('on')) return;
+
+    // start modal: Space -> start
+    if (startModal.classList.contains('on') && e.key === ' '){
+      e.preventDefault();
+      hideStart();
+      return;
+    }
 
     if (e.key === ' '){
       e.preventDefault();
       const o = nearestInteractable();
       if (!o) return;
 
+      // 캐릭터가 아이콘을 바라보는 연출 + 파티클
       setFaceTowardObject(o);
-      spawnStarBurst(o.x + o.w/2, o.y - 2);
+      spawnStarBurst(o.x + o.w/2, o.y - 2, o.id);
 
+      // 방문 기록 + 진행률
+      if (!visited.has(o.id)){
+        visited.add(o.id);
+        updateProgress();
+      }
+
+      // 아이콘별 열기
       if (o.type === 'timeline') openTimeline();
       else if (o.type === 'popup') openPopupLikeTimeline(o.id);
+
+      // 모두 방문하면 엔딩
+      if (visited.size === interactables.length){
+        // 살짝 딜레이 주면 “마지막 열기 → 엔딩” 흐름이 자연스러움
+        setTimeout(() => {
+          // 모달 열려있으면 닫은 뒤 엔딩
+          if (timelineModal && timelineModal.classList.contains('on')) closeTimeline();
+          if (infoModal.classList.contains('on')) closeInfoModal();
+          showEnd();
+        }, 450);
+      }
     }
 
     if (e.key === 'Escape'){
       e.preventDefault();
       paused = false;
-      toggle.checked = false;
-      toggle.dispatchEvent(new Event('change'));
+      exitGame();
     }
   });
+
   window.addEventListener('keyup', (e) => keys.delete(e.key));
 
-  // ✅ first landing: always enter game
-  toggle.checked = true;
-  toggle.dispatchEvent(new Event('change'));
+  // =========================================================
+  // ✅ first landing: always enter game + show start modal
+  // =========================================================
+  enterGame();
+  // 시작 시 “오프닝”부터
+  setTimeout(() => showStart(), 60);
 });
