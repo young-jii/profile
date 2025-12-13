@@ -1,926 +1,753 @@
-window.addEventListener('load', () => {
-  const toggle = document.getElementById('contentToggle');
-  const layer  = document.getElementById('gameLayer');
-  const stage  = document.querySelector('.game-stage');
-  const canvas = document.getElementById('gameCanvas');
+(() => {
+  // ✅ DOMContentLoaded로 더 빠르게 시작 (깜빡임 줄임)
+  document.addEventListener('DOMContentLoaded', () => {
+    const layer  = document.getElementById('gameLayer');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
 
-  const exitBtn = document.getElementById('exitGameBtn');
+    const exitBtn = document.getElementById('exitGameBtn');
+    const gameHint = document.getElementById('gameHint');
+    const careerHUD = document.getElementById('careerHUD');
 
-  const timelineModal = document.getElementById('timelineModal');
-  const timelineCloseBtn = document.getElementById('timelineCloseBtn');
-  const timelineBody = document.getElementById('timelineBody');
+    const timelineModal = document.getElementById('timelineModal');
+    const timelineCloseBtn = document.getElementById('timelineCloseBtn');
 
-  if (!toggle || !layer || !canvas || !stage) return;
+    const infoModal = document.getElementById('infoModal');
+    const infoCloseBtn = document.getElementById('infoCloseBtn');
+    const infoModalTitle = document.getElementById('infoModalTitle');
+    const infoModalBody = document.getElementById('infoModalBody');
 
-  // ====== ensure UI elements exist (career/progress) ======
-  const ui = stage.querySelector('.game-ui');
-  if (ui) {
-    let left = ui.querySelector('.game-left');
-    if (!left) {
-      left = document.createElement('div');
-      left.className = 'game-left';
-      const hint = ui.querySelector('#gameHint');
-      if (hint) left.appendChild(hint);
-      ui.insertBefore(left, ui.firstChild);
+    const thanksModal = document.getElementById('thanksModal');
+    const thanksCloseBtn = document.getElementById('thanksCloseBtn');
+
+    if (!layer || !canvas) return;
+
+    // ===== Canvas size =====
+    const W = canvas.width;
+    const H = canvas.height;
+    const TILE = 16;
+
+    // ===== Input =====
+    const keys = new Set();
+    let paused = false;
+
+    // ===== Player (충돌박스는 작게, 스프라이트는 크게) =====
+    const player = { x: 60, y: 170, w: 14, h: 14, vx: 0, vy: 0, speed: 1.6 };
+    const SRC_W = 16, SRC_H = 16;
+    const DRAW_W = 40, DRAW_H = 40; // 캐릭터 크기
+
+    let facing = 'right';  // down | up | left | right
+    let walkFrame = 0;
+    let walkTimer = 0;
+    const WALK_INTERVAL = 140;
+
+    // ===== Sprites =====
+    const SPRITE_BASE = 'assets/css/images/';
+    const sprites = {
+      front: new Image(),
+      back: new Image(),
+      side1: new Image(),
+      side2: new Image(),
+    };
+    sprites.front.src = SPRITE_BASE + 'dot_front.png';
+    sprites.back.src  = SPRITE_BASE + 'dot_back.png';
+    sprites.side1.src = SPRITE_BASE + 'dot_side(1).png';
+    sprites.side2.src = SPRITE_BASE + 'dot_side(2).png';
+
+    function allSpritesReady(){
+      return Object.values(sprites).every(img => img.complete && img.naturalWidth > 0);
     }
 
-    if (!document.getElementById('careerBadge')) {
-      const b = document.createElement('div');
-      b.id = 'careerBadge';
-      b.textContent = 'Career: --';
-      left.appendChild(b);
+    // ===== Icons (파일명은 아래 그대로 두고, 실제 파일명이 다르면 여기만 맞춰줘) =====
+    const icons = {
+      school: new Image(),
+      training: new Image(),
+      company: new Image(),
+      award: new Image(),
+      certificate: new Image(),
+      language: new Image(),
+      timeline: new Image(),
+    };
+    icons.school.src      = SPRITE_BASE + 'icon_school.png';
+    icons.training.src    = SPRITE_BASE + 'icon_training.png';
+    icons.company.src     = SPRITE_BASE + 'icon_company.png';
+    icons.award.src       = SPRITE_BASE + 'icon_award.png';
+    icons.certificate.src = SPRITE_BASE + 'icon_certificate.png';
+    icons.language.src    = SPRITE_BASE + 'icon_language.png';
+    icons.timeline.src    = SPRITE_BASE + 'icon_timeline.png';
+
+    function iconReady(img){ return img && img.complete && img.naturalWidth > 0; }
+
+    // ===== Map (가로 진행) =====
+    // 길(road)과 각 스팟 위치(좌→우)
+    const spots = [
+      { key:'school',      type:'info',     labelKo:'학력',       x: 110, y: 180, w: 22, h: 22, sound:'warm' },
+      { key:'training',    type:'info',     labelKo:'교육',       x: 220, y: 150, w: 22, h: 22, sound:'soft' },
+      { key:'company',     type:'info',     labelKo:'경력',       x: 340, y: 180, w: 22, h: 22, sound:'thud' },
+      { key:'award',       type:'info',     labelKo:'수상',       x: 460, y: 150, w: 22, h: 22, sound:'sparkle' },
+      { key:'certificate', type:'info',     labelKo:'자격',       x: 520, y: 210, w: 22, h: 22, sound:'clear' },
+      { key:'language',    type:'info',     labelKo:'언어',       x: 590, y: 170, w: 22, h: 22, sound:'clear' },
+      { key:'timeline',    type:'timeline', labelKo:'연혁',       x: 70,  y: 220, w: 22, h: 22, sound:'soft' },
+    ];
+
+    // ===== Popup content (제목은 모달 헤더에서만) =====
+    const POPUP_HTML = {
+      school: `
+        <div class="kv">
+          <div class="pill-row">
+            <span class="pill">문학 기반 기획</span>
+            <span class="pill">콘텐츠 구조화</span>
+            <span class="pill">스토리텔링</span>
+          </div>
+          <div class="small typewrite" data-text="국어국문학 전공을 바탕으로 ‘읽히는 문장’과 ‘정리되는 구조’를 함께 설계합니다."></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h4>학력</h4>
+            <ul>
+              <li>은광여자고등학교 (2012.03 ~ 2015.02)</li>
+              <li>경희대학교 국어국문학과 (2016.03 ~ 2022.02)</li>
+              <li><span class="hl">GPA 3.92 / 4.5</span></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>강점</h4>
+            <ul>
+              <li>복잡한 정보를 <span class="hl">빠르게 요약/구조화</span></li>
+              <li>콘텐츠 품질 기준을 <span class="hl">문장 단위까지 정교하게</span> 관리</li>
+              <li>사용자가 이해하기 쉬운 <span class="hl">UX 문장 설계</span></li>
+            </ul>
+          </div>
+        </div>
+      `,
+
+      training: `
+        <div class="kv">
+          <div class="pill-row">
+            <span class="pill">추천 시스템</span>
+            <span class="pill">NLP</span>
+            <span class="pill">데이터 분석</span>
+            <span class="pill">백엔드 이해</span>
+          </div>
+          <div class="small typewrite" data-text="비전공에서 시작해 ‘프로젝트를 끝까지 구현하는 학습 방식’을 몸에 익혔습니다."></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h4>과정</h4>
+            <ul>
+              <li>협업 필터링 및 자연어 처리 기반 AI 추천 분석 (2023.06 ~ 2023.12)</li>
+              <li>고객경험 데이터 기반 데이터 비즈니스 분석 (2024.02 ~ 2024.07)</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>바로 쓰는 능력</h4>
+            <ul>
+              <li>Python/Pandas로 데이터 가공·분석</li>
+              <li>SQL로 조회/집계/지표 추출</li>
+              <li>실무 프로세스를 <span class="hl">자동화</span> 관점으로 재구성</li>
+            </ul>
+          </div>
+        </div>
+      `,
+
+      company: `
+        <div class="kv">
+          <div class="pill-row">
+            <span class="pill">서비스 운영·기획</span>
+            <span class="pill">콘텐츠/데이터 구조화</span>
+            <span class="pill">프로세스 설계·개선</span>
+            <span class="pill">협업/조율</span>
+            <span class="pill">자동화</span>
+          </div>
+          <div class="small typewrite" data-text="운영 이슈를 ‘기준/데이터/흐름’으로 분해해 해결하고, 다시 재발하지 않도록 프로세스로 고정합니다."></div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <h4>천재교과서 (2021.08 ~ 2023.06)</h4>
+            <ul>
+              <li><span class="hl">국어과 교재 개발 PM</span>으로 기획·집필·편집·검수 전 과정 총괄</li>
+              <li>초·중등 국어 커리큘럼 구성, 학습 목표 설정, 일정/리스크 관리</li>
+              <li>삽화 발주 및 <span class="hl">외부 작업자(프리랜서/디자이너/집필진) 커뮤니케이션</span> 총괄</li>
+              <li>밀크티 국어 콘텐츠 검수 및 디지털 연계 콘텐츠 제작</li>
+              <li>수능 기출 문항 DB 재정비(문항 양식/기준 정리)</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h4>핵심 성과/역량</h4>
+            <ul>
+              <li>문항 DB 검수에서 <span class="hl">교육과정-문항 기준 재정의</span> → 오류 정비 체계화</li>
+              <li>개정(독해/글쓰기)에서 <span class="hl">난이도 기준·학습목표 구조 재설계</span></li>
+              <li>대규모 텍스트/문항을 <span class="hl">‘데이터처럼 구조화’</span>하고 기준을 설계</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid2" style="margin-top:12px;">
+          <div class="card">
+            <h4>EBS 중학프리미엄 (2024.07 ~ 현재)</h4>
+            <ul>
+              <li><span class="hl">플랫폼 운영 총괄</span>: 강좌 데이터 관리, 서비스 개편, 페이지 구조 개선</li>
+              <li><span class="hl">강좌 분류 체계 재설계</span>: 2015 → 2022 교육과정 기준 전면 재정비</li>
+              <li>통계/학습 데이터 기반 운영: 이용량·학습패턴·조회수 기반 개선안 도출</li>
+              <li>신규 서비스 오픈/운영: 진로진학, 영어 직독직해 등</li>
+              <li>검수/권한/외부 PD·개발·기획 부서 간 <span class="hl">조율 및 프로세스 정비</span></li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h4>데이터 기반 개선 경험</h4>
+            <ul>
+              <li>학습 이력 + 만족도 설문 데이터를 <span class="hl">Python</span>으로 가공/매칭</li>
+              <li>학년·지역·수강·완강률 등 행동 패턴 추출 → 만족도와 관계 도출</li>
+              <li>반복 업무(단축URL/권한/오류 탐지 등) 정리·자동화로 운영 효율 개선</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <h4>바로 활용 가능한 스택</h4>
+          <div class="pill-row">
+            <span class="pill">Python</span>
+            <span class="pill">Pandas</span>
+            <span class="pill">SQL</span>
+            <span class="pill">Selenium/BS4</span>
+            <span class="pill">HTML/CSS</span>
+            <span class="pill">기획/운영 문서화</span>
+            <span class="pill">협업 커뮤니케이션</span>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <h4>한 줄 요약</h4>
+          <div class="small">“콘텐츠/데이터/프로세스”를 한 덩어리로 보고, 운영 문제를 구조화해 개선합니다.</div>
+        </div>
+      `,
+
+      award: `
+        <div class="kv">
+          <div class="pill-row">
+            <span class="pill">해커톤</span>
+            <span class="pill">빠른 구현</span>
+            <span class="pill">팀 협업</span>
+          </div>
+          <div class="small typewrite" data-text="짧은 시간 안에 ‘완성’까지 끌고 가는 집중력과 실행력을 증명했습니다."></div>
+        </div>
+        <div class="card">
+          <h4>수상</h4>
+          <ul>
+            <li>2023 제 1회 K-디지털플랫폼 AI 경진대회 <span class="hl">특별상</span> (2023.12.13)</li>
+          </ul>
+        </div>
+      `,
+
+      certificate: `
+        <div class="kv">
+          <div class="pill-row">
+            <span class="pill">실무 기반 역량</span>
+            <span class="pill">데이터/문서</span>
+            <span class="pill">자기주도</span>
+          </div>
+          <div class="small typewrite" data-text="필요한 능력을 ‘자격 + 실무’로 동시에 갖추는 방향으로 성장해왔습니다."></div>
+        </div>
+        <div class="card">
+          <h4>자격</h4>
+          <ul>
+            <li>워드프로세서 (2019.09.13)</li>
+            <li>GTQ 1급 (2020.02.07)</li>
+            <li>컴퓨터활용능력 1급 (2020.08.28)</li>
+            <li>SQLD (2024.04.05)</li>
+            <li>데이터분석 준전문가 (2025.09.05)</li>
+          </ul>
+        </div>
+      `,
+
+      language: `
+        <div class="kv">
+          <div class="pill-row">
+            <span class="pill">KR</span>
+            <span class="pill">EN</span>
+            <span class="pill">JP</span>
+          </div>
+          <div class="small typewrite" data-text="문장 감각(국어) + 실무 소통(영어)을 바탕으로 협업 커뮤니케이션을 안정적으로 수행합니다."></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h4>영어</h4>
+            <ul>
+              <li>TOEIC 785 (2024.06.30)</li>
+              <li>TOEIC Speaking IH / 150 (2025.09.13)</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>일본어</h4>
+            <ul>
+              <li>회화 수료 경험</li>
+              <li>여행 수준 의사소통 가능</li>
+            </ul>
+          </div>
+        </div>
+      `,
+    };
+
+    // ===== Modal open/close =====
+    function lockScroll(){
+      document.body.style.overflow = 'hidden';
     }
-    if (!document.getElementById('progressBadge')) {
-      const p = document.createElement('div');
-      p.id = 'progressBadge';
-      p.textContent = 'Visited: 0/0';
-      left.appendChild(p);
+    function unlockScroll(){
+      document.body.style.overflow = '';
     }
 
-    let right = ui.querySelector('.game-right');
-    if (!right) {
-      right = document.createElement('div');
-      right.className = 'game-right';
-      const ex = ui.querySelector('#exitGameBtn');
-      if (ex) right.appendChild(ex);
-      ui.appendChild(right);
+    function openTimeline(){
+      paused = true;
+      timelineModal.classList.add('on');
+      timelineModal.setAttribute('aria-hidden', 'false');
+      lockScroll();
+      playUISound('soft');
     }
-  }
-
-  const progressBadge = document.getElementById('progressBadge');
-
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-
-  const W = canvas.width, H = canvas.height;
-  const keys = new Set();
-  let paused = false;
-
-  // =========================================================
-  // ✅ Web Audio API (No files)
-  // =========================================================
-  let audioCtx = null;
-  function getAudioCtx(){
-    if (!audioCtx){
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function closeTimeline(){
+      timelineModal.classList.remove('on');
+      timelineModal.setAttribute('aria-hidden', 'true');
+      paused = false;
+      unlockScroll();
     }
-    if (audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
-    return audioCtx;
-  }
 
-  function playBeep({ freq=440, duration=0.08, type='square', volume=0.08, detune=0 } = {}){
-    const a = getAudioCtx();
-    const osc = a.createOscillator();
-    const gain = a.createGain();
-
-    osc.type = type;
-    osc.frequency.value = freq;
-    osc.detune.value = detune;
-
-    const now = a.currentTime;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(volume, now + 0.01);
-    gain.gain.linearRampToValueAtTime(0, now + duration);
-
-    osc.connect(gain);
-    gain.connect(a.destination);
-
-    osc.start(now);
-    osc.stop(now + duration + 0.02);
-  }
-
-  function playStep(){
-    playBeep({ freq: 180, duration: 0.06, type: 'square', volume: 0.05 });
-  }
-
-  // ✅ 아이콘별 음색
-  function playOpenBy(id){
-    if (id === 'popupTrigger1'){ // school warm
-      playBeep({ freq: 520, duration: 0.14, type: 'triangle', volume: 0.10 });
-      playBeep({ freq: 660, duration: 0.10, type: 'triangle', volume: 0.07, detune: -6 });
-      return;
+    function openInfo(key, titleKo){
+      paused = true;
+      infoModalTitle.textContent = titleKo;
+      infoModalBody.innerHTML = POPUP_HTML[key] || `<p>준비중입니다.</p>`;
+      infoModal.classList.add('on');
+      infoModal.setAttribute('aria-hidden', 'false');
+      lockScroll();
+      runTypewriter(infoModalBody);
     }
-    if (id === 'popupTrigger2'){ // training
-      playBeep({ freq: 760, duration: 0.11, type: 'sine', volume: 0.09 });
-      playBeep({ freq: 980, duration: 0.09, type: 'sine', volume: 0.06, detune: 8 });
-      return;
+    function closeInfo(){
+      infoModal.classList.remove('on');
+      infoModal.setAttribute('aria-hidden', 'true');
+      paused = false;
+      unlockScroll();
     }
-    if (id === 'popupTrigger3'){ // company "쿵"
-      playBeep({ freq: 120, duration: 0.16, type: 'square', volume: 0.12 });
-      playBeep({ freq: 90,  duration: 0.12, type: 'square', volume: 0.08, detune: -10 });
-      return;
+
+    function openThanks(){
+      paused = true;
+      thanksModal.classList.add('on');
+      thanksModal.setAttribute('aria-hidden', 'false');
+      lockScroll();
+      runTypewriter(thanksModal);
+      playUISound('sparkle');
     }
-    if (id === 'popupTrigger4'){ // award sparkle
-      playBeep({ freq: 1040, duration: 0.08, type: 'triangle', volume: 0.11 });
-      playBeep({ freq: 1320, duration: 0.10, type: 'triangle', volume: 0.08, detune: 6 });
-      playBeep({ freq: 1760, duration: 0.12, type: 'sine', volume: 0.06 });
-      return;
+    function closeThanks(){
+      thanksModal.classList.remove('on');
+      thanksModal.setAttribute('aria-hidden', 'true');
+      paused = false;
+      unlockScroll();
     }
-    if (id === 'popupTrigger5'){ // cert
-      playBeep({ freq: 680, duration: 0.09, type: 'square', volume: 0.08 });
-      playBeep({ freq: 520, duration: 0.08, type: 'square', volume: 0.06 });
-      return;
-    }
-    if (id === 'popupTrigger6'){ // lang
-      playBeep({ freq: 600, duration: 0.12, type: 'sine', volume: 0.09 });
-      playBeep({ freq: 740, duration: 0.10, type: 'sine', volume: 0.06 });
-      return;
-    }
-    if (id === 'timeline'){
-      playBeep({ freq: 880, duration: 0.12, type: 'triangle', volume: 0.10 });
-      return;
-    }
-    playBeep({ freq: 880, duration: 0.12, type: 'triangle', volume: 0.10 });
-  }
 
-  // =========================================================
-  // ✅ Career months (천재 + EBS)
-  // =========================================================
-  function monthDiffInclusive(startY, startM, endY, endM){
-    return (endY - startY) * 12 + (endM - startM) + 1;
-  }
-  function toYM(totalMonths){
-    const years = Math.floor(totalMonths / 12);
-    const months = totalMonths % 12;
-    return { years, months };
-  }
-  function updateCareerBadge(){
-    const chunjae = monthDiffInclusive(2021, 8, 2023, 6);
-    const now = new Date();
-    const endY = now.getFullYear();
-    const endM = now.getMonth() + 1;
-    const ebs = monthDiffInclusive(2024, 7, endY, endM);
+    // click close
+    if (timelineCloseBtn) timelineCloseBtn.addEventListener('click', closeTimeline);
+    if (infoCloseBtn) infoCloseBtn.addEventListener('click', closeInfo);
+    if (thanksCloseBtn) thanksCloseBtn.addEventListener('click', closeThanks);
 
-    const total = chunjae + ebs;
-    const { years, months } = toYM(total);
-
-    const el = document.getElementById('careerBadge');
-    if (el) el.textContent = `Career: ${years}년 ${months}개월`;
-  }
-  updateCareerBadge();
-
-  // =========================================================
-  // ✅ player + facing hold
-  // =========================================================
-  const player = { x: 40, y: 88, w: 12, h: 12, vx: 0, vy: 0, speed: 1.25 };
-  const DRAW_W = 32, DRAW_H = 32;
-
-  let facing = 'right';
-  let walkFrame = 0;
-  let walkTimer = 0;
-  const WALK_INTERVAL = 140;
-
-  let faceHoldUntil = 0;
-  let faceHoldDir = null;
-  const FACE_HOLD_MS = 420;
-
-  function setFaceTowardObject(o){
-    const ox = o.x + o.w / 2;
-    const oy = o.y + o.h / 2;
-    const px = player.x + player.w / 2;
-    const py = player.y + player.h / 2;
-
-    const dx = ox - px;
-    const dy = oy - py;
-
-    if (Math.abs(dx) > Math.abs(dy)) faceHoldDir = (dx >= 0) ? 'right' : 'left';
-    else faceHoldDir = (dy >= 0) ? 'down' : 'up';
-
-    faceHoldUntil = performance.now() + FACE_HOLD_MS;
-  }
-
-  // =========================================================
-  // ✅ particles
-  // =========================================================
-  const dust = [];
-  const stars = [];
-
-  function spawnDust(){
-    dust.push({
-      x: player.x + player.w/2,
-      y: player.y + player.h,
-      vx: (Math.random()-0.5)*0.4,
-      vy: Math.random()*0.2,
-      life: 18 + Math.random()*10
+    // overlay click close
+    [timelineModal, infoModal, thanksModal].forEach(modal => {
+      if (!modal) return;
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal){
+          if (modal === timelineModal) closeTimeline();
+          if (modal === infoModal) closeInfo();
+          if (modal === thanksModal) closeThanks();
+        }
+      });
     });
-  }
 
-  function iconColor(id){
-    if (id === 'popupTrigger1') return [255, 220, 120]; // school
-    if (id === 'popupTrigger2') return [180, 150, 255]; // training
-    if (id === 'popupTrigger3') return [122, 162, 247]; // company
-    if (id === 'popupTrigger4') return [255, 140, 190]; // award
-    if (id === 'popupTrigger5') return [120, 170, 255]; // cert
-    if (id === 'popupTrigger6') return [110, 255, 190]; // lang
-    return [255,255,255];
-  }
-
-  function spawnStarBurst(cx, cy, id=''){
-    const [r,g,b] = iconColor(id);
-    const n = 6 + Math.floor(Math.random()*4);
-    for (let i=0;i<n;i++){
-      stars.push({
-        x: cx + (Math.random()-0.5)*6,
-        y: cy + (Math.random()-0.5)*6,
-        vx: (Math.random()-0.5)*0.7,
-        vy: (Math.random()-0.9)*0.9,
-        life: 16 + Math.random()*14,
-        r,g,b
+    // ===== Typewriter =====
+    function runTypewriter(root){
+      const targets = root.querySelectorAll('.typewrite[data-text]');
+      targets.forEach(el => {
+        const full = el.getAttribute('data-text') || '';
+        el.textContent = '';
+        let i = 0;
+        const timer = setInterval(() => {
+          i++;
+          el.textContent = full.slice(0, i);
+          if (i >= full.length) clearInterval(timer);
+        }, 16);
       });
     }
-  }
 
-  function drawDust(){
-    for (let i=dust.length-1;i>=0;i--){
-      const p=dust[i];
-      p.x+=p.vx; p.y+=p.vy; p.life-=1;
-      const a=Math.max(0,p.life/28);
-      ctx.fillStyle=`rgba(255,255,255,${0.35*a})`;
-      ctx.fillRect(Math.round(p.x),Math.round(p.y),1,1);
-      if (p.life<=0) dust.splice(i,1);
-    }
-  }
+    // ===== WebAudio (파일 없이) =====
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
 
-  function drawStars(){
-    for (let i=stars.length-1;i>=0;i--){
-      const s=stars[i];
-      s.x+=s.vx; s.y+=s.vy; s.life-=1;
-      const a=Math.max(0,s.life/30);
-      const x=Math.round(s.x), y=Math.round(s.y);
-      ctx.fillStyle=`rgba(${s.r},${s.g},${s.b},${0.85*a})`;
-      ctx.fillRect(x,y,1,1);
-      ctx.fillRect(x-1,y,1,1);
-      ctx.fillRect(x+1,y,1,1);
-      ctx.fillRect(x,y-1,1,1);
-      ctx.fillRect(x,y+1,1,1);
-      if (s.life<=0) stars.splice(i,1);
-    }
-  }
-
-  let shake = 0;
-
-  // =========================================================
-  // ✅ timeline classify colors
-  // =========================================================
-  function classifyTimeline(){
-    if (!timelineBody) return;
-    const items = [...timelineBody.querySelectorAll('.tl-item')];
-    items.forEach(item => {
-      const t = item.textContent || '';
-      item.classList.remove('tl-edu','tl-cert','tl-career','tl-award','tl-test','tl-train');
-
-      if (t.includes('고등학교') || t.includes('대학교')) { item.classList.add('tl-edu'); return; }
-      if (t.includes('워드프로세서') || t.includes('GTQ') || t.includes('컴퓨터활용능력') ||
-          t.includes('SQL 개발자') || t.includes('데이터 분석 준전문가') || t.includes('SQLD')) {
-        item.classList.add('tl-cert'); return;
-      }
-      if (t.includes('수상') || t.includes('특별상') || t.includes('경진대회')) { item.classList.add('tl-award'); return; }
-      if (t.includes('과정') || t.includes('산학협력단') || t.includes('협회')) { item.classList.add('tl-train'); return; }
-      if (t.includes('TOEIC') || t.includes('Speaking')) { item.classList.add('tl-test'); return; }
-      if (t.includes('천재교과서') || t.includes('EBS')) { item.classList.add('tl-career'); return; }
-    });
-  }
-  classifyTimeline();
-
-  // =========================================================
-  // ✅ unified Info Modal (timeline style)
-  // =========================================================
-  const infoModal = document.createElement('div');
-  infoModal.id = 'infoModal';
-  infoModal.className = 'game-modal';
-  infoModal.setAttribute('aria-hidden', 'true');
-  infoModal.innerHTML = `
-    <div class="game-modal-card">
-      <div class="game-modal-head">
-        <div class="game-modal-title" id="infoModalTitle">Info</div>
-        <button class="game-modal-close" id="infoModalClose" type="button">×</button>
-      </div>
-      <div class="game-modal-body" id="infoModalBody"></div>
-    </div>
-  `;
-  stage.appendChild(infoModal);
-
-  const infoModalTitle = infoModal.querySelector('#infoModalTitle');
-  const infoModalBody  = infoModal.querySelector('#infoModalBody');
-  const infoModalClose = infoModal.querySelector('#infoModalClose');
-
-  let typingTimer = null;
-  function typeWriter(el, fullText, speed=12){
-    if (typingTimer) { clearInterval(typingTimer); typingTimer = null; }
-    el.textContent = '';
-    el.classList.add('typing');
-    let i = 0;
-    typingTimer = setInterval(() => {
-      i++;
-      el.textContent = fullText.slice(0, i);
-      if (i >= fullText.length){
-        clearInterval(typingTimer);
-        typingTimer = null;
-        el.classList.remove('typing');
-      }
-    }, speed);
-  }
-
-  function openInfoModal(title, html, soundId){
-    shake = 8;
-    playOpenBy(soundId || 'timeline');
-    paused = true;
-
-    infoModalTitle.textContent = title || 'Info';
-    infoModalBody.innerHTML = html || '';
-
-    const p = infoModalBody.querySelector('.popup-text');
-    if (p){
-      const text = (p.textContent || '').trim();
-      p.textContent = '';
-      typeWriter(p, text, 12);
+    function ensureAudio(){
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
-    infoModal.classList.add('on');
-    infoModal.setAttribute('aria-hidden', 'false');
-  }
+    function tone({freq=440, type='sine', dur=0.09, gain=0.08, glideTo=null}){
+      ensureAudio();
+      const t0 = audioCtx.currentTime;
 
-  function closeInfoModal(){
-    if (typingTimer) { clearInterval(typingTimer); typingTimer = null; }
-    infoModal.classList.remove('on');
-    infoModal.setAttribute('aria-hidden', 'true');
-    paused = false;
-  }
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
 
-  infoModalClose.addEventListener('click', closeInfoModal);
-  infoModal.addEventListener('click', (e) => {
-    if (e.target === infoModal) closeInfoModal();
-  });
-
-  // ===== timeline modal =====
-  function openTimeline(){
-    if (!timelineModal) return;
-    shake = 8;
-    playOpenBy('timeline');
-    paused = true;
-    timelineModal.classList.add('on');
-    timelineModal.setAttribute('aria-hidden', 'false');
-  }
-  function closeTimeline(){
-    if (!timelineModal) return;
-    timelineModal.classList.remove('on');
-    timelineModal.setAttribute('aria-hidden', 'true');
-    paused = false;
-  }
-  if (timelineCloseBtn) timelineCloseBtn.addEventListener('click', closeTimeline);
-  if (timelineModal){
-    timelineModal.addEventListener('click', (e) => {
-      if (e.target === timelineModal) closeTimeline();
-    });
-  }
-
-  // =========================================================
-  // ✅ start modal (오프닝)
-  // =========================================================
-  const startModal = document.createElement('div');
-  startModal.className = 'game-modal';
-  startModal.id = 'startModal';
-  startModal.setAttribute('aria-hidden', 'true');
-  startModal.innerHTML = `
-    <div class="game-modal-card">
-      <div class="game-modal-head">
-        <div class="game-modal-title">Welcome</div>
-        <button class="game-modal-close" id="startCloseBtn" type="button">×</button>
-      </div>
-      <div class="game-modal-body">
-        <p class="popup-text">
-          안녕하세요, 박지영입니다.
-          제 이력서를 ‘플레이 가능한 게임’ 형태로 구성해보았습니다.
-          방향키로 이동하고, 아이콘 근처에서 Space로 확인해보세요.
-        </p>
-        <div class="game-cta">
-          <a href="#" id="startBtn">Press Space / Start</a>
-        </div>
-      </div>
-    </div>
-  `;
-  stage.appendChild(startModal);
-
-  function openModal(el){
-    paused = true;
-    el.classList.add('on');
-    el.setAttribute('aria-hidden','false');
-    const p = el.querySelector('.popup-text');
-    if (p){
-      const text = (p.textContent || '').trim();
-      p.textContent = '';
-      typeWriter(p, text, 10);
-    }
-  }
-  function closeModal(el){
-    el.classList.remove('on');
-    el.setAttribute('aria-hidden','true');
-    paused = false;
-  }
-
-  const startBtn = startModal.querySelector('#startBtn');
-  const startCloseBtn = startModal.querySelector('#startCloseBtn');
-
-  startBtn.addEventListener('click', (e) => { e.preventDefault(); closeModal(startModal); });
-  startCloseBtn.addEventListener('click', () => closeModal(startModal));
-  startModal.addEventListener('click', (e) => { if (e.target === startModal) closeModal(startModal); });
-
-  // =========================================================
-  // ✅ Exit Game → Thanks modal (요청사항 반영)
-  // =========================================================
-  const thanksModal = document.createElement('div');
-  thanksModal.className = 'game-modal';
-  thanksModal.id = 'thanksModal';
-  thanksModal.setAttribute('aria-hidden','true');
-  thanksModal.innerHTML = `
-    <div class="game-modal-card">
-      <div class="game-modal-head">
-        <div class="game-modal-title">Thanks</div>
-        <button class="game-modal-close" id="thanksCloseBtn" type="button">×</button>
-      </div>
-      <div class="game-modal-body">
-        <p class="popup-text">
-          봐주셔서 감사합니다.
-          저의 이력서를 게임 형태로 제작해보았는데, 즐겁게 봐주셨으면 좋겠습니다.
-          저와 함께 일하고 싶으시다면, 연락 부탁드립니다.
-        </p>
-        <div class="game-cta">
-          <a href="mailto:jiyoung16park@gmail.com">Email</a>
-        </div>
-      </div>
-    </div>
-  `;
-  stage.appendChild(thanksModal);
-
-  const thanksCloseBtn = thanksModal.querySelector('#thanksCloseBtn');
-  function openThanks(){
-    shake = 8;
-    playBeep({ freq: 740, duration: 0.12, type: 'triangle', volume: 0.09 });
-    openModal(thanksModal);
-  }
-  function closeThanks(){
-    closeModal(thanksModal);
-  }
-  thanksCloseBtn.addEventListener('click', closeThanks);
-  thanksModal.addEventListener('click', (e) => { if (e.target === thanksModal) closeThanks(); });
-
-  // =========================================================
-  // ✅ original popups -> timeline style modal
-  // =========================================================
-  const triggerToPopup = {
-    popupTrigger1: 'popup1',
-    popupTrigger2: 'popup2',
-    popupTrigger3: 'popup3',
-    popupTrigger4: 'popup4',
-    popupTrigger5: 'popup5',
-    popupTrigger6: 'popup6',
-  };
-
-  function openPopupLikeTimeline(triggerId){
-    const popupId = triggerToPopup[triggerId];
-    const overlay = popupId ? document.getElementById(popupId) : null;
-    if (!overlay) { paused = false; return; }
-
-    const content = overlay.querySelector('.popup-content');
-    if (!content) { paused = false; return; }
-
-    const clone = content.cloneNode(true);
-    const closeBtn = clone.querySelector('.close-popup');
-    if (closeBtn) closeBtn.remove();
-
-    const h3 = clone.querySelector('.popup-title');
-    const title = h3 ? h3.textContent.trim() : (triggerId || 'Info');
-
-    openInfoModal(title, clone.innerHTML, triggerId);
-  }
-
-  // =========================================================
-  // ✅ objects (좌 -> 우 진행)
-  // =========================================================
-  const objects = [
-    { type:'timeline', id:'timeline',      label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger1', label:'School',   x: 82,  y: 44,  w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger2', label:'Training', x: 120, y: 128, w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger3', label:'Company',  x: 180, y: 44,  w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger4', label:'Award',    x: 220, y: 128, w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger5', label:'Cert',     x: 268, y: 44,  w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger6', label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
-  ];
-
-  const visited = new Set(objects.map(o => o.id)); // 숫자 표현용: "몇 개나 있는지"
-  const visitedNow = new Set();
-  function updateProgress(){
-    if (!progressBadge) return;
-    progressBadge.textContent = `Visited: ${visitedNow.size}/${visited.size}`;
-  }
-  updateProgress();
-
-  // =========================================================
-  // ✅ icons
-  // =========================================================
-  const BASES = ['assets/css/images/', 'assets/images/', 'images/', './assets/css/images/', './images/'];
-
-  const icons = {
-    popupTrigger1: new Image(),
-    popupTrigger2: new Image(),
-    popupTrigger3: new Image(),
-    popupTrigger4: new Image(),
-    popupTrigger5: new Image(),
-    popupTrigger6: new Image(),
-    timeline:      new Image(),
-  };
-  const iconReady = { popupTrigger1:false, popupTrigger2:false, popupTrigger3:false, popupTrigger4:false, popupTrigger5:false, popupTrigger6:false, timeline:false };
-
-  const ICON_FILES = {
-    popupTrigger1: 'icon_school.png',
-    popupTrigger2: 'icon_training.png',
-    popupTrigger3: 'icon_company.png',
-    popupTrigger4: 'icon_award.png',
-    popupTrigger5: 'icon_cert.png',
-    popupTrigger6: 'icon_lang.png',
-    timeline:      'icon_timeline.png',
-  };
-
-  function tryLoadFromBases(img, key, filename){
-    let i = 0;
-    const attempt = () => {
-      if (i >= BASES.length){ iconReady[key] = false; return; }
-      const url = new URL(BASES[i++] + filename, document.baseURI).href;
-      img.onload = () => { iconReady[key] = true; };
-      img.onerror = attempt;
-      img.src = url;
-    };
-    attempt();
-  }
-  Object.keys(icons).forEach(k => tryLoadFromBases(icons[k], k, ICON_FILES[k]));
-  const iconOk = (k) => iconReady[k] && icons[k].complete && icons[k].naturalWidth > 0;
-
-  // =========================================================
-  // ✅ sprites (캐릭터)
-  // =========================================================
-  const sprites = { front:new Image(), back:new Image(), side1:new Image(), side2:new Image() };
-  const spriteReady = { front:false, back:false, side1:false, side2:false };
-
-  const FILES = {
-    front: ['dot_front.png'],
-    back:  ['dot_back.png'],
-    side1: ['dot_side_1.png','dot_side(1).png'],
-    side2: ['dot_side_2.png','dot_side(2).png'],
-  };
-
-  function tryLoadSprite(img, key, baseIdx, fileIdx){
-    const base = BASES[baseIdx];
-    const file = FILES[key][fileIdx];
-    const url = new URL(base + file, document.baseURI).href;
-
-    img.onload = () => { spriteReady[key] = true; };
-    img.onerror = () => {
-      const nf = fileIdx + 1;
-      if (nf < FILES[key].length) return tryLoadSprite(img, key, baseIdx, nf);
-      const nb = baseIdx + 1;
-      if (nb < BASES.length) return tryLoadSprite(img, key, nb, 0);
-      spriteReady[key] = false;
-    };
-    img.src = url;
-  }
-
-  tryLoadSprite(sprites.front, 'front', 0, 0);
-  tryLoadSprite(sprites.back,  'back',  0, 0);
-  tryLoadSprite(sprites.side1, 'side1', 0, 0);
-  tryLoadSprite(sprites.side2, 'side2', 0, 0);
-
-  const ok = (k) => spriteReady[k] === true;
-
-  // =========================================================
-  // ✅ interaction helpers
-  // =========================================================
-  function rectsOverlap(a, b){
-    return a.x < b.x + b.w && a.x + a.w > b.x &&
-           a.y < b.y + b.h && a.y + a.h > b.y;
-  }
-  function nearestInteractable(){
-    const zone = { x: player.x - 6, y: player.y - 6, w: player.w + 12, h: player.h + 12 };
-    for (const o of objects){
-      if (rectsOverlap(zone, o)) return o;
-    }
-    return null;
-  }
-
-  // =========================================================
-  // ✅ render
-  // =========================================================
-  function drawBG(ts){
-    const t = ts / 1000;
-    ctx.fillStyle = '#0b0f16';
-    ctx.fillRect(0,0,W,H);
-
-    // pixel stars
-    for (let y=0;y<H;y+=8){
-      for (let x=0;x<W;x+=8){
-        const a = ((x+y)/8)%2===0 ? 0.06 : 0.04;
-        ctx.fillStyle = `rgba(255,255,255,${a})`;
-        ctx.fillRect(x,y,1,1);
-      }
-    }
-
-    // main road
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(12, 86, 296, 12);
-    ctx.fillStyle = 'rgba(255,255,255,0.10)';
-    ctx.fillRect(12, 86, 296, 1);
-    ctx.fillRect(12, 97, 296, 1);
-
-    // branches
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(90, 52, 10, 46);
-    ctx.fillRect(128, 86, 10, 46);
-    ctx.fillRect(188, 52, 10, 46);
-    ctx.fillRect(228, 86, 10, 46);
-    ctx.fillRect(276, 52, 10, 46);
-    ctx.fillRect(304, 86, 10, 46);
-
-    // scan line
-    const scanY = Math.floor((t * 24) % H);
-    ctx.fillStyle = 'rgba(122,162,247,0.06)';
-    ctx.fillRect(0, scanY, W, 2);
-  }
-
-  function drawObjects(ts){
-    const near = nearestInteractable();
-    const t = ts / 1000;
-
-    for (const o of objects){
-      const bob = Math.sin(t*3 + o.x*0.05 + o.y*0.08) * 2;
-      const isNear = near && near.id === o.id;
-
-      if (isNear){
-        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(o.x - 3, o.y - 3, o.w + 6, o.h + 6);
-        if (Math.random() < 0.10) spawnStarBurst(o.x + o.w/2, o.y - 2, o.id);
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t0);
+      if (glideTo){
+        o.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur);
       }
 
-      const size = 22;
-      const scale = isNear ? 1.12 : 1.0;
-      const dw = size * scale;
-      const dh = size * scale;
-      const dx = o.x + o.w/2 - dw/2;
-      const dy = o.y + o.h/2 - dh/2 + bob;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
-      if (iconOk(o.id)){
-        ctx.drawImage(icons[o.id], Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0);
+      o.stop(t0 + dur + 0.02);
+    }
+
+    function playUISound(kind){
+      // 아이콘마다 음색 다르게
+      if (kind === 'warm'){
+        tone({freq: 392, type:'sine', dur:0.10, gain:0.08, glideTo:440});
+        return;
+      }
+      if (kind === 'thud'){
+        tone({freq: 110, type:'triangle', dur:0.12, gain:0.10, glideTo:90});
+        return;
+      }
+      if (kind === 'sparkle'){
+        tone({freq: 880, type:'square', dur:0.06, gain:0.06, glideTo:1320});
+        tone({freq: 1320, type:'sine', dur:0.05, gain:0.05, glideTo:1760});
+        return;
+      }
+      if (kind === 'clear'){
+        tone({freq: 660, type:'sine', dur:0.08, gain:0.06, glideTo:880});
+        return;
+      }
+      // soft default
+      tone({freq: 520, type:'sine', dur:0.08, gain:0.06, glideTo:600});
+    }
+
+    // 사용자 첫 입력 시 오디오 활성화
+    window.addEventListener('keydown', () => { ensureAudio(); }, { once:true });
+
+    // ===== Career months HUD =====
+    function monthsInclusive(startY, startM, endY, endM){
+      // startM/endM: 1~12
+      const a = startY * 12 + (startM - 1);
+      const b = endY * 12 + (endM - 1);
+      return Math.max(0, (b - a) + 1);
+    }
+
+    function nowYM(){
+      const d = new Date();
+      return { y: d.getFullYear(), m: d.getMonth() + 1 };
+    }
+
+    function fmtYM(totalMonths){
+      const y = Math.floor(totalMonths / 12);
+      const m = totalMonths % 12;
+      return `${y}년 ${m}개월`;
+    }
+
+    function updateCareerHUD(){
+      const cheonjae = monthsInclusive(2021, 8, 2023, 6);
+      const now = nowYM();
+      const ebs = monthsInclusive(2024, 7, now.y, now.m);
+      const total = cheonjae + ebs;
+      careerHUD.textContent = `경력: 총 ${fmtYM(total)} (천재교과서 ${fmtYM(cheonjae)} + EBS ${fmtYM(ebs)})`;
+    }
+    updateCareerHUD();
+
+    // ===== Collision / interact =====
+    function rectsOverlap(a,b){
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function nearestSpot(){
+      const zone = { x: player.x - 8, y: player.y - 8, w: player.w + 16, h: player.h + 16 };
+      for (const s of spots){
+        if (rectsOverlap(zone, s)) return s;
+      }
+      return null;
+    }
+
+    // ===== Facing look-at effect =====
+    let lookLock = 0; // ms
+    function faceToward(s){
+      const cx = player.x + player.w/2;
+      const cy = player.y + player.h/2;
+      const tx = s.x + s.w/2;
+      const ty = s.y + s.h/2;
+      const dx = tx - cx;
+      const dy = ty - cy;
+      if (Math.abs(dx) > Math.abs(dy)){
+        facing = dx >= 0 ? 'right' : 'left';
       } else {
-        ctx.fillStyle = (o.type === 'timeline') ? '#9ece6a' : '#7aa2f7';
-        ctx.fillRect(o.x, o.y, o.w, o.h);
+        facing = dy >= 0 ? 'down' : 'up';
+      }
+      lookLock = 220;
+    }
+
+    // ===== Particles (sparkles near icons) =====
+    const particles = [];
+    function spawnSparkle(x, y){
+      particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: -0.35 - Math.random()*0.2,
+        life: 600 + Math.random()*500,
+        t: 0,
+      });
+      if (particles.length > 240) particles.splice(0, 80);
+    }
+
+    function updateParticles(dt){
+      for (let i=particles.length-1; i>=0; i--){
+        const p = particles[i];
+        p.t += dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        if (p.t > p.life) particles.splice(i,1);
+      }
+    }
+
+    function drawParticles(){
+      for (const p of particles){
+        const a = 1 - (p.t / p.life);
+        ctx.fillStyle = `rgba(255, 240, 180, ${0.55 * a})`;
+        ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2);
+      }
+    }
+
+    // ===== Render =====
+    function drawBG(){
+      // 타일 느낌
+      for (let y=0; y<H; y+=TILE){
+        for (let x=0; x<W; x+=TILE){
+          const even = ((x/TILE + y/TILE) % 2 === 0);
+          ctx.fillStyle = even ? '#111a26' : '#0f1722';
+          ctx.fillRect(x, y, TILE, TILE);
+        }
       }
 
-      ctx.font = '10px monospace';
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.fillText(o.label, o.x - 2, o.y - 6);
+      // 길 (가로 진행)
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fillRect(40, 190, 560, 18);
+      ctx.fillRect(55, 224, 40, 12); // timeline 쪽 작은 길
+      ctx.fillRect(90, 205, 18, 32); // 연결
     }
-  }
 
-  function drawPressSpaceBubble(){
-    const o = nearestInteractable();
-    if (!o) return;
+    function drawSpots(){
+      for (const s of spots){
+        // sparkle spawn
+        if (Math.random() < 0.02){
+          spawnSparkle(s.x + s.w/2 + (Math.random()-0.5)*18, s.y - 6 + (Math.random()-0.5)*8);
+        }
 
-    const text = 'Press Space';
-    ctx.font = '10px monospace';
-    const pad = 6;
-    const tw = ctx.measureText(text).width;
-    const bw = tw + pad * 2;
-    const bh = 16;
+        // icon draw
+        const iconImg = icons[s.key];
+        if (iconReady(iconImg)){
+          ctx.drawImage(iconImg, s.x - 6, s.y - 6, s.w + 12, s.h + 12);
+        } else {
+          // fallback
+          ctx.fillStyle = s.type === 'timeline' ? '#9ece6a' : '#7aa2f7';
+          ctx.fillRect(s.x, s.y, s.w, s.h);
+        }
 
-    const bx = Math.max(6, Math.min(W - bw - 6, player.x + player.w/2 - bw/2));
-    const by = Math.max(6, player.y - 22);
+        // label (한글)
+        ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillText(s.labelKo, s.x - 2, s.y - 10);
+      }
+    }
 
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillRect(bx, by, bw, bh);
-    ctx.fillRect(Math.floor(bx + bw/2) - 2, by + bh, 4, 3);
+    function drawPressSpace(){
+      const s = nearestSpot();
+      if (!s || paused) return;
 
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.fillText(text, bx + pad, by + 11);
-  }
+      const text = 'Press Space';
+      ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
 
-  function drawPlayerSprite(ts){
-    // fallback
-    ctx.fillStyle = '#f7768e';
-    ctx.fillRect(Math.round(player.x), Math.round(player.y), player.w, player.h);
+      const pad = 7;
+      const tw = ctx.measureText(text).width;
+      const bw = tw + pad * 2;
+      const bh = 18;
 
-    const dx = Math.round(player.x - (DRAW_W - player.w) / 2);
-    const dy = Math.round(player.y - (DRAW_H - player.h) / 2);
+      const bx = Math.max(10, Math.min(W - bw - 10, player.x + player.w/2 - bw/2));
+      const by = Math.max(10, player.y - 28);
 
-    let drawFacing = facing;
-    if (faceHoldUntil > ts && faceHoldDir) drawFacing = faceHoldDir;
+      ctx.fillStyle = 'rgba(0,0,0,0.62)';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillRect(Math.floor(bx + bw/2) - 2, by + bh, 4, 4);
 
-    let img = null;
-    if (drawFacing === 'up' && ok('back')) img = sprites.back;
-    else if (drawFacing === 'down' && ok('front')) img = sprites.front;
-    else {
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillText(text, bx + pad, by + 13);
+    }
+
+    function drawPlayer(){
+      if (!allSpritesReady()){
+        ctx.fillStyle = '#f7768e';
+        ctx.fillRect(player.x, player.y, player.w, player.h);
+        return;
+      }
+
+      const dx = Math.round(player.x - (DRAW_W - player.w)/2);
+      const dy = Math.round(player.y - (DRAW_H - player.h)/2);
+
+      if (facing === 'up'){
+        ctx.drawImage(sprites.back, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
+        return;
+      }
+      if (facing === 'down'){
+        ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
+        return;
+      }
+
       const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
-      if ((drawFacing === 'left' || drawFacing === 'right') && (ok('side1') || ok('side2'))) img = sideImg;
-      if (!img && ok('front')) img = sprites.front;
-    }
-    if (!img) return;
 
-    if (drawFacing === 'right'){
-      ctx.save();
-      ctx.scale(-1, 1);
-      ctx.drawImage(img, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
-      ctx.restore();
-    } else {
-      ctx.drawImage(img, dx, dy, DRAW_W, DRAW_H);
-    }
-  }
-
-  function render(ts){
-    let sx=0, sy=0;
-    if (shake > 0){
-      sx = (Math.random()-0.5)*2;
-      sy = (Math.random()-0.5)*2;
-      shake -= 1;
-    }
-
-    ctx.save();
-    ctx.translate(sx, sy);
-
-    ctx.clearRect(0,0,W,H);
-    drawBG(ts);
-    drawObjects(ts);
-    drawStars();
-    drawDust();
-    drawPlayerSprite(ts);
-    drawPressSpaceBubble();
-
-    ctx.restore();
-  }
-
-  // =========================================================
-  // ✅ update loop
-  // =========================================================
-  let lastTs = performance.now();
-  let stepCooldown = 0;
-
-  function update(ts){
-    const dt = ts - lastTs;
-    lastTs = ts;
-
-    if (paused){
-      player.vx = 0; player.vy = 0;
-      walkTimer = 0; walkFrame = 0;
-      return;
-    }
-
-    player.vx = 0; player.vy = 0;
-
-    const left  = keys.has('ArrowLeft');
-    const right = keys.has('ArrowRight');
-    const up    = keys.has('ArrowUp');
-    const down  = keys.has('ArrowDown');
-
-    if (left)  player.vx = -player.speed;
-    if (right) player.vx =  player.speed;
-    if (up)    player.vy = -player.speed;
-    if (down)  player.vy =  player.speed;
-
-    if (player.vx < 0) facing = 'left';
-    else if (player.vx > 0) facing = 'right';
-    else if (player.vy < 0) facing = 'up';
-    else if (player.vy > 0) facing = 'down';
-
-    const isMoving = (player.vx !== 0 || player.vy !== 0);
-
-    if (isMoving && Math.random() < 0.25) spawnDust();
-
-    if (stepCooldown > 0) stepCooldown -= dt;
-    if (isMoving && stepCooldown <= 0){
-      playStep();
-      stepCooldown = 180;
-    }
-
-    if (isMoving && (facing === 'left' || facing === 'right')){
-      walkTimer += dt;
-      if (walkTimer >= WALK_INTERVAL){
-        walkTimer = 0;
-        walkFrame = (walkFrame === 0) ? 1 : 0;
+      if (facing === 'left'){
+        ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
+        return;
       }
-    } else {
-      walkTimer = 0;
-      walkFrame = 0;
+
+      // right: flip
+      if (facing === 'right'){
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
+        ctx.restore();
+      }
     }
 
-    player.x += player.vx;
-    player.y += player.vy;
+    function render(){
+      ctx.clearRect(0,0,W,H);
+      drawBG();
+      drawSpots();
+      drawParticles();
+      drawPlayer();
+      drawPressSpace();
+    }
 
-    player.x = Math.max(0, Math.min(W - player.w, player.x));
-    player.y = Math.max(0, Math.min(H - player.h, player.y));
-  }
+    // ===== Update =====
+    let lastTs = performance.now();
 
-  function loop(ts){
-    if (!layer.classList.contains('on')) return;
-    update(ts);
-    render(ts);
-    requestAnimationFrame(loop);
-  }
+    function update(ts){
+      const dt = ts - lastTs;
+      lastTs = ts;
 
-  // =========================================================
-  // ✅ enter / exit
-  // =========================================================
-  function enterGame(){
-    toggle.checked = true;
-    toggle.dispatchEvent(new Event('change'));
-  }
-  function exitGame(){
-    toggle.checked = false;
-    toggle.dispatchEvent(new Event('change'));
-  }
+      updateParticles(dt);
 
-  // Exit 버튼: ✅ "게임 종료" 대신 Thanks 모달 먼저 보여주기
-  if (exitBtn){
-    exitBtn.addEventListener('click', () => {
-      // 모달이 열려 있으면 닫고
-      if (timelineModal && timelineModal.classList.contains('on')) closeTimeline();
-      if (infoModal.classList.contains('on')) closeInfoModal();
+      if (paused){
+        player.vx = 0; player.vy = 0;
+        walkTimer = 0; walkFrame = 0;
+        return;
+      }
 
-      openThanks();
-    });
-  }
+      if (lookLock > 0){
+        lookLock -= dt;
+      }
 
-  // Thanks 모달 닫히면 -> 실제 게임 종료
-  const originalCloseThanks = closeThanks;
-  function closeThanksAndExit(){
-    originalCloseThanks();
-    // 게임 끄기
-    paused = false;
-    exitGame();
-  }
-  // X 버튼/바깥 클릭/ESC로 닫을 때 게임도 종료되게
-  thanksCloseBtn.removeEventListener('click', closeThanks);
-  thanksCloseBtn.addEventListener('click', closeThanksAndExit);
-  thanksModal.addEventListener('click', (e) => { if (e.target === thanksModal) closeThanksAndExit(); });
+      player.vx = 0; player.vy = 0;
 
-  // =========================================================
-  // ✅ toggle game layer
-  // =========================================================
-  toggle.addEventListener('change', () => {
-    const on = toggle.checked;
-    layer.classList.toggle('on', on);
-    layer.setAttribute('aria-hidden', (!on).toString());
-    document.body.classList.toggle('game-on', on);
+      const left  = keys.has('ArrowLeft');
+      const right = keys.has('ArrowRight');
+      const up    = keys.has('ArrowUp');
+      const down  = keys.has('ArrowDown');
 
-    if (on){
-      paused = false;
-      lastTs = performance.now();
+      if (lookLock <= 0){
+        if (left)  player.vx = -player.speed;
+        if (right) player.vx =  player.speed;
+        if (up)    player.vy = -player.speed;
+        if (down)  player.vy =  player.speed;
+
+        if (player.vx < 0) facing = 'left';
+        else if (player.vx > 0) facing = 'right';
+        else if (player.vy < 0) facing = 'up';
+        else if (player.vy > 0) facing = 'down';
+      }
+
+      const isMoving = (player.vx !== 0 || player.vy !== 0);
+
+      if (isMoving && (facing === 'left' || facing === 'right')){
+        walkTimer += dt;
+        if (walkTimer >= WALK_INTERVAL){
+          walkTimer = 0;
+          walkFrame = (walkFrame === 0) ? 1 : 0;
+        }
+      } else {
+        walkTimer = 0;
+        walkFrame = 0;
+      }
+
+      player.x += player.vx;
+      player.y += player.vy;
+
+      player.x = Math.max(0, Math.min(W - player.w, player.x));
+      player.y = Math.max(0, Math.min(H - player.h, player.y));
+    }
+
+    function loop(ts){
+      if (!layer.classList.contains('on')) return;
+      update(ts);
+      render();
       requestAnimationFrame(loop);
     }
-  });
 
-  // =========================================================
-  // ✅ key controls
-  // =========================================================
-  window.addEventListener('keydown', (e) => {
-    getAudioCtx(); // unlock audio
-    keys.add(e.key);
-
-    if (!layer.classList.contains('on')) return;
-
-    // start modal: Space -> start
-    if (startModal.classList.contains('on') && e.key === ' '){
-      e.preventDefault();
-      closeModal(startModal);
-      return;
+    // ===== Exit behavior =====
+    // ✅ Exit Game 눌렀을 때만 Thanks modal
+    if (exitBtn){
+      exitBtn.addEventListener('click', () => {
+        paused = true;
+        openThanks();
+      });
     }
 
-    if (e.key === ' '){
-      e.preventDefault();
-      const o = nearestInteractable();
-      if (!o) return;
+    // ===== Key events =====
+    window.addEventListener('keydown', (e) => {
+      keys.add(e.key);
 
-      setFaceTowardObject(o);
-      spawnStarBurst(o.x + o.w/2, o.y - 2, o.id);
+      if (!layer.classList.contains('on')) return;
 
-      if (!visitedNow.has(o.id)){
-        visitedNow.add(o.id);
-        updateProgress();
+      if (e.key === ' '){
+        e.preventDefault();
+        if (paused) return;
+
+        const s = nearestSpot();
+        if (!s) return;
+
+        // ✅ Space 누르면 캐릭터가 아이콘을 바라봄
+        faceToward(s);
+
+        // ✅ 아이콘별 소리
+        playUISound(s.sound || 'soft');
+
+        // ✅ 모달 열기
+        if (s.type === 'timeline'){
+          openTimeline();
+        } else if (s.type === 'info'){
+          openInfo(s.key, s.labelKo);
+        }
       }
 
-      if (o.type === 'timeline') openTimeline();
-      else if (o.type === 'popup') openPopupLikeTimeline(o.id);
-    }
+      // ESC: 모달 닫기 (게임을 종료하지 않음)
+      if (e.key === 'Escape'){
+        e.preventDefault();
+        if (timelineModal.classList.contains('on')) closeTimeline();
+        else if (infoModal.classList.contains('on')) closeInfo();
+        else if (thanksModal.classList.contains('on')) closeThanks();
+      }
+    });
 
-    if (e.key === 'Escape'){
-      e.preventDefault();
-      // ESC는 바로 종료(Thanks 없이)
-      paused = false;
-      exitGame();
-    }
+    window.addEventListener('keyup', (e) => keys.delete(e.key));
+
+    // ===== Start =====
+    layer.classList.add('on');
+    layer.setAttribute('aria-hidden', 'false');
+    lastTs = performance.now();
+    requestAnimationFrame(loop);
   });
-
-  window.addEventListener('keyup', (e) => keys.delete(e.key));
-
-  // =========================================================
-  // ✅ first landing: enter + show start modal
-  // =========================================================
-  enterGame();
-  setTimeout(() => openModal(startModal), 60);
-});
+})();
