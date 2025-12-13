@@ -6,6 +6,7 @@ window.addEventListener('load', () => {
 
   const timelineModal = document.getElementById('timelineModal');
   const timelineCloseBtn = document.getElementById('timelineCloseBtn');
+  const timelineBody = document.getElementById('timelineBody');
 
   if (!toggle || !layer || !canvas) return;
 
@@ -15,6 +16,34 @@ window.addEventListener('load', () => {
   const W = canvas.width, H = canvas.height;
   const keys = new Set();
   let paused = false;
+
+  // =========================================
+  // ✅ 효과음 (4단계)
+  // =========================================
+  const audio = {
+    armed: false,
+    bgm: new Audio('assets/audio/bgm.mp3'),   // 없으면 콘솔에만 에러(기능 영향 없음)
+    step: new Audio('assets/audio/step.mp3'),
+    open: new Audio('assets/audio/open.mp3'),
+  };
+  audio.bgm.loop = true;
+  audio.bgm.volume = 0.18;
+  audio.step.volume = 0.25;
+  audio.open.volume = 0.40;
+
+  function armAudio(){
+    if (audio.armed) return;
+    audio.armed = true;
+    audio.bgm.play().catch(()=>{});
+  }
+  function playStep(){
+    audio.step.currentTime = 0;
+    audio.step.play().catch(()=>{});
+  }
+  function playOpen(){
+    audio.open.currentTime = 0;
+    audio.open.play().catch(()=>{});
+  }
 
   // ===== player =====
   const player = { x: 40, y: 88, w: 12, h: 12, vx: 0, vy: 0, speed: 1.25 };
@@ -63,6 +92,60 @@ window.addEventListener('load', () => {
   let shake = 0;
 
   // =========================================
+  // ✅ Timeline 색상 분류 (4번 요청)
+  // - HTML 안 바꿔도, 텍스트 기반으로 자동 분류 class 부여
+  // =========================================
+  function classifyTimeline(){
+    if (!timelineBody) return;
+
+    const items = [...timelineBody.querySelectorAll('.tl-item')];
+    items.forEach(item => {
+      const t = item.textContent || '';
+
+      // 초기화
+      item.classList.remove('tl-edu','tl-cert','tl-career','tl-award','tl-test','tl-train');
+
+      // 학력
+      if (t.includes('고등학교') || t.includes('대학교')){
+        item.classList.add('tl-edu');
+        return;
+      }
+
+      // 자격증
+      if (t.includes('워드프로세서') || t.includes('GTQ') || t.includes('컴퓨터활용능력') ||
+          t.includes('SQL 개발자') || t.includes('데이터 분석 준전문가') || t.includes('SQLD')){
+        item.classList.add('tl-cert');
+        return;
+      }
+
+      // 수상
+      if (t.includes('수상') || t.includes('특별상') || t.includes('경진대회')){
+        item.classList.add('tl-award');
+        return;
+      }
+
+      // 교육/훈련
+      if (t.includes('과정') || t.includes('산학협력단') || t.includes('협회')){
+        item.classList.add('tl-train');
+        return;
+      }
+
+      // 어학(시험)
+      if (t.includes('TOEIC') || t.includes('Speaking')){
+        item.classList.add('tl-test');
+        return;
+      }
+
+      // 경력
+      if (t.includes('천재교과서') || t.includes('EBS')){
+        item.classList.add('tl-career');
+        return;
+      }
+    });
+  }
+  classifyTimeline();
+
+  // =========================================
   // ✅ Unified Info Modal (timeline 스타일)
   // =========================================
   const infoModal = document.createElement('div');
@@ -85,7 +168,8 @@ window.addEventListener('load', () => {
   const infoModalClose = infoModal.querySelector('#infoModalClose');
 
   function openInfoModal(title, html){
-    shake = 8;        // ✅ 팝업 열릴 때 흔들림
+    shake = 8;
+    playOpen();
     paused = true;
 
     infoModalTitle.textContent = title || 'Info';
@@ -106,7 +190,8 @@ window.addEventListener('load', () => {
   // ===== Timeline modal =====
   function openTimeline(){
     if (!timelineModal) return;
-    shake = 8;       // ✅ 타임라인 열릴 때도 흔들림
+    shake = 8;
+    playOpen();
     paused = true;
     timelineModal.classList.add('on');
     timelineModal.setAttribute('aria-hidden', 'false');
@@ -169,7 +254,7 @@ window.addEventListener('load', () => {
   ];
 
   // =========================================
-  // ✅ icon images (지도 아이콘)
+  // ✅ icon images
   // =========================================
   const ICON_BASE_CANDIDATES = [
     'assets/css/images/',
@@ -331,7 +416,7 @@ window.addEventListener('load', () => {
       const bob = Math.sin(t * 3 + o.x * 0.05 + o.y * 0.08) * 2;
       const isNear = near && near.id === o.id;
 
-      // ✅ 연출 2) 가까우면 링 반짝
+      // 가까우면 링 반짝
       if (isNear){
         ctx.strokeStyle = 'rgba(255,255,255,0.55)';
         ctx.lineWidth = 1;
@@ -383,7 +468,7 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
-  // ✅ 크롭 없이 이미지 전체 그리기
+  // 크롭 없이 이미지 전체 그리기
   function drawPlayerSprite(){
     // fallback box
     ctx.fillStyle = '#f7768e';
@@ -416,7 +501,6 @@ window.addEventListener('load', () => {
   }
 
   function render(ts){
-    // ✅ 연출 3) 흔들림 적용: 전체 화면 translate
     let sx = 0, sy = 0;
     if (shake > 0){
       sx = (Math.random() - 0.5) * 2;
@@ -431,7 +515,6 @@ window.addEventListener('load', () => {
     drawBG(ts);
     drawObjects(ts);
 
-    // 먼지(캐릭터 아래) → 캐릭터 → 말풍선 순
     drawDust();
     drawPlayerSprite();
     drawPressSpaceBubble();
@@ -443,6 +526,7 @@ window.addEventListener('load', () => {
   // ✅ update loop
   // =========================================
   let lastTs = performance.now();
+  let stepCooldown = 0;
 
   function update(ts){
     const dt = ts - lastTs;
@@ -473,9 +557,16 @@ window.addEventListener('load', () => {
 
     const isMoving = (player.vx !== 0 || player.vy !== 0);
 
-    // ✅ 연출 1) 이동 중이면 먼지 생성
+    // 이동 중 먼지
     if (isMoving && Math.random() < 0.25){
       spawnDust();
+    }
+
+    // ✅ 발걸음 효과음: 너무 자주 안 나오게 쿨다운
+    if (stepCooldown > 0) stepCooldown -= dt;
+    if (isMoving && stepCooldown <= 0){
+      playStep();
+      stepCooldown = 180;
     }
 
     if (isMoving && (facing === 'left' || facing === 'right')){
@@ -524,6 +615,9 @@ window.addEventListener('load', () => {
   }
 
   window.addEventListener('keydown', (e) => {
+    // ✅ 오디오 정책 때문에: 첫 키 입력에서 활성화
+    armAudio();
+
     keys.add(e.key);
     if (!layer.classList.contains('on')) return;
 
