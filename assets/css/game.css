@@ -18,9 +18,7 @@ body.game-on #footer {
   display: none !important;
 }
 
-#gameLayer.on {
-  display: grid;
-}
+#gameLayer.on { display: grid; }
 
 /* =========================================================
    STAGE: canvas + ui anchored together
@@ -33,7 +31,6 @@ body.game-on #footer {
   place-items: center;
 }
 
-/* canvas is pixel art */
 #gameCanvas {
   width: 100%;
   height: 100%;
@@ -59,16 +56,14 @@ body.game-on #footer {
   justify-content: space-between;
   align-items: flex-end;
   gap: 10px;
-  pointer-events: none; /* 텍스트는 클릭 안해도 됨 */
+  pointer-events: none;
 }
 
-.game-left {
-  display: grid;
-  gap: 6px;
-}
+.game-left { display: grid; gap: 6px; }
 
 #gameHint,
-#careerBadge {
+#careerBadge,
+#progressBadge {
   pointer-events: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 13px;
@@ -81,7 +76,15 @@ body.game-on #footer {
   backdrop-filter: blur(6px);
 }
 
-#exitGameBtn {
+.game-right {
+  pointer-events: auto;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+#exitGameBtn,
+#skipResumeBtn {
   pointer-events: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 13px;
@@ -93,8 +96,10 @@ body.game-on #footer {
   cursor: pointer;
   transition: transform .12s ease, background .12s ease;
 }
-#exitGameBtn:hover { transform: translateY(-1px); background: rgba(0,0,0,0.82); }
-#exitGameBtn:active { transform: translateY(0px); }
+#exitGameBtn:hover,
+#skipResumeBtn:hover { transform: translateY(-1px); background: rgba(0,0,0,0.82); }
+#exitGameBtn:active,
+#skipResumeBtn:active { transform: translateY(0px); }
 
 /* =========================================================
    MODAL (timeline-style) + scroll fix
@@ -104,15 +109,12 @@ body.game-on #footer {
   inset: 0;
   display: none;
   place-items: center;
-  background: rgba(0,0,0,0.72); /* 뒤 배경 더 어둡게 -> 페이지 비침 최소화 */
-  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.78);
+  backdrop-filter: blur(10px);
 }
 
-.game-modal.on {
-  display: grid;
-}
+.game-modal.on { display: grid; }
 
-/* Card animation: pop + fade */
 .game-modal-card {
   width: min(860px, 92%);
   max-height: min(78vh, 720px);
@@ -158,7 +160,6 @@ body.game-on #footer {
   cursor: pointer;
 }
 
-/* ✅ 스크롤 핵심: body에 overflow */
 .game-modal-body {
   padding: 14px 16px 18px;
   max-height: calc(min(78vh, 720px) - 60px);
@@ -166,11 +167,10 @@ body.game-on #footer {
   overscroll-behavior: contain;
 }
 
-/* 팝업 텍스트 가독성 */
 .game-modal-body,
 .game-modal-body p,
 .game-modal-body div {
-  font-size: 15px; /* (요청) 글씨 조금 키움 */
+  font-size: 15px;
   line-height: 1.6;
   color: rgba(255,255,255,0.90);
 }
@@ -200,7 +200,7 @@ body.game-on #footer {
 .tl-test  { background: rgba(255, 255, 255, 0.10); border-color: rgba(255,255,255,0.14); }
 
 /* =========================================================
-   Typewriter effect (cursor)
+   Typewriter cursor helper (optional)
 ========================================================= */
 .typing {
   position: relative;
@@ -217,4 +217,29 @@ body.game-on #footer {
 }
 @keyframes blink {
   50% { opacity: 0; }
+}
+
+/* =========================================================
+   START / END overlay card tweaks
+========================================================= */
+.game-cta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.game-cta button, .game-cta a {
+  display: inline-block;
+  text-decoration: none;
+  color: rgba(255,255,255,0.95);
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+}
+.game-cta button:hover, .game-cta a:hover {
+  background: rgba(0,0,0,0.75);
 }
