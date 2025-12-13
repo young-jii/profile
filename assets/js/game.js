@@ -1,5 +1,5 @@
 /* =========================================
-   GAME (FULL) - All popups use Timeline-style modal
+   GAME (FULL) - Sprite auto-path resolver + on-canvas debug
    File: assets/js/game.js
 ========================================= */
 
@@ -21,115 +21,20 @@ window.addEventListener('load', () => {
   const keys = new Set();
   let paused = false;
 
-  // ✅ 플레이어 hitbox (작게)
+  // ✅ 플레이어 hitbox
   const player = { x: 40, y: 88, w: 12, h: 12, vx: 0, vy: 0, speed: 1.25 };
 
-  // ✅ 스프라이트 (원본 16x16 가정)
+  // ✅ 스프라이트 (16x16 -> 32x32)
   const SRC_W = 16, SRC_H = 16;
   const DRAW_W = 32, DRAW_H = 32;
-
-  const SPRITE_BASE = 'assets/css/images/';
-  const sprites = {
-    front: new Image(),
-    back:  new Image(),
-    side1: new Image(),
-    side2: new Image(),
-  };
-  const spriteReady = { front:false, back:false, side1:false, side2:false };
-
-  // ✅ "여러 후보 파일명"으로 시도 (괄호 이슈 대비)
-  function loadTry(img, key, candidates){
-    let idx = 0;
-    const tryNext = () => {
-      if (idx >= candidates.length){
-        spriteReady[key] = false;
-        console.warn(`[sprite fail] ${key}`, candidates);
-        return;
-      }
-      const filename = candidates[idx++];
-      const url = new URL(SPRITE_BASE + filename, document.baseURI).href;
-
-      img.onload = () => { spriteReady[key] = true; };
-      img.onerror = () => { tryNext(); };
-      img.src = url;
-    };
-    tryNext();
-  }
-
-  // ✅ 권장: 괄호 없는 파일을 하나 더 만들어두면 100% 해결됨
-  // dot_side_1.png / dot_side_2.png (없어도 괄호 버전으로 시도함)
-  loadTry(sprites.front, 'front', ['dot_front.png']);
-  loadTry(sprites.back,  'back',  ['dot_back.png']);
-  loadTry(sprites.side1, 'side1', ['dot_side_1.png', 'dot_side(1).png']);
-  loadTry(sprites.side2, 'side2', ['dot_side_2.png', 'dot_side(2).png']);
-
-  const ok = (k) => spriteReady[k] === true;
 
   let facing = 'right';
   let walkFrame = 0;
   let walkTimer = 0;
   const WALK_INTERVAL = 140;
 
-  // ===== Icons (optional) =====
-  const ICON_BASE = 'assets/css/images/';
-  const icons = {
-    popupTrigger1: new Image(),
-    popupTrigger2: new Image(),
-    popupTrigger3: new Image(),
-    popupTrigger4: new Image(),
-    popupTrigger5: new Image(),
-    popupTrigger6: new Image(),
-    timeline:      new Image(),
-  };
-  function setIcon(img, filename){
-    img.src = new URL(ICON_BASE + filename, document.baseURI).href;
-  }
-  setIcon(icons.popupTrigger1, 'icon_school.png');
-  setIcon(icons.popupTrigger2, 'icon_training.png');
-  setIcon(icons.popupTrigger3, 'icon_company.png');
-  setIcon(icons.popupTrigger4, 'icon_award.png');
-  setIcon(icons.popupTrigger5, 'icon_cert.png');
-  setIcon(icons.popupTrigger6, 'icon_lang.png');
-  setIcon(icons.timeline,      'icon_timeline.png');
-
-  const iconOk = (img) => img && img.complete && img.naturalWidth > 0;
-
-  // ===== 오브젝트 배치(좌->우) =====
-  const objects = [
-    { type:'timeline', id:'timeline',      label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
-
-    { type:'popup', id:'popupTrigger1', label:'School',   x: 82,  y: 44,  w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger2', label:'Training', x: 120, y: 128, w: 18, h: 18 },
-
-    { type:'popup', id:'popupTrigger3', label:'Company',  x: 180, y: 44,  w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger4', label:'Award',    x: 220, y: 128, w: 18, h: 18 },
-
-    { type:'popup', id:'popupTrigger5', label:'Cert',     x: 268, y: 44,  w: 18, h: 18 },
-    { type:'popup', id:'popupTrigger6', label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
-  ];
-
-  // 트리거 -> 기존 popup overlay id
-  const triggerToPopup = {
-    popupTrigger1: 'popup1',
-    popupTrigger2: 'popup2',
-    popupTrigger3: 'popup3',
-    popupTrigger4: 'popup4',
-    popupTrigger5: 'popup5',
-    popupTrigger6: 'popup6',
-  };
-
-  function enterGame(){
-    toggle.checked = true;
-    toggle.dispatchEvent(new Event('change'));
-  }
-  function exitGame(){
-    toggle.checked = false;
-    toggle.dispatchEvent(new Event('change'));
-  }
-
   // =========================================
-  // ✅ Unified Info Modal (timeline과 같은 스타일)
-  //  - 기존 popup1~6 내용을 "복사"해서 모달에 표시
+  // ✅ Unified Info Modal (timeline 스타일)
   // =========================================
   const infoModal = document.createElement('div');
   infoModal.id = 'infoModal';
@@ -163,7 +68,6 @@ window.addEventListener('load', () => {
     infoModal.setAttribute('aria-hidden', 'true');
     paused = false;
   }
-
   infoModalClose.addEventListener('click', closeInfoModal);
   infoModal.addEventListener('click', (e) => {
     if (e.target === infoModal) closeInfoModal();
@@ -189,35 +93,136 @@ window.addEventListener('load', () => {
     });
   }
 
-  // ✅ popup1~6의 내용을 가져와서 InfoModal로 보여줌
+  // =========================================
+  // ✅ 기존 popup1~6 내용을 가져와 모달로 표시
+  // =========================================
+  const triggerToPopup = {
+    popupTrigger1: 'popup1',
+    popupTrigger2: 'popup2',
+    popupTrigger3: 'popup3',
+    popupTrigger4: 'popup4',
+    popupTrigger5: 'popup5',
+    popupTrigger6: 'popup6',
+  };
+
   function openPopupLikeTimeline(triggerId){
     const popupId = triggerToPopup[triggerId];
     const overlay = popupId ? document.getElementById(popupId) : null;
-    if (!overlay){
-      paused = false;
-      return;
-    }
+    if (!overlay) { paused = false; return; }
 
     const content = overlay.querySelector('.popup-content');
-    if (!content){
-      paused = false;
-      return;
-    }
+    if (!content) { paused = false; return; }
 
-    // popup-content를 복제해서 X버튼 제거 후 내용만 사용
     const clone = content.cloneNode(true);
     const closeBtn = clone.querySelector('.close-popup');
     if (closeBtn) closeBtn.remove();
 
-    // 제목 텍스트 추출
     const h3 = clone.querySelector('.popup-title');
     const title = h3 ? h3.textContent.trim() : (triggerId || 'Info');
 
-    // body에는 clone의 내부만 넣기
     openInfoModal(title, clone.innerHTML);
   }
 
-  // ===== 충돌/상호작용 =====
+  // =========================================
+  // ✅ 오브젝트 배치(좌->우)
+  // =========================================
+  const objects = [
+    { type:'timeline', id:'timeline',      label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
+
+    { type:'popup', id:'popupTrigger1', label:'School',   x: 82,  y: 44,  w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger2', label:'Training', x: 120, y: 128, w: 18, h: 18 },
+
+    { type:'popup', id:'popupTrigger3', label:'Company',  x: 180, y: 44,  w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger4', label:'Award',    x: 220, y: 128, w: 18, h: 18 },
+
+    { type:'popup', id:'popupTrigger5', label:'Cert',     x: 268, y: 44,  w: 18, h: 18 },
+    { type:'popup', id:'popupTrigger6', label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
+  ];
+
+  // =========================================
+  // ✅ Sprite loader: "경로 후보"를 자동 탐색
+  // =========================================
+  const sprites = {
+    front: new Image(),
+    back:  new Image(),
+    side1: new Image(),
+    side2: new Image(),
+  };
+  const spriteReady = { front:false, back:false, side1:false, side2:false };
+
+  // 🔥 여기서 경로를 여러 개 후보로 둠 (너의 실제 위치를 자동으로 맞춤)
+  const SPRITE_BASE_CANDIDATES = [
+    'assets/css/images/',   // 네가 말한 위치
+    'assets/images/',
+    'images/',
+    './assets/css/images/',
+    './images/',
+  ];
+
+  // 파일 후보(괄호 버전 + 언더스코어 버전)
+  const FILE_CANDIDATES = {
+    front: ['dot_front.png'],
+    back:  ['dot_back.png'],
+    side1: ['dot_side_1.png', 'dot_side(1).png'],
+    side2: ['dot_side_2.png', 'dot_side(2).png'],
+  };
+
+  // ✅ 디버그 로그(캔버스에 찍어줌)
+  const debug = {
+    enabled: true,
+    lines: [],
+    push(msg){
+      this.lines.unshift(msg);
+      if (this.lines.length > 10) this.lines.pop();
+    }
+  };
+
+  function tryLoadImage(img, key, baseIdx, fileIdx){
+    const base = SPRITE_BASE_CANDIDATES[baseIdx];
+    const file = FILE_CANDIDATES[key][fileIdx];
+
+    const url = new URL(base + file, document.baseURI).href;
+
+    img.onload = () => {
+      spriteReady[key] = true;
+      debug.push(`✅ ${key}: LOADED -> ${base}${file}`);
+    };
+    img.onerror = () => {
+      debug.push(`❌ ${key}: FAIL   -> ${base}${file}`);
+
+      // 다음 파일 후보
+      const nextFileIdx = fileIdx + 1;
+      if (nextFileIdx < FILE_CANDIDATES[key].length){
+        tryLoadImage(img, key, baseIdx, nextFileIdx);
+        return;
+      }
+
+      // 다음 base 경로 후보
+      const nextBaseIdx = baseIdx + 1;
+      if (nextBaseIdx < SPRITE_BASE_CANDIDATES.length){
+        tryLoadImage(img, key, nextBaseIdx, 0);
+        return;
+      }
+
+      // 전부 실패
+      spriteReady[key] = false;
+      debug.push(`🛑 ${key}: ALL CANDIDATES FAILED`);
+    };
+
+    img.src = url;
+  }
+
+  // 로딩 시작
+  tryLoadImage(sprites.front, 'front', 0, 0);
+  tryLoadImage(sprites.back,  'back',  0, 0);
+  tryLoadImage(sprites.side1, 'side1', 0, 0);
+  tryLoadImage(sprites.side2, 'side2', 0, 0);
+
+  const ok = (k) => spriteReady[k] === true;
+
+  // =========================================
+  // ✅ 충돌/상호작용
+  // =========================================
   function rectsOverlap(a, b){
     return a.x < b.x + b.w && a.x + a.w > b.x &&
            a.y < b.y + b.h && a.y + a.h > b.y;
@@ -230,9 +235,12 @@ window.addEventListener('load', () => {
     return null;
   }
 
-  // ===== 배경 =====
+  // =========================================
+  // ✅ 배경 & 오브젝트 렌더
+  // =========================================
   function drawBG(ts){
     const t = ts / 1000;
+
     ctx.fillStyle = '#0b0f16';
     ctx.fillRect(0,0,W,H);
 
@@ -244,6 +252,7 @@ window.addEventListener('load', () => {
       }
     }
 
+    // 길
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(12, 86, 296, 12);
 
@@ -251,6 +260,7 @@ window.addEventListener('load', () => {
     ctx.fillRect(12, 86, 296, 1);
     ctx.fillRect(12, 97, 296, 1);
 
+    // 세로 길
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(90, 52, 10, 46);
     ctx.fillRect(128, 86, 10, 46);
@@ -259,33 +269,16 @@ window.addEventListener('load', () => {
     ctx.fillRect(276, 52, 10, 46);
     ctx.fillRect(304, 86, 10, 46);
 
+    // 스캔 라인
     const scanY = Math.floor((t * 24) % H);
     ctx.fillStyle = 'rgba(122,162,247,0.06)';
     ctx.fillRect(0, scanY, W, 2);
   }
 
   function drawObjects(ts){
-    const near = nearestInteractable();
-    const t = ts / 1000;
-
     for (const o of objects){
-      const img = icons[o.id];
-      const bob = Math.sin(t * 3 + o.x * 0.05 + o.y * 0.08) * 2;
-      const isNear = near && near.id === o.id;
-      const scale = isNear ? 1.12 : 1.0;
-
-      const size = 22;
-      const dw = size * scale;
-      const dh = size * scale;
-      const dx = o.x + o.w/2 - dw/2;
-      const dy = o.y + o.h/2 - dh/2 + bob;
-
-      if (iconOk(img)){
-        ctx.drawImage(img, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
-      } else {
-        ctx.fillStyle = (o.type === 'timeline') ? '#9ece6a' : '#7aa2f7';
-        ctx.fillRect(o.x, o.y, o.w, o.h);
-      }
+      ctx.fillStyle = (o.type === 'timeline') ? '#9ece6a' : '#7aa2f7';
+      ctx.fillRect(o.x, o.y, o.w, o.h);
 
       ctx.font = '10px monospace';
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
@@ -316,7 +309,7 @@ window.addEventListener('load', () => {
   }
 
   function drawPlayerSprite(){
-    // fallback (항상)
+    // fallback
     ctx.fillStyle = '#f7768e';
     ctx.fillRect(Math.round(player.x), Math.round(player.y), player.w, player.h);
 
@@ -347,9 +340,27 @@ window.addEventListener('load', () => {
       return;
     }
 
+    // side가 안 되면 front로 대체
     if (ok('front')){
       ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
     }
+  }
+
+  function drawDebug(){
+    if (!debug.enabled) return;
+
+    ctx.save();
+    ctx.font = '9px monospace';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(6, 6, 308, 52);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText(`SPRITES: front=${ok('front')} back=${ok('back')} side1=${ok('side1')} side2=${ok('side2')}`, 10, 18);
+
+    for (let i=0; i<Math.min(debug.lines.length, 4); i++){
+      ctx.fillText(debug.lines[i], 10, 30 + i*10);
+    }
+    ctx.restore();
   }
 
   function render(ts){
@@ -358,9 +369,12 @@ window.addEventListener('load', () => {
     drawObjects(ts);
     drawPlayerSprite();
     drawPressSpaceBubble();
+    drawDebug(); // ✅ 여기
   }
 
-  // ===== 업데이트 =====
+  // =========================================
+  // ✅ 업데이트 루프
+  // =========================================
   let lastTs = performance.now();
 
   function update(ts){
@@ -432,13 +446,13 @@ window.addEventListener('load', () => {
   if (exitBtn){
     exitBtn.addEventListener('click', () => {
       paused = false;
-      exitGame();
+      toggle.checked = false;
+      toggle.dispatchEvent(new Event('change'));
     });
   }
 
   window.addEventListener('keydown', (e) => {
     keys.add(e.key);
-
     if (!layer.classList.contains('on')) return;
 
     if (e.key === ' '){
@@ -453,11 +467,14 @@ window.addEventListener('load', () => {
     if (e.key === 'Escape'){
       e.preventDefault();
       paused = false;
-      exitGame();
+      toggle.checked = false;
+      toggle.dispatchEvent(new Event('change'));
     }
   });
 
   window.addEventListener('keyup', (e) => keys.delete(e.key));
 
-  enterGame();
+  // 첫 랜딩 게임 진입
+  toggle.checked = true;
+  toggle.dispatchEvent(new Event('change'));
 });
