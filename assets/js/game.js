@@ -17,38 +17,51 @@ window.addEventListener('load', () => {
   const keys = new Set();
   let paused = false;
 
-  // =========================================
-  // ✅ 효과음 (4단계)
-  // =========================================
-  const audio = {
-    armed: false,
-    bgm: new Audio('assets/audio/bgm.mp3'),   // 없으면 콘솔에만 에러(기능 영향 없음)
-    step: new Audio('assets/audio/step.mp3'),
-    open: new Audio('assets/audio/open.mp3'),
-  };
-  audio.bgm.loop = true;
-  audio.bgm.volume = 0.18;
-  audio.step.volume = 0.25;
-  audio.open.volume = 0.40;
+  // =========================================================
+  // ✅ Web Audio API (No files)
+  // =========================================================
+  let audioCtx = null;
+  function getAudioCtx(){
+    if (!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    // resume (iOS/Chrome policy)
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+    return audioCtx;
+  }
 
-  function armAudio(){
-    if (audio.armed) return;
-    audio.armed = true;
-    audio.bgm.play().catch(()=>{});
+  function playBeep({ freq=440, duration=0.08, type='square', volume=0.08 } = {}){
+    const ctxA = getAudioCtx();
+    const osc = ctxA.createOscillator();
+    const gain = ctxA.createGain();
+
+    osc.type = type;
+    osc.frequency.value = freq;
+
+    // 아주 짧은 Attack/Release로 클릭노이즈 줄이기
+    const now = ctxA.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(volume, now + 0.01);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+
+    osc.connect(gain);
+    gain.connect(ctxA.destination);
+
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
   }
+
   function playStep(){
-    audio.step.currentTime = 0;
-    audio.step.play().catch(()=>{});
+    playBeep({ freq: 180, duration: 0.06, type: 'square', volume: 0.05 });
   }
+
   function playOpen(){
-    audio.open.currentTime = 0;
-    audio.open.play().catch(()=>{});
+    playBeep({ freq: 880, duration: 0.13, type: 'triangle', volume: 0.10 });
   }
 
   // ===== player =====
   const player = { x: 40, y: 88, w: 12, h: 12, vx: 0, vy: 0, speed: 1.25 };
 
-  // draw size (캐릭터 화면 표시 크기)
   const DRAW_W = 32, DRAW_H = 32;
 
   let facing = 'right';
@@ -56,10 +69,35 @@ window.addEventListener('load', () => {
   let walkTimer = 0;
   const WALK_INTERVAL = 140;
 
-  // =========================================
-  // ✅ 연출 1) 먼지 파티클
-  // =========================================
-  const dust = []; // {x,y,vx,vy,life}
+  // =========================================================
+  // ✅ Space 상호작용 시 "아이콘 바라보기" 연출
+  // =========================================================
+  let faceHoldUntil = 0;           // ms timestamp
+  let faceHoldDir = null;          // 'up'|'down'|'left'|'right'
+  const FACE_HOLD_MS = 420;
+
+  function setFaceTowardObject(o){
+    const ox = o.x + o.w / 2;
+    const oy = o.y + o.h / 2;
+    const px = player.x + player.w / 2;
+    const py = player.y + player.h / 2;
+
+    const dx = ox - px;
+    const dy = oy - py;
+
+    if (Math.abs(dx) > Math.abs(dy)){
+      faceHoldDir = (dx >= 0) ? 'right' : 'left';
+    } else {
+      faceHoldDir = (dy >= 0) ? 'down' : 'up';
+    }
+    faceHoldUntil = performance.now() + FACE_HOLD_MS;
+  }
+
+  // =========================================================
+  // ✅ 연출: 먼지 + 화면 흔들림 + "별 파티클"
+  // =========================================================
+  const dust = [];   // {x,y,vx,vy,life}
+  const stars = [];  // {x,y,vx,vy,life,seed}
 
   function spawnDust(){
     dust.push({
@@ -69,6 +107,20 @@ window.addEventListener('load', () => {
       vy: (Math.random()) * 0.2,
       life: 18 + Math.random() * 10
     });
+  }
+
+  function spawnStarBurst(cx, cy){
+    const n = 6 + Math.floor(Math.random() * 4);
+    for (let i=0; i<n; i++){
+      stars.push({
+        x: cx + (Math.random()-0.5) * 6,
+        y: cy + (Math.random()-0.5) * 6,
+        vx: (Math.random()-0.5) * 0.7,
+        vy: (Math.random()-0.9) * 0.9,
+        life: 16 + Math.random() * 14,
+        seed: Math.random()
+      });
+    }
   }
 
   function drawDust(){
@@ -86,68 +138,72 @@ window.addEventListener('load', () => {
     }
   }
 
-  // =========================================
-  // ✅ 연출 3) 화면 흔들림(Shake)
-  // =========================================
+  function drawStars(){
+    for (let i = stars.length - 1; i >= 0; i--){
+      const s = stars[i];
+      s.x += s.vx;
+      s.y += s.vy;
+      s.life -= 1;
+
+      const a = Math.max(0, s.life / 30);
+      // 8bit 느낌: 십자(+) + 점
+      ctx.fillStyle = `rgba(255,255,255,${0.85 * a})`;
+      const x = Math.round(s.x);
+      const y = Math.round(s.y);
+      ctx.fillRect(x, y, 1, 1);
+      ctx.fillRect(x-1, y, 1, 1);
+      ctx.fillRect(x+1, y, 1, 1);
+      ctx.fillRect(x, y-1, 1, 1);
+      ctx.fillRect(x, y+1, 1, 1);
+
+      // 파란빛 스파클 살짝
+      ctx.fillStyle = `rgba(122,162,247,${0.35 * a})`;
+      if (s.seed > 0.6) ctx.fillRect(x+2, y, 1, 1);
+      if (s.seed < 0.35) ctx.fillRect(x, y+2, 1, 1);
+
+      if (s.life <= 0) stars.splice(i, 1);
+    }
+  }
+
   let shake = 0;
 
-  // =========================================
-  // ✅ Timeline 색상 분류 (4번 요청)
-  // - HTML 안 바꿔도, 텍스트 기반으로 자동 분류 class 부여
-  // =========================================
+  // =========================================================
+  // ✅ Timeline 색상 분류 (기존 그대로)
+  // =========================================================
   function classifyTimeline(){
     if (!timelineBody) return;
 
     const items = [...timelineBody.querySelectorAll('.tl-item')];
     items.forEach(item => {
       const t = item.textContent || '';
-
-      // 초기화
       item.classList.remove('tl-edu','tl-cert','tl-career','tl-award','tl-test','tl-train');
 
-      // 학력
       if (t.includes('고등학교') || t.includes('대학교')){
-        item.classList.add('tl-edu');
-        return;
+        item.classList.add('tl-edu'); return;
       }
-
-      // 자격증
       if (t.includes('워드프로세서') || t.includes('GTQ') || t.includes('컴퓨터활용능력') ||
           t.includes('SQL 개발자') || t.includes('데이터 분석 준전문가') || t.includes('SQLD')){
-        item.classList.add('tl-cert');
-        return;
+        item.classList.add('tl-cert'); return;
       }
-
-      // 수상
       if (t.includes('수상') || t.includes('특별상') || t.includes('경진대회')){
-        item.classList.add('tl-award');
-        return;
+        item.classList.add('tl-award'); return;
       }
-
-      // 교육/훈련
       if (t.includes('과정') || t.includes('산학협력단') || t.includes('협회')){
-        item.classList.add('tl-train');
-        return;
+        item.classList.add('tl-train'); return;
       }
-
-      // 어학(시험)
       if (t.includes('TOEIC') || t.includes('Speaking')){
-        item.classList.add('tl-test');
-        return;
+        item.classList.add('tl-test'); return;
       }
-
-      // 경력
       if (t.includes('천재교과서') || t.includes('EBS')){
-        item.classList.add('tl-career');
-        return;
+        item.classList.add('tl-career'); return;
       }
     });
   }
   classifyTimeline();
 
-  // =========================================
-  // ✅ Unified Info Modal (timeline 스타일)
-  // =========================================
+  // =========================================================
+  // ✅ Unified Info Modal (timeline style)
+  // =========================================================
   const infoModal = document.createElement('div');
   infoModal.id = 'infoModal';
   infoModal.className = 'game-modal';
@@ -237,9 +293,9 @@ window.addEventListener('load', () => {
     openInfoModal(title, clone.innerHTML);
   }
 
-  // =========================================
+  // =========================================================
   // ✅ objects (좌->우)
-  // =========================================
+  // =========================================================
   const objects = [
     { type:'timeline', id:'timeline',      label:'Timeline', x: 28,  y: 82,  w: 18, h: 18 },
 
@@ -253,9 +309,9 @@ window.addEventListener('load', () => {
     { type:'popup', id:'popupTrigger6', label:'Lang',     x: 296, y: 128, w: 18, h: 18 },
   ];
 
-  // =========================================
+  // =========================================================
   // ✅ icon images
-  // =========================================
+  // =========================================================
   const ICON_BASE_CANDIDATES = [
     'assets/css/images/',
     'assets/images/',
@@ -305,16 +361,15 @@ window.addEventListener('load', () => {
     };
     attempt();
   }
-
   Object.keys(icons).forEach(k => {
     tryLoadFromBases(icons[k], k, ICON_BASE_CANDIDATES, ICON_FILES[k]);
   });
 
   const iconOk = (k) => iconReady[k] && icons[k].complete && icons[k].naturalWidth > 0;
 
-  // =========================================
+  // =========================================================
   // ✅ sprites (캐릭터)
-  // =========================================
+  // =========================================================
   const sprites = {
     front: new Image(),
     back:  new Image(),
@@ -355,9 +410,9 @@ window.addEventListener('load', () => {
 
   const ok = (k) => spriteReady[k] === true;
 
-  // =========================================
+  // =========================================================
   // ✅ interaction
-  // =========================================
+  // =========================================================
   function rectsOverlap(a, b){
     return a.x < b.x + b.w && a.x + a.w > b.x &&
            a.y < b.y + b.h && a.y + a.h > b.y;
@@ -370,9 +425,9 @@ window.addEventListener('load', () => {
     return null;
   }
 
-  // =========================================
+  // =========================================================
   // ✅ render helpers
-  // =========================================
+  // =========================================================
   function drawBG(ts){
     const t = ts / 1000;
     ctx.fillStyle = '#0b0f16';
@@ -408,6 +463,19 @@ window.addEventListener('load', () => {
     ctx.fillRect(0, scanY, W, 2);
   }
 
+  // ✅ 아이콘 근처 "별 파티클" (상시 은은 + 근접 시 burst)
+  function ambientStars(ts){
+    const t = ts / 1000;
+    for (const o of objects){
+      // 상시 아주 가끔 반짝
+      if (Math.random() < 0.012){
+        const cx = o.x + o.w/2 + Math.sin(t*2 + o.x*0.1) * 2;
+        const cy = o.y - 4;
+        spawnStarBurst(cx, cy);
+      }
+    }
+  }
+
   function drawObjects(ts){
     const near = nearestInteractable();
     const t = ts / 1000;
@@ -416,7 +484,7 @@ window.addEventListener('load', () => {
       const bob = Math.sin(t * 3 + o.x * 0.05 + o.y * 0.08) * 2;
       const isNear = near && near.id === o.id;
 
-      // 가까우면 링 반짝
+      // 가까우면 링
       if (isNear){
         ctx.strokeStyle = 'rgba(255,255,255,0.55)';
         ctx.lineWidth = 1;
@@ -424,6 +492,11 @@ window.addEventListener('load', () => {
 
         ctx.strokeStyle = 'rgba(122,162,247,0.35)';
         ctx.strokeRect(o.x - 6, o.y - 6, o.w + 12, o.h + 12);
+
+        // 가까우면 조금 더 자주 스파클
+        if (Math.random() < 0.08){
+          spawnStarBurst(o.x + o.w/2, o.y - 2);
+        }
       }
 
       const size = 22;
@@ -468,29 +541,34 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
-  // 크롭 없이 이미지 전체 그리기
-  function drawPlayerSprite(){
-    // fallback box
+  function drawPlayerSprite(ts){
+    // fallback
     ctx.fillStyle = '#f7768e';
     ctx.fillRect(Math.round(player.x), Math.round(player.y), player.w, player.h);
 
     const dx = Math.round(player.x - (DRAW_W - player.w) / 2);
     const dy = Math.round(player.y - (DRAW_H - player.h) / 2);
 
+    // ✅ 바라보기 연출이 살아있으면 facing 덮어쓰기
+    let drawFacing = facing;
+    if (faceHoldUntil > ts && faceHoldDir){
+      drawFacing = faceHoldDir;
+    }
+
     let img = null;
 
-    if (facing === 'up' && ok('back')) img = sprites.back;
-    else if (facing === 'down' && ok('front')) img = sprites.front;
+    if (drawFacing === 'up' && ok('back')) img = sprites.back;
+    else if (drawFacing === 'down' && ok('front')) img = sprites.front;
     else {
       const sideKey = (walkFrame === 0) ? 'side1' : 'side2';
-      if (facing === 'left' && ok(sideKey)) img = (walkFrame === 0) ? sprites.side1 : sprites.side2;
-      if (facing === 'right' && ok(sideKey)) img = (walkFrame === 0) ? sprites.side1 : sprites.side2;
+      if (drawFacing === 'left' && ok(sideKey)) img = (walkFrame === 0) ? sprites.side1 : sprites.side2;
+      if (drawFacing === 'right' && ok(sideKey)) img = (walkFrame === 0) ? sprites.side1 : sprites.side2;
       if (!img && ok('front')) img = sprites.front;
     }
 
     if (!img) return;
 
-    if (facing === 'right'){
+    if (drawFacing === 'right'){
       ctx.save();
       ctx.scale(-1, 1);
       ctx.drawImage(img, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
@@ -501,6 +579,9 @@ window.addEventListener('load', () => {
   }
 
   function render(ts){
+    // 상시 별 파티클(은은)
+    ambientStars(ts);
+
     let sx = 0, sy = 0;
     if (shake > 0){
       sx = (Math.random() - 0.5) * 2;
@@ -515,16 +596,18 @@ window.addEventListener('load', () => {
     drawBG(ts);
     drawObjects(ts);
 
+    drawStars();
     drawDust();
-    drawPlayerSprite();
+
+    drawPlayerSprite(ts);
     drawPressSpaceBubble();
 
     ctx.restore();
   }
 
-  // =========================================
+  // =========================================================
   // ✅ update loop
-  // =========================================
+  // =========================================================
   let lastTs = performance.now();
   let stepCooldown = 0;
 
@@ -557,12 +640,8 @@ window.addEventListener('load', () => {
 
     const isMoving = (player.vx !== 0 || player.vy !== 0);
 
-    // 이동 중 먼지
-    if (isMoving && Math.random() < 0.25){
-      spawnDust();
-    }
+    if (isMoving && Math.random() < 0.25) spawnDust();
 
-    // ✅ 발걸음 효과음: 너무 자주 안 나오게 쿨다운
     if (stepCooldown > 0) stepCooldown -= dt;
     if (isMoving && stepCooldown <= 0){
       playStep();
@@ -615,8 +694,8 @@ window.addEventListener('load', () => {
   }
 
   window.addEventListener('keydown', (e) => {
-    // ✅ 오디오 정책 때문에: 첫 키 입력에서 활성화
-    armAudio();
+    // ✅ 사용자 입력에서 오디오 활성화
+    getAudioCtx();
 
     keys.add(e.key);
     if (!layer.classList.contains('on')) return;
@@ -625,6 +704,10 @@ window.addEventListener('load', () => {
       e.preventDefault();
       const o = nearestInteractable();
       if (!o) return;
+
+      // ✅ Space 누르면 아이콘 바라보기 + 스파클 burst
+      setFaceTowardObject(o);
+      spawnStarBurst(o.x + o.w/2, o.y - 2);
 
       if (o.type === 'timeline') openTimeline();
       else if (o.type === 'popup') openPopupLikeTimeline(o.id);
