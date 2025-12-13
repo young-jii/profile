@@ -27,15 +27,40 @@ window.addEventListener('load', () => {
   let walkTimer = 0;
   const WALK_INTERVAL = 140;
 
-  // ===== debug =====
-  const debug = {
-    enabled: false,
-    lines: [],
-    push(msg){
-      this.lines.unshift(msg);
-      if (this.lines.length > 10) this.lines.pop();
+  // =========================================
+  // ✅ 연출 1) 먼지 파티클
+  // =========================================
+  const dust = []; // {x,y,vx,vy,life}
+
+  function spawnDust(){
+    dust.push({
+      x: player.x + player.w / 2,
+      y: player.y + player.h,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random()) * 0.2,
+      life: 18 + Math.random() * 10
+    });
+  }
+
+  function drawDust(){
+    for (let i = dust.length - 1; i >= 0; i--){
+      const p = dust[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 1;
+
+      const a = Math.max(0, p.life / 28);
+      ctx.fillStyle = `rgba(255,255,255,${0.35 * a})`;
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+
+      if (p.life <= 0) dust.splice(i, 1);
     }
-  };
+  }
+
+  // =========================================
+  // ✅ 연출 3) 화면 흔들림(Shake)
+  // =========================================
+  let shake = 0;
 
   // =========================================
   // ✅ Unified Info Modal (timeline 스타일)
@@ -60,7 +85,9 @@ window.addEventListener('load', () => {
   const infoModalClose = infoModal.querySelector('#infoModalClose');
 
   function openInfoModal(title, html){
+    shake = 8;        // ✅ 팝업 열릴 때 흔들림
     paused = true;
+
     infoModalTitle.textContent = title || 'Info';
     infoModalBody.innerHTML = html || '';
     infoModal.classList.add('on');
@@ -79,6 +106,7 @@ window.addEventListener('load', () => {
   // ===== Timeline modal =====
   function openTimeline(){
     if (!timelineModal) return;
+    shake = 8;       // ✅ 타임라인 열릴 때도 흔들림
     paused = true;
     timelineModal.classList.add('on');
     timelineModal.setAttribute('aria-hidden', 'false');
@@ -141,7 +169,7 @@ window.addEventListener('load', () => {
   ];
 
   // =========================================
-  // ✅ icon images (지도에 다시 표시)
+  // ✅ icon images (지도 아이콘)
   // =========================================
   const ICON_BASE_CANDIDATES = [
     'assets/css/images/',
@@ -166,8 +194,7 @@ window.addEventListener('load', () => {
     timeline:false,
   };
 
-  // ⚠️ 여기 파일명은 네 폴더에 있는 실제 파일명으로 맞춰줘!
-  // (지금은 예시)
+  // ⚠️ 네 실제 파일명으로 맞춰줘!
   const ICON_FILES = {
     popupTrigger1: 'icon_school.png',
     popupTrigger2: 'icon_training.png',
@@ -211,8 +238,7 @@ window.addEventListener('load', () => {
   };
   const spriteReady = { front:false, back:false, side1:false, side2:false };
 
-  const SPRITE_BASE_CANDIDATES = ICON_BASE_CANDIDATES; // 같은 경로 후보 사용
-
+  const SPRITE_BASE_CANDIDATES = ICON_BASE_CANDIDATES;
   const FILE_CANDIDATES = {
     front: ['dot_front.png'],
     back:  ['dot_back.png'],
@@ -225,18 +251,13 @@ window.addEventListener('load', () => {
     const file = FILE_CANDIDATES[key][fileIdx];
     const url = new URL(base + file, document.baseURI).href;
 
-    img.onload = () => {
-      spriteReady[key] = true;
-      debug.push(`✅ ${key}: ${base}${file}`);
-    };
+    img.onload = () => { spriteReady[key] = true; };
     img.onerror = () => {
-      debug.push(`❌ ${key}: ${base}${file}`);
       const nf = fileIdx + 1;
       if (nf < FILE_CANDIDATES[key].length) return tryLoadSprite(img, key, baseIdx, nf);
       const nb = baseIdx + 1;
       if (nb < SPRITE_BASE_CANDIDATES.length) return tryLoadSprite(img, key, nb, 0);
       spriteReady[key] = false;
-      debug.push(`🛑 ${key}: ALL FAILED`);
     };
 
     img.src = url;
@@ -265,7 +286,7 @@ window.addEventListener('load', () => {
   }
 
   // =========================================
-  // ✅ render
+  // ✅ render helpers
   // =========================================
   function drawBG(ts){
     const t = ts / 1000;
@@ -309,9 +330,19 @@ window.addEventListener('load', () => {
     for (const o of objects){
       const bob = Math.sin(t * 3 + o.x * 0.05 + o.y * 0.08) * 2;
       const isNear = near && near.id === o.id;
-      const scale = isNear ? 1.12 : 1.0;
+
+      // ✅ 연출 2) 가까우면 링 반짝
+      if (isNear){
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(o.x - 3, o.y - 3, o.w + 6, o.h + 6);
+
+        ctx.strokeStyle = 'rgba(122,162,247,0.35)';
+        ctx.strokeRect(o.x - 6, o.y - 6, o.w + 12, o.h + 12);
+      }
 
       const size = 22;
+      const scale = isNear ? 1.12 : 1.0;
       const dw = size * scale;
       const dh = size * scale;
       const dx = o.x + o.w/2 - dw/2;
@@ -352,7 +383,7 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
-  // ✅ 핵심: 크롭 없이 "이미지 전체"를 그린다
+  // ✅ 크롭 없이 이미지 전체 그리기
   function drawPlayerSprite(){
     // fallback box
     ctx.fillStyle = '#f7768e';
@@ -361,7 +392,6 @@ window.addEventListener('load', () => {
     const dx = Math.round(player.x - (DRAW_W - player.w) / 2);
     const dy = Math.round(player.y - (DRAW_H - player.h) / 2);
 
-    // 어떤 이미지로 그릴지 선택
     let img = null;
 
     if (facing === 'up' && ok('back')) img = sprites.back;
@@ -375,7 +405,6 @@ window.addEventListener('load', () => {
 
     if (!img) return;
 
-    // right는 좌우반전
     if (facing === 'right'){
       ctx.save();
       ctx.scale(-1, 1);
@@ -386,33 +415,28 @@ window.addEventListener('load', () => {
     }
   }
 
-  function drawDebug(){
-    if (!debug.enabled) return;
+  function render(ts){
+    // ✅ 연출 3) 흔들림 적용: 전체 화면 translate
+    let sx = 0, sy = 0;
+    if (shake > 0){
+      sx = (Math.random() - 0.5) * 2;
+      sy = (Math.random() - 0.5) * 2;
+      shake -= 1;
+    }
 
     ctx.save();
-    ctx.font = '9px monospace';
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(6, 6, 308, 52);
+    ctx.translate(sx, sy);
 
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.fillText(
-      `SPRITES: front=${ok('front')} back=${ok('back')} side1=${ok('side1')} side2=${ok('side2')}`,
-      10, 18
-    );
-
-    for (let i=0; i<Math.min(debug.lines.length, 4); i++){
-      ctx.fillText(debug.lines[i], 10, 30 + i*10);
-    }
-    ctx.restore();
-  }
-
-  function render(ts){
     ctx.clearRect(0,0,W,H);
     drawBG(ts);
     drawObjects(ts);
+
+    // 먼지(캐릭터 아래) → 캐릭터 → 말풍선 순
+    drawDust();
     drawPlayerSprite();
     drawPressSpaceBubble();
-    // drawDebug();
+
+    ctx.restore();
   }
 
   // =========================================
@@ -448,6 +472,11 @@ window.addEventListener('load', () => {
     else if (player.vy > 0) facing = 'down';
 
     const isMoving = (player.vx !== 0 || player.vy !== 0);
+
+    // ✅ 연출 1) 이동 중이면 먼지 생성
+    if (isMoving && Math.random() < 0.25){
+      spawnDust();
+    }
 
     if (isMoving && (facing === 'left' || facing === 'right')){
       walkTimer += dt;
