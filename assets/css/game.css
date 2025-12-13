@@ -83,8 +83,7 @@ body.game-on #footer {
   align-items: flex-end;
 }
 
-#exitGameBtn,
-#skipResumeBtn {
+#exitGameBtn {
   pointer-events: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 13px;
@@ -96,10 +95,8 @@ body.game-on #footer {
   cursor: pointer;
   transition: transform .12s ease, background .12s ease;
 }
-#exitGameBtn:hover,
-#skipResumeBtn:hover { transform: translateY(-1px); background: rgba(0,0,0,0.82); }
-#exitGameBtn:active,
-#skipResumeBtn:active { transform: translateY(0px); }
+#exitGameBtn:hover { transform: translateY(-1px); background: rgba(0,0,0,0.82); }
+#exitGameBtn:active { transform: translateY(0px); }
 
 /* =========================================================
    MODAL (timeline-style) + scroll fix
@@ -112,7 +109,6 @@ body.game-on #footer {
   background: rgba(0,0,0,0.78);
   backdrop-filter: blur(10px);
 }
-
 .game-modal.on { display: grid; }
 
 .game-modal-card {
@@ -128,7 +124,6 @@ body.game-on #footer {
   opacity: 0;
   transition: transform 220ms ease, opacity 220ms ease;
 }
-
 .game-modal.on .game-modal-card {
   transform: translateY(0px) scale(1);
   opacity: 1;
@@ -200,7 +195,7 @@ body.game-on #footer {
 .tl-test  { background: rgba(255, 255, 255, 0.10); border-color: rgba(255,255,255,0.14); }
 
 /* =========================================================
-   Typewriter cursor helper (optional)
+   Typewriter cursor helper
 ========================================================= */
 .typing {
   position: relative;
@@ -219,16 +214,14 @@ body.game-on #footer {
   50% { opacity: 0; }
 }
 
-/* =========================================================
-   START / END overlay card tweaks
-========================================================= */
+/* CTA buttons inside modal */
 .game-cta {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 12px;
 }
-.game-cta button, .game-cta a {
+.game-cta a {
   display: inline-block;
   text-decoration: none;
   color: rgba(255,255,255,0.95);
@@ -240,6 +233,4 @@ body.game-on #footer {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 13px;
 }
-.game-cta button:hover, .game-cta a:hover {
-  background: rgba(0,0,0,0.75);
-}
+.game-cta a:hover { background: rgba(0,0,0,0.75); }
