@@ -149,3 +149,274 @@ body.game-on #main{
   border-bottom: 1px dashed rgba(255,255,255,0.12);
 }
 .tl-item span:last-child{ opacity: .86; white-space: nowrap; }
+
+/* =========================
+   POPUP UI: Game-style Cards
+   붙여넣기 위치: assets/css/game.css 맨 아래
+========================= */
+
+/* overlay: 부드러운 딤 + 블러 */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
+}
+
+.popup-overlay.on,
+.popup-overlay.active {
+  display: flex;
+}
+
+/* content: 유리 느낌 + 픽셀 감성 테두리 */
+.popup-content {
+  width: min(880px, 92vw);
+  max-height: min(720px, 84vh);
+  overflow: auto;
+  position: relative;
+  padding: 18px 18px 16px;
+  border-radius: 16px;
+
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06)),
+    radial-gradient(1200px 400px at 10% 0%, rgba(122,162,247,0.16), transparent 55%),
+    radial-gradient(1200px 400px at 90% 0%, rgba(158,206,106,0.14), transparent 55%),
+    rgba(12,16,24,0.85);
+
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow:
+    0 20px 70px rgba(0,0,0,0.55),
+    inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+/* 상단 픽셀 헤더 라인 */
+.popup-content::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg,
+      rgba(255,255,255,0.0) 0%,
+      rgba(255,255,255,0.18) 50%,
+      rgba(255,255,255,0.0) 100%);
+  opacity: 0.08;
+}
+
+/* 닫기 버튼 */
+.close-popup {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.35);
+  color: rgba(255,255,255,0.9);
+  font-size: 22px;
+  line-height: 34px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.close-popup:hover {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,0.08);
+}
+
+/* 제목/서브타이틀 */
+.popup-title {
+  margin: 2px 0 4px;
+  font-size: 22px;
+  letter-spacing: 0.4px;
+  color: rgba(255,255,255,0.95);
+}
+
+.popup-subtitle {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.72);
+}
+
+/* 섹션 */
+.popup-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255,255,255,0.16);
+}
+.popup-h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.78);
+}
+
+/* 비디오 영역도 카드처럼 */
+.video-wrapper {
+  margin: 10px 0 0;
+}
+.video-container {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.35);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+}
+.video-container video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.caption {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+}
+
+/* 카드: mini */
+.mini-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mini-card {
+  padding: 12px 12px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.25);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+.mini-title {
+  margin: 0 0 4px;
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(255,255,255,0.92);
+}
+
+.mini-meta {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.62);
+}
+
+/* 카드: skill */
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.skill-card {
+  padding: 12px 12px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.22);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+.skill-card h5 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.90);
+}
+
+/* 리스트 공통 */
+.popup-content ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.popup-content li {
+  margin: 6px 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.72);
+}
+
+/* 성과 리스트 */
+.impact-list {
+  padding-left: 18px;
+}
+.impact-list li {
+  color: rgba(255,255,255,0.78);
+}
+
+/* 자격 테이블 */
+.table-list {
+  display: grid;
+  gap: 8px;
+}
+
+.table-list .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.20);
+}
+
+.table-list .left {
+  font-size: 13px;
+  color: rgba(255,255,255,0.82);
+}
+.table-list .right {
+  font-size: 12px;
+  color: rgba(255,255,255,0.60);
+  white-space: nowrap;
+}
+
+/* 태그 칩 */
+.popup-tags {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.popup-tags .tag {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.76);
+  background: rgba(255,255,255,0.06);
+}
+
+/* 스크롤바 미니멀 */
+.popup-content::-webkit-scrollbar {
+  width: 10px;
+}
+.popup-content::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.15);
+  border-radius: 10px;
+}
+.popup-content::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.16);
+  border-radius: 10px;
+  border: 2px solid rgba(0,0,0,0.15);
+}
+
+/* 반응형 */
+@media (max-width: 840px) {
+  .skill-grid { grid-template-columns: 1fr; }
+  .mini-cards { grid-template-columns: 1fr; }
+}
+
+/* 접근성: 모션 줄이기 */
+@media (prefers-reduced-motion: reduce) {
+  .close-popup { transition: none; }
+}
