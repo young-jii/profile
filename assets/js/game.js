@@ -36,8 +36,7 @@ window.addEventListener('load', () => {
   let paused = true; // intro until start
 
   /* =========================
-     Web Audio (SFX) - 복구
-     - iOS/Chrome 정책 때문에 "첫 사용자 입력" 시점에만 활성화 가능
+     Web Audio (SFX)
   ========================= */
   let audioCtx = null;
   function ensureAudio(){
@@ -83,9 +82,7 @@ window.addEventListener('load', () => {
     o.stop(t0 + dur + release + 0.02);
   }
 
-  // 카테고리별 "음색" 매핑
   function playSfxForKey(key){
-    // 따뜻(학교), 부드러움(교육), 쿵(경력), 반짝(수상), 클릭(자격), airy(언어), 종(연혁)
     switch (key){
       case 'school':
         playTone({ type:'triangle', freq: 440, dur:0.10, gain:0.10, filter:{type:'lowpass', freq:1200, q:0.8} });
@@ -118,10 +115,10 @@ window.addEventListener('load', () => {
     }
   }
 
-  // === Player collision box (small) ===
-  const player = { x: 52, y: 86, w: 12, h: 12, vx: 0, vy: 0, speed: 1.35 };
-
-  // === Draw size (bigger on canvas) ===
+  /* =========================
+     Player / Sprites
+  ========================= */
+  const player = { x: 60, y: 92, w: 12, h: 12, vx: 0, vy: 0, speed: 1.35 };
   const DRAW_W = 32, DRAW_H = 32;
 
   const SPRITE_BASE = 'assets/css/images/';
@@ -132,7 +129,6 @@ window.addEventListener('load', () => {
     side2: new Image(),
   };
 
-  // 괄호 파일명 안정 로딩
   sprites.front.src = encodeURI(SPRITE_BASE + 'dot_front.png');
   sprites.back.src  = encodeURI(SPRITE_BASE + 'dot_back.png');
   sprites.side1.src = encodeURI(SPRITE_BASE + 'dot_side(1).png');
@@ -148,27 +144,22 @@ window.addEventListener('load', () => {
   const WALK_INTERVAL = 140;
 
   /* =========================
-     ✅ 맵 위치 [to-be] 재배치
-     [to-be]
-       학교                           언어
-       --|-----경력----------|--------연혁
-       교육--수상                자격증
+     Map Nodes [to-be]
   ========================= */
-
   const nodes = [
-    { key:'school',   label:'학교',  x: 55,  y: 55  },  // top-left
-    { key:'training', label:'교육',  x: 55,  y: 125 },  // bottom-left
-    { key:'award',    label:'수상',  x: 110, y: 125 },  // right of training
+    { key:'school',   label:'학교',   x: 55,  y: 55  },
+    { key:'training', label:'교육',   x: 55,  y: 125 },
+    { key:'award',    label:'수상',   x: 110, y: 125 },
 
-    { key:'company',  label:'경력',  x: 160, y: 90  },  // center on main line
+    { key:'company',  label:'경력',   x: 160, y: 90  },
 
-    { key:'lang',     label:'언어',  x: 250, y: 55  },  // top-right
-    { key:'cert',     label:'자격증', x: 250, y: 125 },  // bottom-right
+    { key:'lang',     label:'언어',   x: 250, y: 55  },
+    { key:'cert',     label:'자격증', x: 250, y: 125 },
 
-    { key:'timeline', label:'연혁',  x: 295, y: 90  },  // far right mid
+    { key:'timeline', label:'연혁',   x: 295, y: 90  },
   ];
 
-  // === Optional icons (없어도 동작) ===
+  // === Optional icons ===
   const iconBase = 'assets/css/images/';
   const iconFiles = {
     school:   'icon_school.png',
@@ -192,7 +183,9 @@ window.addEventListener('load', () => {
     return img && img.complete && img.naturalWidth > 0;
   }
 
-  // === Content (모달 내용) ===
+  /* =========================
+     Content (모달 내용)
+  ========================= */
   const CONTENT = {
     school: {
       title: '학교',
@@ -302,7 +295,9 @@ window.addEventListener('load', () => {
     }
   };
 
-  // === Modal helpers ===
+  /* =========================
+     Modal helpers
+  ========================= */
   function openModal(modal){
     if (!modal) return;
     paused = true;
@@ -316,7 +311,6 @@ window.addEventListener('load', () => {
     paused = false;
   }
 
-  // Typewriter: 텍스트 먼저 보여주고, 끝나면 HTML로 교체(영상 포함 가능)
   function openInfo(key){
     const data = CONTENT[key];
     if (!data) return;
@@ -328,8 +322,6 @@ window.addEventListener('load', () => {
     const target = infoModalBody.querySelector('#typeTarget');
 
     openModal(infoModal);
-
-    // ✅ SFX
     playSfxForKey(key);
 
     if (!target){
@@ -348,12 +340,11 @@ window.addEventListener('load', () => {
 
       if (i >= plain.length){
         clearInterval(timer);
-        infoModalBody.innerHTML = html; // ✅ 영상 포함 HTML로 최종 교체
+        infoModalBody.innerHTML = html;
       }
     }, 12);
   }
 
-  // close buttons
   if (introCloseBtn) introCloseBtn.addEventListener('click', () => {
     introModal.classList.remove('on');
     introModal.setAttribute('aria-hidden','true');
@@ -369,7 +360,6 @@ window.addEventListener('load', () => {
   if (timelineCloseBtn) timelineCloseBtn.addEventListener('click', () => closeModal(timelineModal));
   if (outroCloseBtn) outroCloseBtn.addEventListener('click', () => closeModal(outroModal));
 
-  // click outside to close
   [infoModal, timelineModal, outroModal].forEach(m => {
     if (!m) return;
     m.addEventListener('click', (e) => {
@@ -377,17 +367,17 @@ window.addEventListener('load', () => {
     });
   });
 
-  // exit -> outro
   if (exitBtn){
     exitBtn.addEventListener('click', () => {
       paused = true;
-      // ✅ SFX: exit용 짧은 톤
       playTone({ type:'triangle', freq: 220, dur:0.08, gain:0.08 });
       openModal(outroModal);
     });
   }
 
-  // === Career HUD (months-based) ===
+  /* =========================
+     Career HUD (months-based)
+  ========================= */
   function monthDiffInclusive(startY, startM, endY, endM){
     const a = startY * 12 + (startM - 1);
     const b = endY * 12 + (endM - 1);
@@ -412,7 +402,9 @@ window.addEventListener('load', () => {
   }
   updateCareerHUD();
 
-  // === Interaction helper ===
+  /* =========================
+     Interaction helper
+  ========================= */
   function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh){
     return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
   }
@@ -428,11 +420,313 @@ window.addEventListener('load', () => {
     return null;
   }
 
+  /* =========================================================
+     ✨ Retro props: grass/rocks/lamps (random but fixed)
+  ========================================================= */
+  function mulberry32(seed){
+    return function(){
+      let t = seed += 0x6D2B79F5;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const props = [];
+  const rng = mulberry32(20251214); // ✅ 고정 시드 (항상 같은 배치)
+
+  // 도로 영역(대충) 제외하고 소품을 배치
+  const roadRects = [
+    { x:55, y:86,  w:240, h:12 },  // main
+    { x:49, y:55,  w:12,  h:70 },  // left connector
+    { x:244,y:55,  w:12,  h:70 },  // right connector
+    { x:55, y:121, w:55,  h:12 },  // education->award
+  ];
+
+  function inRoad(x,y){
+    for (const r of roadRects){
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return true;
+    }
+    return false;
+  }
+
+  function nearNode(x,y){
+    for (const n of nodes){
+      const dx = x - n.x;
+      const dy = y - n.y;
+      if (Math.sqrt(dx*dx + dy*dy) < 22) return true;
+    }
+    return false;
+  }
+
+  function snap16(v){ return Math.round(v / 16) * 16; }
+
+  function initProps(){
+    props.length = 0;
+
+    // 1) 가로등: 길 옆에 규칙적으로 배치(약간 랜덤 오프셋)
+    const lampXs = [80, 120, 200, 235, 275];
+    lampXs.forEach((x, idx) => {
+      const yTop = 74 + (idx % 2 === 0 ? -2 : 2);
+      const yBot = 110 + (idx % 2 === 1 ? -2 : 2);
+
+      props.push({ type:'lamp', x: x, y: yTop });
+      props.push({ type:'lamp', x: x + 6, y: yBot });
+    });
+
+    // 2) 잔디/돌: 랜덤이지만 16px 그리드 기반으로 곳곳에 배치
+    const attempts = 120;
+    for (let i=0; i<attempts; i++){
+      const x = snap16(16 + rng() * (W - 32));
+      const y = snap16(16 + rng() * (H - 32));
+
+      if (inRoad(x,y)) continue;
+      if (nearNode(x,y)) continue;
+
+      // 확률: grass가 더 많고 rock이 가끔
+      const roll = rng();
+      if (roll < 0.70){
+        props.push({ type:'grass', x, y, v: (rng()*3)|0 });
+      } else if (roll < 0.95){
+        props.push({ type:'rock', x, y, v: (rng()*3)|0 });
+      }
+    }
+
+    // 3) 길 모서리쪽에 조약돌 라인 (조금 더 “길” 느낌)
+    for (let x=55; x<=295; x+=16){
+      props.push({ type:'pebble', x, y: 82 });
+      props.push({ type:'pebble', x, y: 100 });
+    }
+  }
+  initProps();
+
+  function drawPixelRect(x, y, w, h, fill, stroke){
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, y, w, h);
+    if (stroke){
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    }
+  }
+
+  function drawGrass(p, t){
+    const ox = p.x + 4;
+    const oy = p.y + 8;
+    const sway = Math.sin(t*2 + (p.x+p.y)*0.02) * 1;
+
+    // 바닥
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(ox, oy+4, 10, 2);
+
+    // 잔디(픽셀)
+    ctx.fillStyle = 'rgba(158, 206, 106, 0.85)';
+    ctx.fillRect(ox+1, oy+1+sway, 1, 5);
+    ctx.fillRect(ox+4, oy-0+sway, 1, 6);
+    ctx.fillRect(ox+7, oy+2+sway, 1, 4);
+
+    // 하이라이트
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(ox+4, oy+0+sway, 1, 1);
+  }
+
+  function drawRock(p, t){
+    const ox = p.x + 5;
+    const oy = p.y + 9;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(ox, oy+4, 10, 2);
+
+    // 바위(픽셀)
+    drawPixelRect(ox+1, oy, 8, 6, 'rgba(200,210,220,0.75)', 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.fillRect(ox+2, oy+1, 2, 1);
+  }
+
+  function drawPebble(p){
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(p.x + 6, p.y + 2, 2, 2);
+  }
+
+  function drawLamp(p, t){
+    const x = Math.round(p.x);
+    const y = Math.round(p.y);
+
+    // 포스트
+    drawPixelRect(x, y, 2, 10, 'rgba(180,170,140,0.55)', 'rgba(0,0,0,0.30)');
+
+    // 헤드
+    drawPixelRect(x-1, y-2, 4, 3, 'rgba(200,190,160,0.55)', 'rgba(0,0,0,0.30)');
+
+    // 빛(부드럽게 깜빡이되 화면 전체가 아닌 아주 미세)
+    const glow = 0.10 + (Math.sin(t*3 + x*0.1)*0.04);
+    ctx.fillStyle = `rgba(255, 240, 180, ${glow})`;
+    ctx.fillRect(x-6, y+1, 14, 10);
+
+    // 코어
+    ctx.fillStyle = 'rgba(255, 245, 210, 0.35)';
+    ctx.fillRect(x, y-1, 2, 2);
+  }
+
+  function drawProps(t){
+    for (const p of props){
+      if (p.type === 'grass') drawGrass(p, t);
+      else if (p.type === 'rock') drawRock(p, t);
+      else if (p.type === 'lamp') drawLamp(p, t);
+      else if (p.type === 'pebble') drawPebble(p);
+    }
+  }
+
+  /* =========================================================
+     ✨ Signboard + Node Animation
+  ========================================================= */
+  function nodeColor(key){
+    switch(key){
+      case 'school': return { main:'#e0b86a', edge:'#8c6a2b' };
+      case 'training': return { main:'#bb9af7', edge:'#6f50b4' };
+      case 'company': return { main:'#7aa2f7', edge:'#3b5fb3' };
+      case 'award': return { main:'#f7768e', edge:'#a73d52' };
+      case 'cert': return { main:'#7dcfff', edge:'#3b7f95' };
+      case 'lang': return { main:'#9ece6a', edge:'#4f7a2f' };
+      case 'timeline': return { main:'#9ece6a', edge:'#4f7a2f' };
+      default: return { main:'#7aa2f7', edge:'#3b5fb3' };
+    }
+  }
+
+  function drawSignboard(n, t, isNear){
+    ctx.font = '10px monospace';
+    const label = n.label;
+    const padX = 8;
+    const textW = Math.ceil(ctx.measureText(label).width);
+    const boardW = Math.max(34, textW + padX * 2);
+    const boardH = 14;
+
+    const baseX = Math.round(n.x - boardW / 2);
+    const baseY = Math.round(n.y + 14);
+
+    const postH = 10;
+    const postW = 4;
+    const postX = Math.round(n.x - postW/2);
+    const postY = baseY - postH + 1;
+
+    const bob = Math.round(Math.sin(t * 2.0 + n.x * 0.05 + n.y * 0.03) * 1.0);
+
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(baseX + 2, baseY + 2 + bob, boardW, boardH);
+    ctx.fillRect(postX + 1, postY + 2 + bob, postW, postH);
+
+    const c = nodeColor(n.key);
+
+    drawPixelRect(postX, postY + bob, postW, postH, 'rgba(140,106,43,0.75)', 'rgba(0,0,0,0.35)');
+    drawPixelRect(baseX, baseY + bob, boardW, boardH, 'rgba(224,184,106,0.35)', 'rgba(0,0,0,0.35)');
+
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.fillRect(baseX + 2, baseY + 2 + bob, boardW - 4, 2);
+
+    ctx.fillStyle = c.main;
+    ctx.fillRect(baseX + 2, baseY + 2 + bob, 4, boardH - 4);
+
+    ctx.fillStyle = isNear ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.90)';
+    ctx.fillText(label, baseX + padX, baseY + 10 + bob);
+
+    if (isNear){
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.strokeRect(baseX + 0.5, baseY + 0.5 + bob, boardW - 1, boardH - 1);
+    }
+  }
+
+  function drawNodeIcon(n, t, isNear){
+    const baseSize = 18;
+
+    const phase = (n.x * 0.07 + n.y * 0.05);
+    const pulse = 1 + (Math.sin(t * 3.0 + phase) * 0.03) + (isNear ? 0.05 : 0);
+    const bounce = Math.sin(t * 2.2 + phase) * (isNear ? 1.8 : 1.0);
+
+    // glow
+    if (isNear){
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fillRect(Math.round(n.x - baseSize/2) - 6, Math.round(n.y - baseSize/2 + bounce) - 6, baseSize + 12, baseSize + 12);
+    }
+
+    ctx.save();
+    ctx.translate(Math.round(n.x), Math.round(n.y + bounce));
+    ctx.scale(pulse, pulse);
+    ctx.translate(-Math.round(n.x), -Math.round(n.y + bounce));
+
+    if (iconReady(n.key)){
+      ctx.drawImage(icons[n.key], Math.round(n.x - baseSize/2), Math.round(n.y - baseSize/2 + bounce), baseSize, baseSize);
+    } else {
+      const c = nodeColor(n.key);
+      drawPixelRect(
+        Math.round(n.x - baseSize/2),
+        Math.round(n.y - baseSize/2 + bounce),
+        baseSize, baseSize,
+        c.main, c.edge
+      );
+    }
+    ctx.restore();
+
+    // tiny sparkle
+    const sx = n.x + Math.cos(t * 2 + n.x) * 8;
+    const sy = (n.y + bounce) + Math.sin(t * 2 + n.y) * 6;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
+  }
+
+  /* =========================================================
+     ✨ "!" Pop (Space pressed)
+  ========================================================= */
+  const pops = [];
+  function spawnPop(n){
+    // 노드 위쪽에 팝 생성
+    pops.push({
+      x: n.x,
+      y: n.y - 18,
+      t: 0,         // elapsed
+      dur: 520,     // ms
+    });
+
+    // 팝 소리(짧고 귀엽게)
+    playTone({ type:'square', freq: 1200, dur:0.035, gain:0.05, filter:{type:'highpass', freq:900, q:0.7} });
+    playTone({ type:'sine', freq: 1600, dur:0.035, gain:0.04, filter:{type:'highpass', freq:900, q:0.8} });
+  }
+
+  function updatePops(dt){
+    for (let i=pops.length-1; i>=0; i--){
+      pops[i].t += dt;
+      if (pops[i].t >= pops[i].dur) pops.splice(i, 1);
+    }
+  }
+
+  function drawPops(){
+    for (const p of pops){
+      const k = Math.min(1, p.t / p.dur); // 0~1
+      const rise = (1 - (1-k)*(1-k)) * 10; // easeOut
+      const alpha = k < 0.7 ? 1 : (1 - (k-0.7)/0.3);
+
+      const x = Math.round(p.x);
+      const y = Math.round(p.y - rise);
+
+      // bubble
+      ctx.fillStyle = `rgba(0,0,0,${0.55*alpha})`;
+      ctx.fillRect(x-6, y-10, 12, 12);
+
+      ctx.fillStyle = `rgba(255,255,255,${0.95*alpha})`;
+      ctx.fillRect(x-5, y-9, 10, 10);
+
+      // "!"
+      ctx.fillStyle = `rgba(20,20,20,${0.95*alpha})`;
+      ctx.fillRect(x-1, y-7, 2, 6);
+      ctx.fillRect(x-1, y, 2, 2);
+    }
+  }
+
   /* =========================
      Render
   ========================= */
   function drawBG(){
-    // tile background
+    // tiles
     for (let y=0; y<H; y+=16){
       for (let x=0; x<W; x+=16){
         const even = ((x+y)/16) % 2 === 0;
@@ -441,48 +735,17 @@ window.addEventListener('load', () => {
       }
     }
 
-    // main road: y=90 중심선
+    // roads (to-be)
     ctx.fillStyle = '#2a3646';
-    ctx.fillRect(55, 86, 240, 12); // from x=55 to x=295
-
-    // left vertical connector (학교<->교육)
-    ctx.fillRect(49, 55, 12, 70);  // x around 55, from y=55 to y=125
-
-    // right vertical connector (언어<->자격증)
-    ctx.fillRect(244, 55, 12, 70);
-
-    // education -> award branch (bottom row)
-    ctx.fillRect(55, 121, 55, 12); // from x=55 to x=110
+    ctx.fillRect(55, 86, 240, 12);     // main
+    ctx.fillRect(49, 55, 12, 70);      // left connector
+    ctx.fillRect(244, 55, 12, 70);     // right connector
+    ctx.fillRect(55, 121, 55, 12);     // education -> award
 
     // subtle edges
     ctx.fillStyle = 'rgba(255,255,255,0.04)';
     ctx.fillRect(55, 85, 240, 1);
     ctx.fillRect(55, 98, 240, 1);
-  }
-
-  function drawNode(n){
-    const size = 18;
-    const x = Math.round(n.x - size/2);
-    const y = Math.round(n.y - size/2);
-
-    if (iconReady(n.key)){
-      ctx.drawImage(icons[n.key], x, y, size, size);
-    } else {
-      ctx.fillStyle = (n.key === 'timeline') ? '#9ece6a' : '#7aa2f7';
-      ctx.fillRect(x, y, size, size);
-    }
-
-    // label (한글)
-    ctx.font = '10px monospace';
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.fillText(n.label, x - 2, y - 4);
-
-    // sparkle near icon (작게)
-    const t = performance.now() / 1000;
-    const sx = n.x + Math.cos(t * 2 + n.x) * 8;
-    const sy = n.y + Math.sin(t * 2 + n.y) * 6;
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
   }
 
   function drawPressSpace(){
@@ -507,7 +770,6 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
-  // 캐릭터 드로우
   function drawPlayer(){
     if (!allSpritesReady()){
       ctx.fillStyle = '#f7768e';
@@ -528,12 +790,10 @@ window.addEventListener('load', () => {
       ctx.drawImage(sprites.front, dx, dy, DRAW_W, DRAW_H);
       return;
     }
-
     if (facing === 'left'){
       ctx.drawImage(sideImg, dx, dy, DRAW_W, DRAW_H);
       return;
     }
-
     if (facing === 'right'){
       ctx.save();
       ctx.scale(-1, 1);
@@ -543,12 +803,30 @@ window.addEventListener('load', () => {
     }
   }
 
+  let lastRenderTs = performance.now();
   function render(){
+    const now = performance.now();
+    const dt = now - lastRenderTs;
+    lastRenderTs = now;
+
     ctx.clearRect(0,0,W,H);
     drawBG();
-    nodes.forEach(drawNode);
+
+    const t = now / 1000;
+    drawProps(t);
+
+    const near = nearestNode();
+    for (const n of nodes){
+      const isNear = !!near && near.key === n.key;
+      drawNodeIcon(n, t, isNear);
+      drawSignboard(n, t, isNear);
+    }
+
+    drawPops();
     drawPlayer();
     drawPressSpace();
+
+    updatePops(dt);
   }
 
   /* =========================
@@ -614,12 +892,9 @@ window.addEventListener('load', () => {
      Keys
   ========================= */
   window.addEventListener('keydown', (e) => {
-    // ✅ 오디오 컨텍스트는 사용자 입력에서만 활성화 가능
     ensureAudio();
-
     keys.add(e.key);
 
-    // Space starts game in intro
     if (introModal && introModal.classList.contains('on') && e.key === ' '){
       e.preventDefault();
       introModal.classList.remove('on');
@@ -642,6 +917,9 @@ window.addEventListener('load', () => {
       if (Math.abs(dx) > Math.abs(dy)) facing = dx > 0 ? 'right' : 'left';
       else facing = dy > 0 ? 'down' : 'up';
 
+      // ✅ "!" 팝
+      spawnPop(n);
+
       paused = true;
 
       if (n.key === 'timeline'){
@@ -653,7 +931,6 @@ window.addEventListener('load', () => {
     }
 
     if (e.key === 'Escape'){
-      // close open modal
       if (infoModal?.classList.contains('on')) { closeModal(infoModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
       if (timelineModal?.classList.contains('on')) { closeModal(timelineModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
       if (outroModal?.classList.contains('on')) { closeModal(outroModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
