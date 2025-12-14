@@ -49,7 +49,6 @@ window.addEventListener('load', () => {
     side2: new Image(),
   };
 
-  // 괄호 파일명 안정 로딩
   sprites.front.src = encodeURI(SPRITE_BASE + 'dot_front.png');
   sprites.back.src  = encodeURI(SPRITE_BASE + 'dot_back.png');
   sprites.side1.src = encodeURI(SPRITE_BASE + 'dot_side(1).png');
@@ -69,13 +68,13 @@ window.addEventListener('load', () => {
     { key:'school',    label:'학교',    x: 70,  y: 90 },
     { key:'training',  label:'교육',    x: 125, y: 90 },
     { key:'company',   label:'경력',    x: 185, y: 90 },
-    { key:'award',     label:'수상',    x: 230, y: 55 },   // branch up
-    { key:'cert',      label:'자격증',  x: 230, y: 125 },  // branch down
+    { key:'award',     label:'수상',    x: 230, y: 55 },
+    { key:'cert',      label:'자격증',  x: 230, y: 125 },
     { key:'lang',      label:'언어',    x: 275, y: 125 },
     { key:'timeline',  label:'연혁',    x: 295, y: 90 },
   ];
 
-  // === Optional icons (없어도 동작) ===
+  // === Optional icons ===
   const iconBase = 'assets/css/images/';
   const iconFiles = {
     school:   'icon_school.png',
@@ -99,9 +98,7 @@ window.addEventListener('load', () => {
     return img && img.complete && img.naturalWidth > 0;
   }
 
-  // === Content: 모달에 들어갈 내용 ===
-  // ✅ 경력/수상에는 영상 포함
-  // ✅ 비디오 경로는 profile 루트 기준: ./questions_program.mp4, ./jingum_test.mp4
+  // === Content ===
   const CONTENT = {
     school: {
       title: '학교',
@@ -135,8 +132,8 @@ window.addEventListener('load', () => {
         <div class="k-card">
           <p><b>대표 성과: 문항 코드 추출 자동화 프로그램</b></p>
           <video class="modal-video" controls playsinline preload="metadata">
-          <source src="./vidieos/questions_program.mp4" type="video/mp4" />
-          브라우저가 동영상을 지원하지 않습니다.
+            <source src="./vidieos/questions_program.mp4" type="video/mp4" />
+            브라우저가 동영상을 지원하지 않습니다.
           </video>
           <p style="margin-top:10px;">
             제가 기획부터 개발·배포까지 직접 진행한 자동화 도구입니다.<br/>
@@ -170,8 +167,8 @@ window.addEventListener('load', () => {
         <div class="k-card">
           <p><b>2023 제1회 K-디지털플랫폼 AI 경진대회</b> 특별상 (2023.12.13)</p>
           <video class="modal-video" controls playsinline preload="metadata">
-          <source src="./vidieos/jingum_test.mp4" type="video/mp4" />
-          브라우저가 동영상을 지원하지 않습니다.
+            <source src="./vidieos/jingum_test.mp4" type="video/mp4" />
+            브라우저가 동영상을 지원하지 않습니다.
           </video>
           <p style="margin-top:10px;">
             4인 팀 프로젝트로 진행한 <b>RAG 기반 질의응답(답파고)</b> 시연 영상입니다.<br/>
@@ -215,6 +212,7 @@ window.addEventListener('load', () => {
     modal.classList.add('on');
     modal.setAttribute('aria-hidden', 'false');
   }
+
   function closeModal(modal){
     if (!modal) return;
     modal.classList.remove('on');
@@ -222,25 +220,48 @@ window.addEventListener('load', () => {
     paused = false;
   }
 
-  // Typewriter: 텍스트 먼저 보여주고, 끝나면 HTML로 교체(영상 포함 가능)
+  // ✅ 비디오/무거운 콘텐츠가 있으면 typewriter 스킵
+  function hasVideo(html){
+    return /<video[\s>]/i.test(html);
+  }
+
+  function forceVideoLoad(container){
+    const vids = container.querySelectorAll('video');
+    vids.forEach(v => {
+      try{
+        v.load();
+        v.currentTime = 0;
+        v.playsInline = true;
+      }catch(e){}
+    });
+  }
+
   function openInfo(key){
     const data = CONTENT[key];
-    if (!data) return;
+    if (!data || !infoModal || !infoModalTitle || !infoModalBody) return;
 
     infoModalTitle.textContent = data.title;
 
     const html = data.body;
+    openModal(infoModal);
+
+    // ✅ 영상 포함(경력/수상)은 바로 렌더 + 로드
+    if (hasVideo(html)){
+      infoModalBody.innerHTML = html;
+      forceVideoLoad(infoModalBody);
+      return;
+    }
+
+    // typewriter (텍스트 중심만)
     infoModalBody.innerHTML = `<div class="typewrap"><div id="typeTarget"></div></div>`;
     const target = infoModalBody.querySelector('#typeTarget');
-
-    openModal(infoModal);
 
     if (!target){
       infoModalBody.innerHTML = html;
       return;
     }
 
-    const plain = html.replace(/<[^>]*>/g, '').replace(/\s+\n/g,'\n');
+    const plain = html.replace(/<[^>]*>/g, '').replace(/\s+\n/g,'\n').trim();
     let i = 0;
     target.textContent = '';
 
@@ -251,7 +272,7 @@ window.addEventListener('load', () => {
 
       if (i >= plain.length){
         clearInterval(timer);
-        infoModalBody.innerHTML = html; // ✅ 영상 포함 HTML로 최종 교체
+        infoModalBody.innerHTML = html;
       }
     }, 12);
   }
@@ -262,6 +283,7 @@ window.addEventListener('load', () => {
     introModal.setAttribute('aria-hidden','true');
     paused = false;
   });
+
   if (startGameBtn) startGameBtn.addEventListener('click', () => {
     introModal.classList.remove('on');
     introModal.setAttribute('aria-hidden','true');
@@ -329,24 +351,25 @@ window.addEventListener('load', () => {
     return null;
   }
 
-  // === Render: background + path + nodes + player ===
+  // === Render ===
   function drawBG(){
-    for (let y=0; y<H; y+=16){
-      for (let x=0; x<W; x+=16){
-        const even = ((x+y)/16) % 2 === 0;
-        ctx.fillStyle = even ? '#0f1a14' : '#0d1712';
-        ctx.fillRect(x, y, 16, 16);
-      }
-    }
+    // ✅ 타일 반복 제거 → 단색 배경 + 길만 그리기 (전체 깜빡임/부하 감소)
+    ctx.fillStyle = '#0b1217';
+    ctx.fillRect(0, 0, W, H);
 
-    // main road
-    ctx.fillStyle = '#2a3646';
+    // soft vignette 느낌(아주 약하게)
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(0, 0, W, 18);
+    ctx.fillRect(0, H-18, W, 18);
+
+    // main road (가로)
+    ctx.fillStyle = '#273241';
     ctx.fillRect(30, 86, 270, 12);
 
-    // branches
+    // branch (세로)
     ctx.fillRect(222, 58, 12, 76);
 
-    // subtle edges
+    // road edge highlight
     ctx.fillStyle = 'rgba(255,255,255,0.04)';
     ctx.fillRect(30, 85, 270, 1);
     ctx.fillRect(30, 98, 270, 1);
@@ -368,12 +391,7 @@ window.addEventListener('load', () => {
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
     ctx.fillText(n.label, x - 2, y - 4);
 
-    // sparkle
-    const t = performance.now() / 1000;
-    const sx = n.x + Math.cos(t * 2 + n.x) * 8;
-    const sy = n.y + Math.sin(t * 2 + n.y) * 6;
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
+    // ✅ sparkle 제거(원하면 다시 옵션으로 넣을 수 있음)
   }
 
   function drawPressSpace(){
@@ -398,8 +416,6 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
-  // ✅ 캐릭터 안 보임 해결 버전:
-  // - 16x16 크롭을 없애고, 이미지 전체를 DRAW_W/DRAW_H로 그린다.
   function drawPlayer(){
     if (!allSpritesReady()){
       ctx.fillStyle = '#f7768e';
@@ -536,7 +552,6 @@ window.addEventListener('load', () => {
     }
 
     if (e.key === 'Escape'){
-      // close open modal
       if (infoModal?.classList.contains('on')) { closeModal(infoModal); return; }
       if (timelineModal?.classList.contains('on')) { closeModal(timelineModal); return; }
       if (outroModal?.classList.contains('on')) { closeModal(outroModal); return; }
