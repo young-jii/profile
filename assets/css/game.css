@@ -115,6 +115,9 @@
   background: rgba(16, 22, 34, 0.95);
   border: 1px solid rgba(255,255,255,0.10);
   box-shadow: 0 18px 70px rgba(0,0,0,0.55);
+  
+  /* ✅ flex 스크롤 버그 방지 */
+  min-height: 0;
 }
 
 .game-modal-head{
@@ -152,9 +155,12 @@
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 
-  padding: 14px 14px 28px; /* ✅ 끝부분 잘림 방지 */
+  padding: 14px 14px 56px; /* ✅ 끝부분 잘림 방지 */
   font-size: 15px;
   line-height: 1.6;
+  
+  /* ✅ 모달 내부 스크롤 제어 안정화 */
+  overscroll-behavior: contain;
 }
 
 .modal-lead{
@@ -189,6 +195,33 @@
   border-radius: 12px;
   background: #000;
   border: 1px solid rgba(255,255,255,0.10);
+}
+
+/* ===== Video wrapper (modal) ===== */
+.video-frame{
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden; /* ✅ 넘침 방지 핵심 */
+  border: 1px solid rgba(255,255,255,0.10);
+  background: #000;
+  margin: 10px 0 12px;
+
+  /* ✅ 16:9 고정 비율 박스 */
+  aspect-ratio: 16 / 9;
+  position: relative;
+}
+
+/* ✅ video는 프레임 안에 꽉 채우기 */
+.video-frame > video{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+
+  /* ✅ 비율 유지하면서 꽉 차게 */
+  object-fit: contain;
+
+  display: block;
 }
 
 /* ===== Timeline chips ===== */
