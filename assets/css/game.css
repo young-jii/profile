@@ -1,39 +1,55 @@
+/* =========================
+   Fonts
+========================= */
+@font-face {
+  font-family: 'Paperozi';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-9Black.woff2') format('woff2');
+  font-weight: 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ChangwonDangamRounded';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2511-1@1.0/ChangwonDangamRound-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'RoundedFixedsys';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+  font-weight: normal;
+  font-display: swap;
+}
+
 /* ===== Game Layer ===== */
 #gameLayer{
   position: fixed;
   inset: 0;
   z-index: 9999;
-
   display: none;
   place-items: center;
 
-  /* ✅ 완전 불투명 배경: 뒤 페이지 안 비치게 + 깜빡임(합성) 방지 */
-  background: #070b11;
-  /* ❌ backdrop-filter는 전체 깜빡임 유발 가능 → 제거 */
-  /* backdrop-filter: blur(6px); */
+  /* 뒤 페이지 안 비치게 */
+  background: rgba(8, 12, 18, 0.96);
+  backdrop-filter: blur(6px);
 }
 
-#gameLayer.on{
-  display: grid;
-}
+#gameLayer.on{ display: grid; }
 
-/* ===== Stage (canvas + ui) ===== */
+/* 게임 무대(캔버스+UI) */
 .game-stage{
   position: relative;
   width: min(960px, 94vw);
   aspect-ratio: 16 / 9;
-  max-height: 88vh;
+  max-height: 86vh;
 
   display: grid;
   grid-template-rows: 1fr auto;
   gap: 10px;
 }
 
-/* (HTML에 game-stage가 없다면 대비) */
-#gameLayer > #gameCanvas{
-  border-radius: 16px;
-}
-
+/* Canvas */
 #gameCanvas{
   width: 100%;
   height: 100%;
@@ -41,7 +57,6 @@
   border-radius: 16px;
   box-shadow: 0 18px 60px rgba(0,0,0,0.45);
   background: #0b0f14;
-  display: block;
 }
 
 /* ===== UI pinned to canvas bottom ===== */
@@ -53,8 +68,11 @@
 
   padding: 10px 12px;
   border-radius: 14px;
-  background: rgba(14, 20, 30, 0.85);
-  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(14, 20, 30, 0.75);
+  border: 1px solid rgba(255,255,255,0.08);
+
+  /* ✅ 버튼/힌트 전용 폰트 */
+  font-family: 'RoundedFixedsys', monospace;
 }
 
 .game-left{
@@ -69,7 +87,7 @@
 
 .career-hud{
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.2px;
   opacity: 0.95;
 }
@@ -81,28 +99,25 @@
   border: 1px solid rgba(255,255,255,0.14);
   background: rgba(255,255,255,0.08);
   color: #fff;
+
+  font-family: 'RoundedFixedsys', monospace;
 }
 
 #exitGameBtn:hover{
   background: rgba(255,255,255,0.12);
 }
 
-/* ===== Modals (inside game layer) ===== */
+/* ===== Modals ===== */
 .game-modal{
   position: absolute;
   inset: 0;
   display: none;
   place-items: center;
-
-  /* ✅ 배경 더 어둡게: 뒤 캔버스 덜 보이게 */
-  background: rgba(0,0,0,0.72);
+  background: rgba(0,0,0,0.55);
 }
 
-.game-modal.on{
-  display: grid;
-}
+.game-modal.on{ display: grid; }
 
-/* ✅ 카드: flex column 구조로 바꿔 스크롤 문제 해결 */
 .game-modal-card{
   width: min(820px, 92%);
   max-height: min(82vh, 720px);
@@ -115,13 +130,12 @@
   background: rgba(16, 22, 34, 0.95);
   border: 1px solid rgba(255,255,255,0.10);
   box-shadow: 0 18px 70px rgba(0,0,0,0.55);
-  
-  /* ✅ flex 스크롤 버그 방지 */
+
+  /* ✅ flex scroll 버그 방지 */
   min-height: 0;
 }
 
 .game-modal-head{
-  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -132,8 +146,10 @@
 }
 
 .game-modal-title{
-  font-size: 16px;
+  font-family: 'Paperozi', sans-serif;
+  font-size: 20px; /* ✅ 요청: 20px */
   font-weight: 900;
+  letter-spacing: 0.2px;
 }
 
 .game-modal-close{
@@ -146,82 +162,85 @@
   color: #fff;
   font-size: 18px;
   line-height: 1;
+
+  font-family: 'RoundedFixedsys', monospace;
 }
 
-/* ✅ 본문은 남은 높이를 전부 차지하고, 그 안에서 스크롤 */
 .game-modal-body{
   flex: 1 1 auto;
-  min-height: 0;          /* ✅ flex 스크롤 핵심 */
+  min-height: 0;
+
+  padding: 14px 14px 56px;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-
-  padding: 14px 14px 56px; /* ✅ 끝부분 잘림 방지 */
-  font-size: 15px;
-  line-height: 1.6;
-  
-  /* ✅ 모달 내부 스크롤 제어 안정화 */
   overscroll-behavior: contain;
+
+  /* ✅ 요청: 내용 폰트 16px */
+  font-family: 'ChangwonDangamRounded', sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
 }
 
-.modal-lead{
-  margin: 0 0 12px 0;
-  opacity: 0.95;
+/* modal lead / intro / outro / buttons 등 */
+.modal-lead,
+.modal-actions,
+.modal-primary,
+.game-ui,
+#gameHint,
+#exitGameBtn,
+.career-hud{
+  font-family: 'RoundedFixedsys', monospace;
 }
 
-/* ===== Content cards ===== */
-.k-card{
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 14px;
-  padding: 12px 12px;
-  margin-bottom: 12px;
+/* 버튼 */
+.modal-actions{
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
 }
 
-.k-card ul{
-  margin: 8px 0 0;
-  padding-left: 18px;
-}
-
-.k-card li{
-  margin: 6px 0;
-}
-
-/* ✅ 영상: 모달 가로폭 100% */
-.modal-video{
-  width: 100%;
-  height: auto;
-  display: block;
-  margin: 10px 0 12px;
+.modal-primary{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
   border-radius: 12px;
-  background: #000;
-  border: 1px solid rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.10);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
 }
 
-/* ===== Video wrapper (modal) ===== */
+/* ===== Video frame ===== */
 .video-frame{
   width: 100%;
   border-radius: 12px;
-  overflow: hidden; /* ✅ 넘침 방지 핵심 */
+  overflow: hidden;
   border: 1px solid rgba(255,255,255,0.10);
   background: #000;
   margin: 10px 0 12px;
 
-  /* ✅ 16:9 고정 비율 박스 */
   aspect-ratio: 16 / 9;
   position: relative;
 }
 
-/* ✅ video는 프레임 안에 꽉 채우기 */
 .video-frame > video{
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-
-  /* ✅ 비율 유지하면서 꽉 차게 */
   object-fit: contain;
-
   display: block;
+}
+
+/* ===== Content cards ===== */
+.k-card{
+  padding: 12px 12px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  margin-bottom: 10px;
 }
 
 /* ===== Timeline chips ===== */
@@ -241,3 +260,10 @@
 .tl-award { background: rgba(247, 118, 142, 0.12); }
 .tl-train { background: rgba(187, 154, 247, 0.12); }
 .tl-lang  { background: rgba(125, 207, 255, 0.12); }
+
+/* “끝까지 시원하게” 내려가게 안전 여백(보험) */
+.game-modal-body::after{
+  content:"";
+  display:block;
+  height: 20px;
+}
