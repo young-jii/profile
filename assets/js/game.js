@@ -456,7 +456,7 @@ window.addEventListener('load', () => {
             이 교육을 통해 실무에서 중요한 것은 ‘기술 자체’보다
             <b class="k-em">문제를 어떻게 정의하는지</b>,
             <b class="k-em">현실의 데이터를 어떻게 다루는지</b>,
-            그리고 <b class="k-em">팀이 바로 활용할 수 있는 형태로 결과를 전달하는지</b>라는 점을 체감했습니다.<br/><br/>
+            그리고 <b class="k-em">팀이 바로 활용할 수 있는 형태로 결과를 전달하는지</b>라는 점을 체감했습니다.<br/>
             이후 저는 <b class="k-em">데이터 기반의 설득력 있는 기획</b>과,
             <b class="k-em">현장에서 즉시 활용 가능한 자동화와 개선</b> 작업을 선호하게 되었습니다.
           </p>
@@ -564,8 +564,7 @@ window.addEventListener('load', () => {
           </ul>
           <p style="margin-top:10px;">
             <b class="k-title">업무 인식</b>:
-            운영의 완성은 문제를 처리하는 데서 끝나는 것이 아니라,
-            같은 문제가 반복되지 않도록 <b class="k-em">구조를 만드는 것</b>이라는 관점을 갖게 되었습니다.
+            운영의 완성은 문제를 처리하는 데서 끝나는 것이 아니라, 같은 문제가 반복되지 않도록 <b class="k-em">구조를 만드는 것</b>이라는 관점을 갖게 되었습니다.
           </p>
         </div>
         `
@@ -577,8 +576,7 @@ window.addEventListener('load', () => {
         <div class="k-card">
           <p>
             <b class="k-title">한 줄 요약</b><br/>
-            제한된 기간 안에서 아이디어를 서비스 형태로 구현하고,
-            실제 시연 가능한 결과물로 완주해 성과를 만든 경험입니다.
+            제한된 기간 안에서 아이디어를 서비스 형태로 구현하고, 실제 시연 가능한 결과물로 완주해 성과를 만든 경험입니다.
           </p>
         </div>
   
@@ -622,8 +620,7 @@ window.addEventListener('load', () => {
             </li>
             <li>
               <b class="k-title">유사도 기반 응답 로직</b>:
-              가이드 자료를 임베딩하고,
-              질문 문장과의 유사도를 계산해 적절한 답변을 반환하는 흐름 구성
+              가이드 자료를 임베딩하고, 질문 문장과의 유사도를 계산해 적절한 답변을 반환하는 흐름 구성
             </li>
           </ul>
         </div>
@@ -640,11 +637,10 @@ window.addEventListener('load', () => {
         <div class="k-card">
           <p><b class="k-title">업무 인식</b></p>
           <p>
-            이 경험을 통해 성과는 아이디어 자체보다
-            <b class="k-em">끝까지 구현해 실제로 보여주는 실행력</b>에서 나온다는 점을 체감했습니다.<br/><br/>
-            이후 저는 프로젝트를 시작할 때
-            <b class="k-em">완료 가능한 범위를 명확히 설정하고</b>,
-            빠르게 결과를 만든 뒤 개선해 나가는 방식을 선호하게 되었습니다.
+            1박 2일이라는 짧은 해커톤 기간 동안, 아이디어 구상부터 구현, 시연까지 전 과정을 직접 완주하며 <b class="k-em">‘완성’의 경험</b>을 처음으로 온전히 해볼 수 있었습니다.<br/>
+            이 과정에서 성과는 아이디어의 크기보다 <b class="k-em">끝까지 만들어 결과물로 남기는 실행력</b>에서 나온다는 점을 체감했고,
+            실제로 동작하는 결과물을 만들어냈다는 성취감은 어떤 과제든 해낼 수 있다는 자신감으로 이어졌습니다.<br/>
+            이후 저는 프로젝트를 시작할 때 <b class="k-em">완료 가능한 범위를 명확히 설정하고</b>, 빠르게 완성한 뒤 개선해 나가는 방식을 제 일의 기준으로 삼고 있습니다.
           </p>
         </div>
         `
@@ -689,10 +685,8 @@ window.addEventListener('load', () => {
         <div class="k-card">
           <p><b class="k-title">업무 인식</b></p>
           <p>
-            자격증은 취득 자체가 목표가 아니라,
-            실무에서 바로 꺼내 쓸 수 있는 도구를 하나씩 늘리는 과정이라고 생각합니다.<br/><br/>
-            저는 필요한 역량을 선제적으로 학습하고,
-            이를 실제 업무에 적용한 뒤 문서화해 재사용 가능한 형태로 남기는 방식을 선호합니다.
+            자격증은 취득 자체가 목표가 아니라, <b class="k-em">실무에서 바로 꺼내 쓸 수 있는 도구</b>를 하나씩 늘리는 과정이라고 생각합니다.<br/>
+            저는 필요한 역량을 선제적으로 학습하고, 이를 실제 업무에 적용한 뒤 문서화해 재사용 가능한 형태로 남기는 방식을 선호합니다.
           </p>
         </div>
         `
@@ -737,10 +731,8 @@ window.addEventListener('load', () => {
         <div class="k-card">
           <p><b class="k-title">깨달음</b></p>
           <p>
-            팀에서 신뢰를 얻는 사람은 말을 많이 하는 사람이 아니라,
-            <b class="k-em">오해가 생기지 않도록 정리하는 사람</b>이라고 생각합니다.<br/><br/>
-            저는 말과 글을 통해 문제를 구조화하고,
-            구성원 모두가 합의할 수 있는 형태로 전달하는 역할에 강점이 있습니다.
+            팀에서 신뢰를 얻는 사람은 말을 많이 하는 사람이 아니라, <b class="k-em">상대의 말을 끝까지 듣고 오해 없이 정리해주는 사람</b>이라고 생각합니다.<br/>
+            저는 먼저 이야기를 충분히 듣고 공감한 뒤, 말과 글로 쟁점을 구조화해 구성원 모두가 같은 방향으로 이해할 수 있도록 돕는 역할에 강점이 있습니다.
           </p>
         </div>
         `
@@ -750,13 +742,28 @@ window.addEventListener('load', () => {
   /* =========================
      Modal helpers + ducking
   ========================= */
-  function openModal(modal){
-    if (!modal) return;
+  // ✅ 모달 오픈 애니메이션(transition) 시간(ms)
+  // CSS transition이 0.2s면 200, 0.25s면 250 이런 식으로 맞추면 됨
+  const MODAL_OPEN_ANIM_MS = 220;
+
+  function openModal(modal, opts = {}){
+    if (!modal) return Promise.resolve();
+
+    const openAnimMs = Number.isFinite(opts.openAnimMs)
+      ? opts.openAnimMs
+      : MODAL_OPEN_ANIM_MS;
+
     paused = true;
     keys.clear(); // ✅ 모달 열릴 때 키 stuck 방지
     modal.classList.add('on');
     modal.setAttribute('aria-hidden', 'false');
     duckBgm(true);
+
+    // ✅ 오픈 애니메이션 끝난 타이밍을 알려줌 (2초 계산용)
+    return new Promise((resolve) => {
+      if (openAnimMs <= 0) { resolve(); return; }
+      setTimeout(resolve, openAnimMs);
+    });
   }
 
   function closeModal(modal){
@@ -778,6 +785,48 @@ window.addEventListener('load', () => {
     const mm = Math.floor(s / 60);
     const ss = s % 60;
     return `${mm}분 ${String(ss).padStart(2,'0')}초`;
+  }
+
+    // =========================================================
+  // ✅ Typewriter: 남은 시간(durationMs) 안에 항상 끝내기 (rAF 기반)
+  // =========================================================
+  function runTypewriter({ target, plain, durationMs = 2000, onDone, isAlive }){
+    const text = plain || '';
+    const total = text.length;
+
+    if (!target || total === 0){
+      onDone && onDone();
+      return;
+    }
+
+    const start = performance.now();
+
+    function frame(now){
+      if (isAlive && !isAlive()) return;
+
+      const t = Math.min(1, (now - start) / Math.max(1, durationMs));
+      const count = Math.min(total, Math.max(1, Math.floor(total * t)));
+      target.textContent = text.slice(0, count);
+
+      if (t >= 1){
+        target.textContent = text;
+        onDone && onDone();
+        return;
+      }
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function toPlainTextFromHtml(html){
+    return (html || '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/br>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim();
   }
 
   function fillOutroStats(){
@@ -803,7 +852,7 @@ window.addEventListener('load', () => {
     `;
   }
 
-  function openInfo(key){
+  async function openInfo(key){
     const data = CONTENT[key];
     if (!data) return;
 
@@ -813,29 +862,41 @@ window.addEventListener('load', () => {
     infoModalBody.innerHTML = `<div class="typewrap"><div id="typeTarget"></div></div>`;
     const target = infoModalBody.querySelector('#typeTarget');
 
-    openModal(infoModal);
+    // ✅ 효과음/방문 처리 먼저
     playSfxForKey(key);
     markVisited(key);
+
+    // ✅ "팝업 오픈 애니메이션 포함 2초" 만들기
+    const TOTAL_MS = 2000;
+    const openAnimMs = MODAL_OPEN_ANIM_MS;
+
+    // 모달을 열고(= paused 처리 포함), 오픈 애니메이션 시간만큼 기다림
+    await openModal(infoModal, { openAnimMs });
+
+    // 닫혔으면 중단
+    if (!infoModal.classList.contains('on')) return;
 
     if (!target){
       infoModalBody.innerHTML = html;
       return;
     }
 
-    const plain = html.replace(/<[^>]*>/g, '').replace(/\s+\n/g,'\n');
-    let i = 0;
+    // 오픈 애니메이션을 제외한 "남은 시간"만큼 타이핑
+    const typeMs = Math.max(120, TOTAL_MS - openAnimMs);
+
+    const plain = toPlainTextFromHtml(html);
     target.textContent = '';
 
-    const timer = setInterval(() => {
-      if (!infoModal.classList.contains('on')) { clearInterval(timer); return; }
-      i += 2;
-      target.textContent = plain.slice(0, i);
-
-      if (i >= plain.length){
-        clearInterval(timer);
-        infoModalBody.innerHTML = html;
+    runTypewriter({
+      target,
+      plain,
+      durationMs: typeMs,
+      isAlive: () => infoModal.classList.contains('on'),
+      onDone: () => {
+        if (!infoModal.classList.contains('on')) return;
+        infoModalBody.innerHTML = html; // 완료 후 원본 HTML로 교체
       }
-    }, 12);
+    });
   }
 
   // close buttons
