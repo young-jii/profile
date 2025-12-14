@@ -30,10 +30,10 @@
 }
 
 @font-face {
-    font-family: 'ManhwaPromotionAgency';
-    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_seven@1.2/KOMACON.woff') format('woff');
-    font-weight: normal;
-    font-display: swap;
+  font-family: 'ManhwaPromotionAgency';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_seven@1.2/KOMACON.woff') format('woff');
+  font-weight: normal;
+  font-display: swap;
 }
 
 /* ===== Game Layer ===== */
@@ -103,9 +103,10 @@
   opacity: 0.95;
 }
 
-/* 총 경력 강조 */
+/* ✅ 총 경력 강조(사라짐 방지: 우선순위+강제) */
 #careerHUD .career-total{
-  color: #f6d365; /* 노란 계열 */
+  color: #f6d365 !important; /* 노란 계열 */
+  font-weight: 800;
   text-shadow: 0 1px 0 rgba(0,0,0,0.35);
 }
 
@@ -163,7 +164,7 @@
 
 .game-modal-title{
   font-family: 'Paperozi', sans-serif;
-  font-size: 20px; /* ✅ 요청: 20px */
+  font-size: 20px;
   font-weight: 900;
   letter-spacing: 0.2px;
 }
@@ -191,14 +192,25 @@
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 
-  /* ✅ 요청: 내용 폰트 16px */
   font-family: 'ChangwonDangamRounded', sans-serif;
   font-size: 16px;
   line-height: 1.65;
   letter-spacing: -0.7px
 }
 
-/* 인트로/아웃트로/버튼류(원하면 그대로 유지) */
+/* ✅ (요청 3) content 내부 "제목 강조" vs "내용 강조" 색상 분리 */
+.game-modal-body .k-title{
+  color: #f6d365;              /* 제목 강조: 경력 노랑과 동일 */
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+}
+
+.game-modal-body .k-em{
+  color: #9ae6ff;              /* 내용 강조: 노랑과 구분되는 시원한 하늘색 */
+  font-weight: 800;
+}
+
+/* 인트로/아웃트로/버튼류 */
 .modal-actions,
 .modal-primary{
   font-family: 'RoundedFixedsys', monospace;
@@ -209,7 +221,6 @@
   margin: 0 0 12px 0;
   opacity: 0.95;
 }
-
 
 /* 버튼 */
 .modal-actions{
@@ -282,9 +293,21 @@
 .tl-train { background: rgba(187, 154, 247, 0.12); }
 .tl-lang  { background: rgba(125, 207, 255, 0.12); }
 
-/* “끝까지 시원하게” 내려가게 안전 여백(보험) */
-/* .game-modal-body::after{
-  content:"";
-  display:block;
-  height: 20px;
-} */
+/* =========================
+   Boot: show game first, hide old page
+   (index.html 에서 <html class="game-on">)
+========================= */
+html.game-on #gameLayer {
+  display: grid;
+}
+
+html.game-on #main,
+html.game-on #header,
+html.game-on #footer {
+  display: none !important;
+}
+
+html.game-on,
+html.game-on body {
+  overflow: hidden;
+}
