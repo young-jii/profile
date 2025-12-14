@@ -131,10 +131,12 @@ window.addEventListener('load', () => {
       body: `
         <div class="k-card">
           <p><b>대표 성과: 문항 코드 추출 자동화 프로그램</b></p>
-          <video class="modal-video" controls playsinline preload="metadata">
-            <source src="./vidieos/questions_program.mp4" type="video/mp4" />
-            브라우저가 동영상을 지원하지 않습니다.
-          </video>
+          <div class="video-frame">
+            <video controls playsinline preload="metadata">
+              <source src="./vidieos/questions_program.mp4" type="video/mp4" />
+              브라우저가 동영상을 지원하지 않습니다.
+            </video>
+          </div>
           <p style="margin-top:10px;">
             제가 기획부터 개발·배포까지 직접 진행한 자동화 도구입니다.<br/>
             <b>1시간 이상 걸리던 업무가 20분 안쪽</b>으로 단축되면서,
@@ -166,10 +168,12 @@ window.addEventListener('load', () => {
       body: `
         <div class="k-card">
           <p><b>2023 제1회 K-디지털플랫폼 AI 경진대회</b> 특별상 (2023.12.13)</p>
-          <video class="modal-video" controls playsinline preload="metadata">
-            <source src="./vidieos/jingum_test.mp4" type="video/mp4" />
-            브라우저가 동영상을 지원하지 않습니다.
-          </video>
+          <div class="video-frame">
+            <video controls playsinline preload="metadata">
+              <source src="./vidieos/jingum_test.mp4" type="video/mp4" />
+              브라우저가 동영상을 지원하지 않습니다.
+            </video>
+          </div>
           <p style="margin-top:10px;">
             4인 팀 프로젝트로 진행한 <b>RAG 기반 질의응답(답파고)</b> 시연 영상입니다.<br/>
             제한된 시간 내에 아이디어 → 구현 → 시연까지 완주해 <b>특별상</b>을 수상했습니다.
