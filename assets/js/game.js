@@ -19,10 +19,12 @@ window.addEventListener('load', () => {
   const timelineModal = document.getElementById('timelineModal');
   const timelineCloseBtn = document.getElementById('timelineCloseBtn');
 
-  // === Footstep Sound ===
+  // === Footstep Sound (mp3) ===
+  // ⚠️ autoplay policy 때문에 play()가 실패할 수 있음 -> WebAudio fallback 준비
   const footstepAudio = new Audio('./assets/sounds/footstep.mp3');
   footstepAudio.volume = 0.35;
-  
+  footstepAudio.preload = 'auto';
+
   let lastStepTime = 0;
   const STEP_INTERVAL = 260; // ms
 
@@ -43,18 +45,63 @@ window.addEventListener('load', () => {
   let paused = true; // intro until start
 
   /* =========================
-     Web Audio (SFX)
+     Web Audio (SFX + BGM)
+     - 효과음(노드음) 기존 유지
+     - 발소리 mp3가 막히면 WebAudio로 대체
+     - 배경음악: WebAudio로 은은하게
   ========================= */
   let audioCtx = null;
+  let masterGain = null;
+  let sfxGain = null;
+  let musicGain = null;
+  let audioUnlocked = false;
+
+  let bgmTimer = null;
+  let bgmStep = 0;
+  let bgmPlaying = false;
+
   function ensureAudio(){
     if (!audioCtx){
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
       audioCtx = new AC();
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.6; // 전체 볼륨
+
+      sfxGain = audioCtx.createGain();
+      sfxGain.gain.value = 0.35; // 효과음 볼륨
+
+      musicGain = audioCtx.createGain();
+      musicGain.gain.value = 0.10; // 배경음악 볼륨 (거슬리면 0.06~0.08)
+
+      // 배경음악 고음을 조금 깎아 부드럽게
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 1800;
+
+      sfxGain.connect(masterGain);
+      musicGain.connect(lp);
+      lp.connect(masterGain);
+      masterGain.connect(audioCtx.destination);
     }
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
+
+  function unlockAudio(){
+    const ac = ensureAudio();
+    if (!ac) return;
+    if (ac.state === 'suspended') ac.resume();
+    audioUnlocked = true;
+
+    // 첫 입력 이후에만 BGM 시작
+    if (!bgmPlaying) startBGM();
+  }
+
+  // 사용자 첫 입력에서 unlock (autoplay policy 대응)
+  window.addEventListener('pointerdown', unlockAudio, { once: true });
+  window.addEventListener('keydown', unlockAudio, { once: true });
 
   function playTone({ type='sine', freq=440, dur=0.12, gain=0.12, attack=0.005, release=0.06, filter=null }){
     const ac = ensureAudio();
@@ -83,7 +130,7 @@ window.addEventListener('load', () => {
     }
 
     lastNode.connect(g);
-    g.connect(ac.destination);
+    g.connect(sfxGain || ac.destination);
 
     o.start(t0);
     o.stop(t0 + dur + release + 0.02);
@@ -120,6 +167,98 @@ window.addEventListener('load', () => {
         playTone({ type:'sine', freq: 600, dur:0.08, gain:0.06 });
         break;
     }
+  }
+
+  // --- Footstep WebAudio fallback (mp3가 막힐 때 사용) ---
+  function playFootstepFallback(){
+    if (!audioUnlocked) return;
+    const ac = ensureAudio();
+    if (!ac) return;
+
+    const t = ac.currentTime;
+
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(160 + Math.random()*40, t);
+
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.10, t + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+
+    osc.connect(gain);
+    gain.connect(sfxGain || ac.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.08);
+  }
+
+  // --- BGM (WebAudio 칩튠) ---
+  function noteFreq(note){
+    const A4 = 440;
+    const map = {C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11};
+    const m = note.match(/^([A-G])([#b]?)(\d)$/);
+    if (!m) return A4;
+    const key = m[1] + (m[2] || '');
+    const oct = parseInt(m[3],10);
+    const semitoneFromA4 = (map[key] - 9) + (oct - 4) * 12;
+    return A4 * Math.pow(2, semitoneFromA4 / 12);
+  }
+
+  function startBGM(){
+    if (!audioUnlocked || !audioCtx || bgmPlaying) return;
+    bgmPlaying = true;
+    bgmStep = 0;
+
+    const stepMs = 260;
+    const lead = ['E4','G4','A4','G4','E4','D4','C4','D4', null, null, 'D4', 'E4', 'G4', 'E4', 'D4', null];
+    const bass = ['C3',null,'C3',null,'A2',null,'A2',null,'F2',null,'F2',null,'G2',null,'G2',null];
+
+    function tick(){
+      if (!bgmPlaying) return;
+
+      const t = audioCtx.currentTime;
+      const l = lead[bgmStep % lead.length];
+      const b = bass[bgmStep % bass.length];
+
+      if (l){
+        const oscL = audioCtx.createOscillator();
+        const gainL = audioCtx.createGain();
+        oscL.type = 'square';
+        oscL.frequency.setValueAtTime(noteFreq(l), t);
+
+        gainL.gain.setValueAtTime(0.0001, t);
+        gainL.gain.exponentialRampToValueAtTime(0.05, t + 0.01);
+        gainL.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+
+        oscL.connect(gainL);
+        gainL.connect(musicGain);
+        oscL.start(t);
+        oscL.stop(t + 0.18);
+      }
+
+      if (b){
+        const oscB = audioCtx.createOscillator();
+        const gainB = audioCtx.createGain();
+        oscB.type = 'triangle';
+        oscB.frequency.setValueAtTime(noteFreq(b), t);
+
+        gainB.gain.setValueAtTime(0.0001, t);
+        gainB.gain.exponentialRampToValueAtTime(0.06, t + 0.01);
+        gainB.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+
+        oscB.connect(gainB);
+        gainB.connect(musicGain);
+        oscB.start(t);
+        oscB.stop(t + 0.24);
+      }
+
+      bgmStep++;
+      bgmTimer = setTimeout(tick, stepMs);
+    }
+
+    tick();
   }
 
   /* =========================
@@ -192,6 +331,7 @@ window.addEventListener('load', () => {
 
   /* =========================
      Content (모달 내용) - 풍성 버전
+     (네가 준 내용 그대로)
   ========================= */
   const CONTENT = {
     school: {
@@ -570,14 +710,13 @@ window.addEventListener('load', () => {
   }
 
   const props = [];
-  const rng = mulberry32(20251214); // ✅ 고정 시드 (항상 같은 배치)
+  const rng = mulberry32(20251214);
 
-  // 도로 영역(대충) 제외하고 소품을 배치
   const roadRects = [
-    { x:55, y:86,  w:240, h:12 },  // main
-    { x:49, y:55,  w:12,  h:70 },  // left connector
-    { x:244,y:55,  w:12,  h:70 },  // right connector
-    { x:55, y:121, w:55,  h:12 },  // education->award
+    { x:55, y:86,  w:240, h:12 },
+    { x:49, y:55,  w:12,  h:70 },
+    { x:244,y:55,  w:12,  h:70 },
+    { x:55, y:121, w:55,  h:12 },
   ];
 
   function inRoad(x,y){
@@ -601,7 +740,6 @@ window.addEventListener('load', () => {
   function initProps(){
     props.length = 0;
 
-    // 1) 가로등: 길 옆에 규칙적으로 배치(약간 랜덤 오프셋)
     const lampXs = [80, 120, 200, 235, 275];
     lampXs.forEach((x, idx) => {
       const yTop = 74 + (idx % 2 === 0 ? -2 : 2);
@@ -611,7 +749,6 @@ window.addEventListener('load', () => {
       props.push({ type:'lamp', x: x + 6, y: yBot });
     });
 
-    // 2) 잔디/돌: 랜덤이지만 16px 그리드 기반으로 곳곳에 배치
     const attempts = 120;
     for (let i=0; i<attempts; i++){
       const x = snap16(16 + rng() * (W - 32));
@@ -620,7 +757,6 @@ window.addEventListener('load', () => {
       if (inRoad(x,y)) continue;
       if (nearNode(x,y)) continue;
 
-      // 확률: grass가 더 많고 rock이 가끔
       const roll = rng();
       if (roll < 0.70){
         props.push({ type:'grass', x, y, v: (rng()*3)|0 });
@@ -629,7 +765,6 @@ window.addEventListener('load', () => {
       }
     }
 
-    // 3) 길 모서리쪽에 조약돌 라인 (조금 더 “길” 느낌)
     for (let x=55; x<=295; x+=16){
       props.push({ type:'pebble', x, y: 82 });
       props.push({ type:'pebble', x, y: 100 });
@@ -652,29 +787,25 @@ window.addEventListener('load', () => {
     const oy = p.y + 8;
     const sway = Math.sin(t*2 + (p.x+p.y)*0.02) * 1;
 
-    // 바닥
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
     ctx.fillRect(ox, oy+4, 10, 2);
 
-    // 잔디(픽셀)
     ctx.fillStyle = 'rgba(158, 206, 106, 0.85)';
     ctx.fillRect(ox+1, oy+1+sway, 1, 5);
     ctx.fillRect(ox+4, oy-0+sway, 1, 6);
     ctx.fillRect(ox+7, oy+2+sway, 1, 4);
 
-    // 하이라이트
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
     ctx.fillRect(ox+4, oy+0+sway, 1, 1);
   }
 
-  function drawRock(p, t){
+  function drawRock(p){
     const ox = p.x + 5;
     const oy = p.y + 9;
 
     ctx.fillStyle = 'rgba(0,0,0,0.22)';
     ctx.fillRect(ox, oy+4, 10, 2);
 
-    // 바위(픽셀)
     drawPixelRect(ox+1, oy, 8, 6, 'rgba(200,210,220,0.75)', 'rgba(0,0,0,0.35)');
     ctx.fillStyle = 'rgba(255,255,255,0.14)';
     ctx.fillRect(ox+2, oy+1, 2, 1);
@@ -689,18 +820,13 @@ window.addEventListener('load', () => {
     const x = Math.round(p.x);
     const y = Math.round(p.y);
 
-    // 포스트
     drawPixelRect(x, y, 2, 10, 'rgba(180,170,140,0.55)', 'rgba(0,0,0,0.30)');
-
-    // 헤드
     drawPixelRect(x-1, y-2, 4, 3, 'rgba(200,190,160,0.55)', 'rgba(0,0,0,0.30)');
 
-    // 빛(부드럽게 깜빡이되 화면 전체가 아닌 아주 미세)
     const glow = 0.10 + (Math.sin(t*3 + x*0.1)*0.04);
     ctx.fillStyle = `rgba(255, 240, 180, ${glow})`;
     ctx.fillRect(x-6, y+1, 14, 10);
 
-    // 코어
     ctx.fillStyle = 'rgba(255, 245, 210, 0.35)';
     ctx.fillRect(x, y-1, 2, 2);
   }
@@ -748,7 +874,6 @@ window.addEventListener('load', () => {
 
     const bob = Math.round(Math.sin(t * 2.0 + n.x * 0.05 + n.y * 0.03) * 1.0);
 
-    // shadow
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(baseX + 2, baseY + 2 + bob, boardW, boardH);
     ctx.fillRect(postX + 1, postY + 2 + bob, postW, postH);
@@ -780,7 +905,6 @@ window.addEventListener('load', () => {
     const pulse = 1 + (Math.sin(t * 3.0 + phase) * 0.03) + (isNear ? 0.05 : 0);
     const bounce = Math.sin(t * 2.2 + phase) * (isNear ? 1.8 : 1.0);
 
-    // glow
     if (isNear){
       ctx.fillStyle = 'rgba(255,255,255,0.08)';
       ctx.fillRect(Math.round(n.x - baseSize/2) - 6, Math.round(n.y - baseSize/2 + bounce) - 6, baseSize + 12, baseSize + 12);
@@ -804,7 +928,6 @@ window.addEventListener('load', () => {
     }
     ctx.restore();
 
-    // tiny sparkle
     const sx = n.x + Math.cos(t * 2 + n.x) * 8;
     const sy = (n.y + bounce) + Math.sin(t * 2 + n.y) * 6;
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
@@ -816,15 +939,8 @@ window.addEventListener('load', () => {
   ========================================================= */
   const pops = [];
   function spawnPop(n){
-    // 노드 위쪽에 팝 생성
-    pops.push({
-      x: n.x,
-      y: n.y - 18,
-      t: 0,         // elapsed
-      dur: 520,     // ms
-    });
+    pops.push({ x: n.x, y: n.y - 18, t: 0, dur: 520 });
 
-    // 팝 소리(짧고 귀엽게)
     playTone({ type:'square', freq: 1200, dur:0.035, gain:0.05, filter:{type:'highpass', freq:900, q:0.7} });
     playTone({ type:'sine', freq: 1600, dur:0.035, gain:0.04, filter:{type:'highpass', freq:900, q:0.8} });
   }
@@ -838,21 +954,19 @@ window.addEventListener('load', () => {
 
   function drawPops(){
     for (const p of pops){
-      const k = Math.min(1, p.t / p.dur); // 0~1
-      const rise = (1 - (1-k)*(1-k)) * 10; // easeOut
+      const k = Math.min(1, p.t / p.dur);
+      const rise = (1 - (1-k)*(1-k)) * 10;
       const alpha = k < 0.7 ? 1 : (1 - (k-0.7)/0.3);
 
       const x = Math.round(p.x);
       const y = Math.round(p.y - rise);
 
-      // bubble
       ctx.fillStyle = `rgba(0,0,0,${0.55*alpha})`;
       ctx.fillRect(x-6, y-10, 12, 12);
 
       ctx.fillStyle = `rgba(255,255,255,${0.95*alpha})`;
       ctx.fillRect(x-5, y-9, 10, 10);
 
-      // "!"
       ctx.fillStyle = `rgba(20,20,20,${0.95*alpha})`;
       ctx.fillRect(x-1, y-7, 2, 6);
       ctx.fillRect(x-1, y, 2, 2);
@@ -863,7 +977,6 @@ window.addEventListener('load', () => {
      Render
   ========================= */
   function drawBG(){
-    // tiles
     for (let y=0; y<H; y+=16){
       for (let x=0; x<W; x+=16){
         const even = ((x+y)/16) % 2 === 0;
@@ -872,14 +985,12 @@ window.addEventListener('load', () => {
       }
     }
 
-    // roads (to-be)
     ctx.fillStyle = '#2a3646';
-    ctx.fillRect(55, 86, 240, 12);     // main
-    ctx.fillRect(49, 55, 12, 70);      // left connector
-    ctx.fillRect(244, 55, 12, 70);     // right connector
-    ctx.fillRect(55, 121, 55, 12);     // education -> award
+    ctx.fillRect(55, 86, 240, 12);
+    ctx.fillRect(49, 55, 12, 70);
+    ctx.fillRect(244, 55, 12, 70);
+    ctx.fillRect(55, 121, 55, 12);
 
-    // subtle edges
     ctx.fillStyle = 'rgba(255,255,255,0.04)';
     ctx.fillRect(55, 85, 240, 1);
     ctx.fillRect(55, 98, 240, 1);
@@ -971,78 +1082,82 @@ window.addEventListener('load', () => {
   ========================= */
   let lastTs = performance.now();
 
-function update(ts){
-  const dt = ts - lastTs;
-  lastTs = ts;
+  function update(ts){
+    const dt = ts - lastTs;
+    lastTs = ts;
 
-  // ✅ paused면 이동/애니메이션/발소리 모두 정지
-  if (paused){
+    if (paused){
+      player.vx = 0; player.vy = 0;
+      walkTimer = 0; walkFrame = 0;
+      return;
+    }
+
     player.vx = 0; player.vy = 0;
-    walkTimer = 0; walkFrame = 0;
 
-    // 발소리 끊기
-    if (typeof footstepAudio !== 'undefined') {
-      footstepAudio.pause();
-      footstepAudio.currentTime = 0;
+    const left  = keys.has('ArrowLeft');
+    const right = keys.has('ArrowRight');
+    const up    = keys.has('ArrowUp');
+    const down  = keys.has('ArrowDown');
+
+    if (left)  player.vx = -player.speed;
+    if (right) player.vx =  player.speed;
+    if (up)    player.vy = -player.speed;
+    if (down)  player.vy =  player.speed;
+
+    if (player.vx < 0) facing = 'left';
+    else if (player.vx > 0) facing = 'right';
+    else if (player.vy < 0) facing = 'up';
+    else if (player.vy > 0) facing = 'down';
+
+    const isMoving = (player.vx !== 0 || player.vy !== 0);
+
+    // ✅ 발소리: mp3 우선 시도 → 실패하면 WebAudio fallback
+    if (isMoving){
+      if (ts - lastStepTime >= STEP_INTERVAL){
+        // mp3가 존재해도 autoplay 정책으로 play()가 막히는 경우가 있어 try/catch
+        let played = false;
+
+        try {
+          // mp3는 user gesture 이후에만 재생되는 경우가 많아서,
+          // unlockAudio가 이미 됐다면 성공 확률이 올라감
+          footstepAudio.currentTime = 0;
+          const p = footstepAudio.play();
+          if (p && typeof p.then === 'function'){
+            p.then(() => { /* ok */ }).catch(() => { /* fallback below */ });
+          }
+          played = true;
+        } catch (e) {
+          played = false;
+        }
+
+        // mp3가 실패했거나(played가 false) 오디오 unlock이 아직이면 fallback 사용
+        if (!played) {
+          // WebAudio는 반드시 사용자 입력 후(audioUnlocked) 소리남
+          playFootstepFallback();
+        }
+
+        lastStepTime = ts;
+      }
     }
 
-    return;
-  }
-
-  player.vx = 0; player.vy = 0;
-
-  const left  = keys.has('ArrowLeft');
-  const right = keys.has('ArrowRight');
-  const up    = keys.has('ArrowUp');
-  const down  = keys.has('ArrowDown');
-
-  if (left)  player.vx = -player.speed;
-  if (right) player.vx =  player.speed;
-  if (up)    player.vy = -player.speed;
-  if (down)  player.vy =  player.speed;
-
-  if (player.vx < 0) facing = 'left';
-  else if (player.vx > 0) facing = 'right';
-  else if (player.vy < 0) facing = 'up';
-  else if (player.vy > 0) facing = 'down';
-
-  const isMoving = (player.vx !== 0 || player.vy !== 0);
-
-  // ✅ 발소리: 이동 중일 때만 일정 간격으로 재생
-  if (isMoving && typeof footstepAudio !== 'undefined') {
-    if (ts - lastStepTime >= STEP_INTERVAL) {
-      try {
-        footstepAudio.currentTime = 0;
-        footstepAudio.play();
-      } catch (e) {}
-      lastStepTime = ts;
-    }
-  } else {
-    // 멈췄으면 소리도 정지(잔향 방지)
-    if (typeof footstepAudio !== 'undefined') {
-      footstepAudio.pause();
-      footstepAudio.currentTime = 0;
-    }
-  }
-
-  // ✅ 걷기 프레임(좌/우일 때만)
-  if (isMoving && (facing === 'left' || facing === 'right')){
-    walkTimer += dt;
-    if (walkTimer >= WALK_INTERVAL){
+    // 걷기 프레임(좌/우일 때만)
+    if (isMoving && (facing === 'left' || facing === 'right')){
+      walkTimer += dt;
+      if (walkTimer >= WALK_INTERVAL){
+        walkTimer = 0;
+        walkFrame = (walkFrame === 0) ? 1 : 0;
+      }
+    } else {
       walkTimer = 0;
-      walkFrame = (walkFrame === 0) ? 1 : 0;
+      walkFrame = 0;
     }
-  } else {
-    walkTimer = 0;
-    walkFrame = 0;
+
+    player.x += player.vx;
+    player.y += player.vy;
+
+    player.x = Math.max(0, Math.min(W - player.w, player.x));
+    player.y = Math.max(0, Math.min(H - player.h, player.y));
   }
-
-  player.x += player.vx;
-  player.y += player.vy;
-
-  player.x = Math.max(0, Math.min(W - player.w, player.x));
-  player.y = Math.max(0, Math.min(H - player.h, player.y));
-}
 
   function loop(ts){
     update(ts);
@@ -1055,7 +1170,9 @@ function update(ts){
      Keys
   ========================= */
   window.addEventListener('keydown', (e) => {
-    ensureAudio();
+    // ✅ 여기서 audio unlock을 확실히 시도 (BGM 포함)
+    unlockAudio();
+
     keys.add(e.key);
 
     if (introModal && introModal.classList.contains('on') && e.key === ' '){
@@ -1080,7 +1197,6 @@ function update(ts){
       if (Math.abs(dx) > Math.abs(dy)) facing = dx > 0 ? 'right' : 'left';
       else facing = dy > 0 ? 'down' : 'up';
 
-      // ✅ "!" 팝
       spawnPop(n);
 
       paused = true;
