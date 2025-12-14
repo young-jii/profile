@@ -22,6 +22,13 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'HsBombaram30';
+  src: url('https://gcore.jsdelivr.net/gh/projectnoonnu/noonfonts_20-10@1.1/HSBombaram3_Regular.woff') format('woff');
+  font-weight: normal;
+  font-display: swap;
+}
+
 /* ===== Game Layer ===== */
 #gameLayer{
   position: fixed;
@@ -80,21 +87,24 @@
   gap: 4px;
 }
 
+/* HUD + Hint 폰트 변경 */
+#careerHUD,
 #gameHint{
-  font-size: 13px;
-  opacity: 0.9;
-}
-
-.career-hud{
-  font-size: 13px;
-  font-weight: 700;
+  font-family: 'HsBombaram30', sans-serif;
+  font-size: 16px;
   letter-spacing: 0.2px;
   opacity: 0.95;
 }
 
+/* 총 경력 강조 */
+#careerHUD .career-total{
+  color: #f6d365; /* 노란 계열 */
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35);
+}
+
 #exitGameBtn{
   cursor: pointer;
-  padding: 2px 12px;
+  padding: 8px 12px;
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.14);
   background: rgba(255,255,255,0.08);
@@ -182,22 +192,25 @@
   letter-spacing: -0.7px
 }
 
-/* modal lead / intro / outro / buttons 등 */
+/* 인트로/아웃트로/버튼류(원하면 그대로 유지) */
 .modal-lead,
 .modal-actions,
-.modal-primary,
-.game-ui,
-#gameHint,
-#exitGameBtn,
-.career-hud{
+.modal-primary{
   font-family: 'RoundedFixedsys', monospace;
 }
+
+.modal-lead{
+  margin: 0 0 12px 0;
+  opacity: 0.95;
+}
+
 
 /* 버튼 */
 .modal-actions{
   display: flex;
   gap: 10px;
   margin-top: 12px;
+  flex-wrap: wrap;
 }
 
 .modal-primary{
@@ -237,7 +250,7 @@
 
 /* ===== Content cards ===== */
 .k-card{
-  padding: 12px 12px 12px;
+  padding: 12px 12px;
   border-radius: 14px;
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.04);
