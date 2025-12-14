@@ -19,74 +19,12 @@ window.addEventListener('load', () => {
   const timelineModal = document.getElementById('timelineModal');
   const timelineCloseBtn = document.getElementById('timelineCloseBtn');
 
-  // =========================================================
-  // ✅ (1) Footstep Sound: policy-safe unlock + pool play
-  // =========================================================
-  // 경로는 기존과 동일하게 유지하되, 상대경로 이슈 줄이려면 앞의 "./"를 빼는 게 안전한 경우가 많아서 정리
-  const FOOTSTEP_SRC = 'assets/sounds/footstep.mp3';
-  const STEP_INTERVAL = 260; // ms
+  // === Footstep Sound (file) ===
+  const footstepAudio = new Audio('./assets/sounds/footstep.mp3');
+  footstepAudio.volume = 0.35;
+
   let lastStepTime = 0;
-
-  // 한 개 오디오를 계속 리셋하면 끊기거나 무음 되는 케이스가 있어서 pool로
-  const footstepPool = [];
-  const FOOTSTEP_POOL_SIZE = 5;
-  let footstepUnlocked = false;
-
-  function ensureFootstepPool(){
-    if (footstepPool.length) return;
-    for (let i = 0; i < FOOTSTEP_POOL_SIZE; i++){
-      const a = new Audio(FOOTSTEP_SRC);
-      a.preload = 'auto';
-      a.volume = 0.35;
-      footstepPool.push(a);
-    }
-  }
-
-  // 사용자 제스처에서 한 번 “play->pause”를 해줘야 이후에 이동 중 재생이 막히지 않는 경우가 많음
-  function unlockFootstep(){
-    if (footstepUnlocked) return;
-    ensureFootstepPool();
-
-    const a = footstepPool[0];
-    const prevVol = a.volume;
-    a.volume = 0.0;
-
-    try {
-      const p = a.play();
-      if (p && typeof p.then === 'function'){
-        p.then(() => {
-          a.pause();
-          a.currentTime = 0;
-          a.volume = prevVol;
-          footstepUnlocked = true;
-        }).catch(() => {
-          // 파일 경로/정책 등으로 실패해도, 이후 재생 시도는 계속 해보도록 unlock 처리만 마무리
-          a.volume = prevVol;
-          footstepUnlocked = true;
-        });
-      } else {
-        a.pause();
-        a.currentTime = 0;
-        a.volume = prevVol;
-        footstepUnlocked = true;
-      }
-    } catch (e){
-      a.volume = prevVol;
-      footstepUnlocked = true;
-    }
-  }
-
-  function playFootstep(){
-    if (!footstepUnlocked) return;
-    ensureFootstepPool();
-
-    // 재생 중 아닌 것 우선 선택
-    const a = footstepPool.find(x => x.paused || x.ended) || footstepPool[0];
-    try {
-      a.currentTime = 0;
-      a.play().catch(() => {});
-    } catch (e) {}
-  }
+  const STEP_INTERVAL = 260; // ms
 
   if (!layer || !canvas) return;
 
@@ -208,7 +146,7 @@ window.addEventListener('load', () => {
   let bgmIsRunning = false;
   let bgmTimer = null;
 
-  let bgmTranspose = 0;
+  let bgmTranspose = 0; // ✅ ALL CLEAR 후 +2 semitones
 
   function semitone(f, n){
     return f * Math.pow(2, n/12);
@@ -329,7 +267,7 @@ window.addEventListener('load', () => {
   const WALK_INTERVAL = 140;
 
   /* =========================
-     Map Nodes [to-be]
+     Map Nodes
   ========================= */
   const nodes = [
     { key:'school',   label:'학교',   x: 55,  y: 55  },
@@ -398,17 +336,13 @@ window.addEventListener('load', () => {
 
     if (!clearPlayed && before !== visited.size && visited.size === VISIT_KEYS.length){
       clearPlayed = true;
-
       playClearSfx();
-
       allClearBanner.active = true;
       allClearBanner.t = 0;
-
       bgmTranspose = 2;
     }
   }
 
-  // === Optional icons ===
   const iconBase = 'assets/css/images/';
   const iconFiles = {
     school:   'icon_school.png',
@@ -432,251 +366,244 @@ window.addEventListener('load', () => {
     return img && img.complete && img.naturalWidth > 0;
   }
 
-  /* =========================================================
-     ✅ (3) Content (모달 내용) - 제목/강조 색상 분리
-     - 제목: k-title (노랑)
-     - 내용 강조: k-em (하늘색)
-     - CSS가 없더라도 보이도록 inline style을 같이 넣음
-  ========================================================= */
-  const TITLE_SPAN_OPEN = `<span class="k-title" style="color:#f6d365;font-weight:900;">`;
-  const EMP_SPAN_OPEN   = `<span class="k-em" style="color:#9ae6ff;font-weight:800;">`;
-  const SPAN_CLOSE = `</span>`;
-
+  /* =========================
+     Content (모달 내용)
+  ========================= */
   const CONTENT = {
     school: {
       title: '학교',
       body: `
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}한 줄 요약${SPAN_CLOSE}<br/>문학 전공으로 ‘이야기/문장’을 다루는 힘을 키우고, 이를 ‘서비스/데이터’로 확장할 기반을 만들었습니다.</p>
-        </div>
+      <div class="k-card">
+        <p><b>한 줄 요약</b> </br>문학 전공으로 ‘이야기/문장’을 다루는 힘을 키우고, 이를 ‘서비스/데이터’로 확장할 기반을 만들었습니다.</p>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}학력${SPAN_CLOSE}</p>
-          <ul>
-            <li><b>경희대학교 국어국문학과</b> (GPA 3.92/4.5)</li>
-            <li>텍스트를 “기준”으로 만들고, 그 기준으로 품질을 관리하는 습관을 체득</li>
-          </ul>
-        </div>
+      <div class="k-card">
+        <p><b>학력</b></p>
+        <ul>
+          <li><b>경희대학교 국어국문학과</b> (GPA 3.92/4.5)</li>
+          <li>텍스트를 “기준”으로 만들고, 그 기준으로 품질을 관리하는 습관을 체득</li>
+        </ul>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}이 시기에 길러진 역량${SPAN_CLOSE}</p>
-          <ul>
-            <li><b>기획력</b>: ‘무엇을 전달할지’ 핵심을 먼저 잡고 구조를 설계</li>
-            <li><b>구조화</b>: 산만한 정보를 목차·정의·규칙으로 정리해 “한눈에” 보이게 만드는 능력</li>
-            <li><b>사용자 관점</b>: 글을 읽는 사람이 어디서 막히고, 무엇이 필요할지 먼저 상상하는 습관</li>
-          </ul>
-        </div>
+      <div class="k-card">
+        <p><b>이 시기에 길러진 역량</b></p>
+        <ul>
+          <li><b>기획력</b>: ‘무엇을 전달할지’ 핵심을 먼저 잡고 구조를 설계</li>
+          <li><b>구조화</b>: 산만한 정보를 목차·정의·규칙으로 정리해 “한눈에” 보이게 만드는 능력</li>
+          <li><b>사용자 관점</b>: 글을 읽는 사람이 어디서 막히고, 무엇이 필요할지 먼저 상상하는 습관</li>
+        </ul>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}깨달음${SPAN_CLOSE}</p>
-          <p>
-            좋은 콘텐츠와 좋은 서비스는 결국 “읽는 사람/쓰는 사람/사용하는 사람”을 먼저 생각할 때 만들어진다고 믿게 됐습니다.<br/>
-            저는 이후의 커리어에서도 항상 <b>기준을 만들고(정의)</b> → <b>흐름을 설계하고(구조)</b> → <b>오류를 줄이는(품질)</b> 방식으로 일하게 되었습니다.
-          </p>
-        </div>
+      <div class="k-card">
+        <p><b>깨달음</b></p>
+        <p>
+          좋은 콘텐츠와 좋은 서비스는 결국 “읽는 사람/쓰는 사람/사용하는 사람”을 먼저 생각할 때 만들어진다고 믿게 됐습니다.<br/>
+          저는 이후의 커리어에서도 항상 <b>기준을 만들고(정의)</b> → <b>흐름을 설계하고(구조)</b> → <b>오류를 줄이는(품질)</b> 방식으로 일하게 되었습니다.
+        </p>
+      </div>
       `
     },
 
     training: {
       title: '교육',
       body: `
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}한 줄 요약${SPAN_CLOSE}<br/>“비전공자”에서 “데이터로 근거를 만드는 사람”으로 전환한 시기였습니다.</p>
-        </div>
+      <div class="k-card">
+        <p><b>한 줄 요약</b>  </br>“비전공자”에서 “데이터로 근거를 만드는 사람”으로 전환한 시기였습니다.</p>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}주요 과정${SPAN_CLOSE}</p>
-          <ul>
-            <li><b>협업 필터링/자연어처리 기반 추천 분석 시스템 제작</b> (2023.06~2023.12)</li>
-            <li><b>고객경험 데이터 기반 데이터 비즈니스 분석</b> (2024.02~2024.07)</li>
-          </ul>
-        </div>
+      <div class="k-card">
+        <p><b>주요 과정</b></p>
+        <ul>
+          <li><b>협업 필터링/자연어처리 기반 추천 분석 시스템 제작</b> (2023.06~2023.12)</li>
+          <li><b>고객경험 데이터 기반 데이터 비즈니스 분석</b> (2024.02~2024.07)</li>
+        </ul>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}내가 얻은 ‘실전 감각’${SPAN_CLOSE}</p>
-          <ul>
-            <li><b>데이터 전처리/가공</b>: Python(Pandas)로 불완전한 데이터를 “쓸 수 있는 형태”로 바꾸는 힘</li>
-            <li><b>지표/해석</b>: 숫자를 늘어놓는 것이 아니라 “왜 그런지” 설명 가능한 근거로 연결</li>
-            <li><b>자동화</b>: 반복되는 작업을 코드로 줄여 팀의 시간을 되돌려주는 방식</li>
-            <li><b>협업</b>: 역할이 다른 사람들과 같은 목표를 향해 합의점을 만드는 경험</li>
-          </ul>
-        </div>
+      <div class="k-card">
+        <p><b>내가 얻은 ‘실전 감각’</b></p>
+        <ul>
+          <li><b>데이터 전처리/가공</b>: Python(Pandas)로 불완전한 데이터를 “쓸 수 있는 형태”로 바꾸는 힘</li>
+          <li><b>지표/해석</b>: 숫자를 늘어놓는 것이 아니라 “왜 그런지” 설명 가능한 근거로 연결</li>
+          <li><b>자동화</b>: 반복되는 작업을 코드로 줄여 팀의 시간을 되돌려주는 방식</li>
+          <li><b>협업</b>: 역할이 다른 사람들과 같은 목표를 향해 합의점을 만드는 경험</li>
+        </ul>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}깨달음${SPAN_CLOSE}</p>
-          <p>
-            실무에서 중요한 건 “멋진 모델”보다 <b>문제를 정의하고</b>, <b>현실의 데이터를 다루고</b>, <b>팀이 쓰기 좋은 형태로 결과를 전달</b>하는 능력이라는 걸 배웠습니다.<br/>
-            이후 저는 “데이터 기반으로 설득 가능한 기획”과 “현장에서 바로 쓰이는 자동화”를 좋아하게 됐습니다.
-          </p>
-        </div>
+      <div class="k-card">
+        <p><b>깨달음</b></p>
+        <p>
+          실무에서 중요한 건 “멋진 모델”보다 <b>문제를 정의하고</b>, <b>현실의 데이터를 다루고</b>, <b>팀이 쓰기 좋은 형태로 결과를 전달</b>하는 능력이라는 걸 배웠습니다.<br/>
+          이후 저는 “데이터 기반으로 설득 가능한 기획”과 “현장에서 바로 쓰이는 자동화”를 좋아하게 됐습니다.
+        </p>
+      </div>
       `
     },
 
     company: {
       title: '경력',
       body: `
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}한 줄 요약${SPAN_CLOSE}<br/>교육 콘텐츠 PM → 플랫폼 운영/기획으로 확장하며, “기준·프로세스·자동화”로 운영 품질을 올렸습니다.</p>
-        </div>
+      <div class="k-card">
+        <p><b>한 줄 요약</b>  </br>교육 콘텐츠 PM → 플랫폼 운영/기획으로 확장하며, “기준·프로세스·자동화”로 운영 품질을 올렸습니다.</p>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}대표 성과: 문항 코드 추출 자동화 프로그램${SPAN_CLOSE}</p>
-          <div class="video-frame">
-            <video controls playsinline preload="metadata">
-              <source src="./vidieos/questions_program.mp4" type="video/mp4" />
-              브라우저가 동영상을 지원하지 않습니다.
-            </video>
-          </div>
-          <ul style="margin-top:10px;">
-            <li><b>문제</b>: 문항 코드를 사람이 수동 확인/추출 → 시간이 오래 걸리고 실수가 발생</li>
-            <li><b>해결</b>: 업무 흐름을 분해해 규칙을 만들고, 코드로 자동 추출·정리 도구를 개발</li>
-            <li><b>결과</b>: <b>1시간+ → 20분 내</b>로 단축, 반복 작업 감소 + 정확도/일관성 향상</li>
-          </ul>
-          <p style="margin-top:10px;">
-            이 경험으로 저는 “작은 자동화가 팀 전체의 시간을 되돌려준다”는 확신을 갖게 됐습니다.
-          </p>
+      <div class="k-card">
+        <p><b>대표 성과: 문항 코드 추출 자동화 프로그램</b></p>
+        <div class="video-frame">
+          <video controls playsinline preload="metadata">
+            <source src="./vidieos/questions_program.mp4" type="video/mp4" />
+            브라우저가 동영상을 지원하지 않습니다.
+          </video>
         </div>
+        <ul style="margin-top:10px;">
+          <li><b>문제</b>: 문항 코드를 사람이 수동 확인/추출 → 시간이 오래 걸리고 실수가 발생</li>
+          <li><b>해결</b>: 업무 흐름을 분해해 규칙을 만들고, 코드로 자동 추출·정리 도구를 개발</li>
+          <li><b>결과</b>: <b>1시간+ → 20분 내</b>로 단축, 반복 작업 감소 + 정확도/일관성 향상</li>
+        </ul>
+        <p style="margin-top:10px;">
+          이 경험으로 저는 “작은 자동화가 팀 전체의 시간을 되돌려준다”는 확신을 갖게 됐습니다.
+        </p>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}천재교과서 (2021.08~2023.06)${SPAN_CLOSE}</p>
-          <p style="margin:6px 0 10px;"><b>역할</b> 교재 개발 PM / 국어 교육 콘텐츠 기획·개발</p>
-          <ul>
-            <li><b>교재 개발 PM</b>: 기획·집필·편집·검수 전 과정 운영 (일정/품질/커뮤니케이션 총괄)</li>
-            <li><b>커리큘럼/학습 목표 설계</b>: 학습 흐름과 난이도 기준 정리, 결과물이 흔들리지 않게 기준화</li>
-            <li><b>외부 협업</b>: 프리랜서·디자이너·집필진 커뮤니케이션 총괄 (산출물 품질 관리)</li>
-            <li><b>문항 DB 재정비</b>: 오류를 체계적으로 정리해 개발이 활용할 수 있는 구조 기준 마련</li>
-            <li><b>디지털 연계</b>: 밀크티(초등 학습 플랫폼) 국어 콘텐츠 검수 및 연계 콘텐츠 제작</li>
-          </ul>
-          <p style="margin-top:10px;">
-            <b>깨달음</b>: 콘텐츠 제작은 결국 “학습자/독자가 어디서 막히는지”를 찾아내고, 그 지점을 기준과 구조로 해결하는 일이라는 걸 배웠습니다.
-          </p>
-        </div>
+      <div class="k-card">
+        <p><b>천재교과서 (2021.08~2023.06)</b></p>
+        <p style="margin:6px 0 10px;"><b>역할</b> 교재 개발 PM / 국어 교육 콘텐츠 기획·개발</p>
+        <ul>
+          <li><b>교재 개발 PM</b>: 기획·집필·편집·검수 전 과정 운영 (일정/품질/커뮤니케이션 총괄)</li>
+          <li><b>커리큘럼/학습 목표 설계</b>: 학습 흐름과 난이도 기준 정리, 결과물이 흔들리지 않게 기준화</li>
+          <li><b>외부 협업</b>: 프리랜서·디자이너·집필진 커뮤니케이션 총괄 (산출물 품질 관리)</li>
+          <li><b>문항 DB 재정비</b>: 오류를 체계적으로 정리해 개발이 활용할 수 있는 구조 기준 마련</li>
+          <li><b>디지털 연계</b>: 밀크티(초등 학습 플랫폼) 국어 콘텐츠 검수 및 연계 콘텐츠 제작</li>
+        </ul>
+        <p style="margin-top:10px;">
+          <b>깨달음</b>: 콘텐츠 제작은 결국 “학습자/독자가 어디서 막히는지”를 찾아내고, 그 지점을 기준과 구조로 해결하는 일이라는 걸 배웠습니다.
+        </p>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}EBS (2024.07~현재)${SPAN_CLOSE}</p>
-          <p style="margin:6px 0 10px;"><b>역할</b> 중학프리미엄 플랫폼 운영/기획, 강좌 데이터·프로세스 관리</p>
-          <ul>
-            <li><b>운영 총괄</b>: 강좌 데이터 관리, 서비스 개편, 페이지 구조 개선</li>
-            <li><b>분류체계 재설계</b>: 2015 → 2022 개정 교육과정 기준으로 체계 전면 재정비</li>
-            <li><b>데이터 기반 운영</b>: 학습 이력·조회·완강·설문 데이터를 가공해 개선안 도출</li>
-            <li><b>프로세스 정비</b>: 검수 권한/흐름/이슈 대응 방식 정리 → 운영 오류 감소</li>
-          </ul>
-          <p style="margin-top:10px;">
-            <b>깨달음</b>: 운영은 “문제 발견”이 아니라 <b>재발 방지 구조를 만드는 것</b>까지가 일의 완성이라는 걸 배웠습니다.
-          </p>
-        </div>
+      <div class="k-card">
+        <p><b>EBS (2024.07~현재)</b></p>
+        <p style="margin:6px 0 10px;"><b>역할</b> 중학프리미엄 플랫폼 운영/기획, 강좌 데이터·프로세스 관리</p>
+        <ul>
+          <li><b>운영 총괄</b>: 강좌 데이터 관리, 서비스 개편, 페이지 구조 개선</li>
+          <li><b>분류체계 재설계</b>: 2015 → 2022 개정 교육과정 기준으로 체계 전면 재정비</li>
+          <li><b>데이터 기반 운영</b>: 학습 이력·조회·완강·설문 데이터를 가공해 개선안 도출</li>
+          <li><b>프로세스 정비</b>: 검수 권한/흐름/이슈 대응 방식 정리 → 운영 오류 감소</li>
+        </ul>
+        <p style="margin-top:10px;">
+          <b>깨달음</b>: 운영은 “문제 발견”이 아니라 <b>재발 방지 구조를 만드는 것</b>까지가 일의 완성이라는 걸 배웠습니다.
+        </p>
+      </div>
       `
     },
 
     award: {
       title: '수상',
       body: `
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}한 줄 요약${SPAN_CLOSE}<br/>제한된 시간에서도 “아이디어 → 구현 → 시연”을 끝까지 완주해 성과로 증명한 경험입니다.</p>
-        </div>
+      <div class="k-card">
+        <p><b>한 줄 요약</b>  </br>제한된 시간에서도 “아이디어 → 구현 → 시연”을 끝까지 완주해 성과로 증명한 경험입니다.</p>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}2023 제1회 K-디지털플랫폼 AI 경진대회${SPAN_CLOSE} 특별상 (2023.12.13)</p>
-          <div class="video-frame">
-            <video controls playsinline preload="metadata">
-              <source src="./vidieos/jingum_test.mp4" type="video/mp4" />
-              브라우저가 동영상을 지원하지 않습니다.
-            </video>
-          </div>
-          <ul style="margin-top:10px;">
-            <li><b>형태</b>: 4인 팀 프로젝트</li>
-            <li><b>핵심</b>: <b>RAG 기반 질의응답(답파고)</b> 아이디어를 실제 동작 수준으로 구현</li>
-            <li><b>성과</b>: 결과물을 “보여줄 수 있게” 만든 실행력으로 <b>특별상 수상</b></li>
-          </ul>
+      <div class="k-card">
+        <p><b>2023 제1회 K-디지털플랫폼 AI 경진대회</b> 특별상 (2023.12.13)</p>
+        <div class="video-frame">
+          <video controls playsinline preload="metadata">
+            <source src="./vidieos/jingum_test.mp4" type="video/mp4" />
+            브라우저가 동영상을 지원하지 않습니다.
+          </video>
         </div>
+        <ul style="margin-top:10px;">
+          <li><b>형태</b>: 4인 팀 프로젝트 </li>
+          <li><b>핵심</b>: <b>RAG 기반 질의응답(답파고)</b> 아이디어를 실제 동작 수준으로 구현</li>
+          <li><b>성과</b>: 결과물을 “보여줄 수 있게” 만든 실행력으로 <b>특별상 수상</b></li>
+        </ul>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}내가 맡았던 방식(강점)${SPAN_CLOSE}</p>
-          <ul>
-            <li>복잡한 기능을 “시연 우선순위”로 재정렬해 핵심 기능부터 완성</li>
-            <li>결과물을 보는 사람이 이해하기 쉽게 흐름/스토리로 정리</li>
-            <li>협업 과정에서 기준(정의/화면/시나리오)을 세워 속도와 품질을 맞춤</li>
-          </ul>
-        </div>
+      <div class="k-card">
+        <p><b>내가 맡았던 방식(강점)</b></p>
+        <ul>
+          <li>복잡한 기능을 “시연 우선순위”로 재정렬해 핵심 기능부터 완성</li>
+          <li>결과물을 보는 사람이 이해하기 쉽게 흐름/스토리로 정리</li>
+          <li>협업 과정에서 기준(정의/화면/시나리오)을 세워 속도와 품질을 맞춤</li>
+        </ul>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}깨달음${SPAN_CLOSE}</p>
-          <p>
-            성과는 아이디어 자체보다 “끝까지 만들어서 보여주는 힘”에서 나온다는 걸 배웠습니다.<br/>
-            이후 저는 어떤 프로젝트든 <b>완료 가능한 범위를 정확히 잡고</b> 빠르게 결과를 만들며 개선하는 방식을 선호합니다.
-          </p>
-        </div>
+      <div class="k-card">
+        <p><b>깨달음</b></p>
+        <p>
+          성과는 아이디어 자체보다 “끝까지 만들어서 보여주는 힘”에서 나온다는 걸 배웠습니다.<br/>
+          이후 저는 어떤 프로젝트든 <b>완료 가능한 범위를 정확히 잡고</b> 빠르게 결과를 만들며 개선하는 방식을 선호합니다.
+        </p>
+      </div>
       `
     },
 
     cert: {
       title: '자격증',
       body: `
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}한 줄 요약${SPAN_CLOSE}<br/>“필요하면 배워서 갖추는 사람”이라는 신뢰를 만들기 위해 꾸준히 기반 역량을 쌓았습니다.</p>
-        </div>
+      <div class="k-card">
+        <p><b>한 줄 요약</b> </br> “필요하면 배워서 갖추는 사람”이라는 신뢰를 만들기 위해 꾸준히 기반 역량을 쌓았습니다.</p>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}업무 기반 역량${SPAN_CLOSE}</p>
-          <ul>
-            <li><b>워드프로세서</b> (2019.09.13) : 문서 구조화/작성 습관</li>
-            <li><b>GTQ 1급</b> (2020.02.07) : 이미지 편집/시각 자료 품질 개선</li>
-            <li><b>컴퓨터활용능력 1급</b> (2020.08.28) : 데이터 정리/검증/분석 기초</li>
-            <li><b>SQLD</b> (2024.04.05) : 데이터 조회/정합성 확인/분석 업무 연결</li>
-            <li><b>ADsP</b> (2025.09.05) : 지표/가설/검증 관점 강화</li>
-          </ul>
-        </div>
+      <div class="k-card">
+        <p><b>업무 기반 역량</b></p>
+        <ul>
+          <li><b>워드프로세서</b> (2019.09.13) : 문서 구조화/작성 습관</li>
+          <li><b>GTQ 1급</b> (2020.02.07) : 이미지 편집/시각 자료 품질 개선</li>
+          <li><b>컴퓨터활용능력 1급</b> (2020.08.28) : 데이터 정리/검증/분석 기초</li>
+          <li><b>SQLD</b> (2024.04.05) : 데이터 조회/정합성 확인/분석 업무 연결</li>
+          <li><b>ADsP</b> (2025.09.05) : 지표/가설/검증 관점 강화</li>
+        </ul>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}깨달음${SPAN_CLOSE}</p>
-          <p>
-            자격증은 “끝”이 아니라 “실무에서 꺼내 쓰는 도구상자”라고 생각합니다.<br/>
-            저는 필요한 순간에 빠르게 학습해 적용하고, 다시 문서화해 재사용 가능한 형태로 남기는 것을 좋아합니다.
-          </p>
-        </div>
+      <div class="k-card">
+        <p><b>깨달음</b></p>
+        <p>
+          자격증은 “끝”이 아니라 “실무에서 꺼내 쓰는 도구상자”라고 생각합니다.<br/>
+          저는 필요한 순간에 빠르게 학습해 적용하고, 다시 문서화해 재사용 가능한 형태로 남기는 것을 좋아합니다.
+        </p>
+      </div>
       `
     },
 
     lang: {
       title: '언어',
       body: `
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}한 줄 요약${SPAN_CLOSE}<br/>언어는 소통 도구이자 ‘품질’을 만드는 기술이라고 생각합니다.</p>
-        </div>
+      <div class="k-card">
+        <p><b>한 줄 요약</b> </br> 언어는 소통 도구이자 ‘품질’을 만드는 기술이라고 생각합니다.</p>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}한국어${SPAN_CLOSE}</p>
-          <ul>
-            <li>국어국문학 전공 + 교재 기획/교정/교열/편집 실무 경험</li>
-            <li>복잡한 내용을 “짧고 정확하게” 정리해 문서로 남기는 역량</li>
-            <li>기획서/가이드/프로세스 문서로 팀 협업 효율을 높이는 방식</li>
-          </ul>
-        </div>
+      <div class="k-card">
+        <p><b>한국어</b></p>
+        <ul>
+          <li>국어국문학 전공 + 교재 기획/교정/교열/편집 실무 경험</li>
+          <li>복잡한 내용을 “짧고 정확하게” 정리해 문서로 남기는 역량</li>
+          <li>기획서/가이드/프로세스 문서로 팀 협업 효율을 높이는 방식</li>
+        </ul>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}영어${SPAN_CLOSE}</p>
-          <ul>
-            <li>TOEIC 785 (2024.06.30)</li>
-            <li>TOEIC Speaking IH 150 (2025.09.13)</li>
-            <li>문서/리서치/기술 자료 읽기와 기본 커뮤니케이션 가능</li>
-          </ul>
-        </div>
+      <div class="k-card">
+        <p><b>영어</b></p>
+        <ul>
+          <li>TOEIC 785 (2024.06.30)</li>
+          <li>TOEIC Speaking IH 150 (2025.09.13)</li>
+          <li>문서/리서치/기술 자료 읽기와 기본 커뮤니케이션 가능</li>
+        </ul>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}일본어${SPAN_CLOSE}</p>
-          <ul>
-            <li>회화 학습 경험, 여행 실사용 가능</li>
-            <li>콘텐츠/문화 맥락을 이해하는 데 도움</li>
-          </ul>
-        </div>
+      <div class="k-card">
+        <p><b>일본어</b></p>
+        <ul>
+          <li>회화 학습 경험, 여행 실사용 가능</li>
+          <li>콘텐츠/문화 맥락을 이해하는 데 도움</li>
+        </ul>
+      </div>
 
-        <div class="k-card">
-          <p>${TITLE_SPAN_OPEN}깨달음${SPAN_CLOSE}</p>
-          <p>
-            결국 팀에서 인정받는 사람은 “말이 많은 사람”이 아니라 <b>오해가 없게 정리하는 사람</b>이라고 느꼈습니다.<br/>
-            저는 말과 글로 문제를 정리하고, 합의 가능한 형태로 바꾸는 역할을 잘합니다.
-          </p>
-        </div>
+      <div class="k-card">
+        <p><b>깨달음</b></p>
+        <p>
+          결국 팀에서 인정받는 사람은 “말이 많은 사람”이 아니라 <b>오해가 없게 정리하는 사람</b>이라고 느꼈습니다.<br/>
+          저는 말과 글로 문제를 정리하고, 합의 가능한 형태로 바꾸는 역할을 잘합니다.
+        </p>
+      </div>
       `
     }
   };
@@ -687,15 +614,18 @@ window.addEventListener('load', () => {
   function openModal(modal){
     if (!modal) return;
     paused = true;
+    keys.clear(); // ✅ 모달 열릴 때 키 stuck 방지
     modal.classList.add('on');
     modal.setAttribute('aria-hidden', 'false');
     duckBgm(true);
   }
+
   function closeModal(modal){
     if (!modal) return;
     modal.classList.remove('on');
     modal.setAttribute('aria-hidden', 'true');
     paused = false;
+    keys.clear(); // ✅ 닫을 때도 한번 초기화
     duckBgm(false);
   }
 
@@ -734,40 +664,6 @@ window.addEventListener('load', () => {
     `;
   }
 
-  // =========================================================
-  // ✅ (4) Typewriter: always finish in ~2 seconds
-  // - "텍스트로 먼저 보여주고, 완료되면 HTML로 교체" 구조는 유지
-  // - 단, 길이에 관계없이 2000ms 내 완료되도록 rAF 기반 진행률 계산
-  // =========================================================
-  function runTypewriter({ target, plain, durationMs = 2000, onDone, isAlive }){
-    const text = plain || '';
-    const total = text.length;
-    if (total === 0){
-      onDone && onDone();
-      return;
-    }
-
-    const start = performance.now();
-
-    function frame(now){
-      if (isAlive && !isAlive()) return;
-
-      const t = Math.min(1, (now - start) / durationMs);
-      // 진행률 기반으로 글자 수 결정 (길이가 길어도 2초 안에 끝남)
-      const count = Math.max(0, Math.floor(total * t));
-      target.textContent = text.slice(0, count);
-
-      if (t >= 1){
-        target.textContent = text; // 안전하게 마지막 보정
-        onDone && onDone();
-        return;
-      }
-      requestAnimationFrame(frame);
-    }
-
-    requestAnimationFrame(frame);
-  }
-
   function openInfo(key){
     const data = CONTENT[key];
     if (!data) return;
@@ -780,7 +676,6 @@ window.addEventListener('load', () => {
 
     openModal(infoModal);
     playSfxForKey(key);
-
     markVisited(key);
 
     if (!target){
@@ -789,38 +684,40 @@ window.addEventListener('load', () => {
     }
 
     const plain = html.replace(/<[^>]*>/g, '').replace(/\s+\n/g,'\n');
+    let i = 0;
     target.textContent = '';
 
-    runTypewriter({
-      target,
-      plain,
-      durationMs: 2000,
-      isAlive: () => infoModal.classList.contains('on'),
-      onDone: () => {
-        if (!infoModal.classList.contains('on')) return;
+    const timer = setInterval(() => {
+      if (!infoModal.classList.contains('on')) { clearInterval(timer); return; }
+      i += 2;
+      target.textContent = plain.slice(0, i);
+
+      if (i >= plain.length){
+        clearInterval(timer);
         infoModalBody.innerHTML = html;
       }
-    });
+    }, 12);
   }
 
   // close buttons
   if (introCloseBtn) introCloseBtn.addEventListener('click', () => {
-    // ✅ 클릭도 사용자 제스처이므로 발소리 unlock
-    unlockFootstep();
-
+    ensureAudio();
+    if (!bgmIsRunning) startBgm(); // ✅ 클릭으로 시작해도 BGM 켜지게
     introModal.classList.remove('on');
     introModal.setAttribute('aria-hidden','true');
     paused = false;
     duckBgm(false);
   });
-  if (startGameBtn) startGameBtn.addEventListener('click', () => {
-    // ✅ 클릭도 사용자 제스처이므로 발소리 unlock
-    unlockFootstep();
 
+  if (startGameBtn) startGameBtn.addEventListener('click', () => {
+    ensureAudio();
+    if (!bgmIsRunning) startBgm(); // ✅ 클릭으로 시작해도 BGM 켜지게
     introModal.classList.remove('on');
     introModal.setAttribute('aria-hidden','true');
     paused = false;
     duckBgm(false);
+
+    if (playStartTs === null) playStartTs = performance.now();
   });
 
   if (infoCloseBtn) infoCloseBtn.addEventListener('click', () => closeModal(infoModal));
@@ -841,20 +738,27 @@ window.addEventListener('load', () => {
     });
   });
 
+  // ✅ 마우스/터치로도 오디오 정책 해제 + BGM 시작
+  [layer, canvas].forEach(el => {
+    if (!el) return;
+    el.addEventListener('pointerdown', () => {
+      ensureAudio();
+      if (!bgmIsRunning) startBgm();
+    }, { passive:true });
+  });
+
   // ✅ 2) 플레이 시간 측정
   let playStartTs = null;
   let playEndTs = null;
 
-  // exit -> outro
   if (exitBtn){
     exitBtn.addEventListener('click', () => {
       paused = true;
+      keys.clear();
 
       playEndTs = performance.now();
-
       fillOutroStats();
       stopBgmFadeOut();
-
       openModal(outroModal);
     });
   }
@@ -882,9 +786,8 @@ window.addEventListener('load', () => {
     const total = chunjae + ebs;
 
     if (careerHUD){
-      // ✅ (2) 강조가 사라지지 않게 career-total + hl 같이 부여
       careerHUD.innerHTML =
-        `총 경력 <span class="career-total hl">${formatYM(total)}</span> (천재 ${formatYM(chunjae)} + EBS ${formatYM(ebs)})`;
+        `총 경력 <span class="hl">${formatYM(total)}</span> (천재 ${formatYM(chunjae)} + EBS ${formatYM(ebs)})`;
     }
   }
   updateCareerHUD();
@@ -1156,7 +1059,7 @@ window.addEventListener('load', () => {
   }
 
   /* =========================================================
-     "!" Pop (Space pressed)
+     "!" Pop
   ========================================================= */
   const pops = [];
   function spawnPop(n){
@@ -1296,7 +1199,6 @@ window.addEventListener('load', () => {
     drawPressSpace();
 
     drawAllClear();
-
     updatePops(dt);
   }
 
@@ -1319,6 +1221,9 @@ window.addEventListener('load', () => {
     if (paused){
       player.vx = 0; player.vy = 0;
       walkTimer = 0; walkFrame = 0;
+
+      footstepAudio.pause();
+      footstepAudio.currentTime = 0;
       return;
     }
 
@@ -1339,17 +1244,34 @@ window.addEventListener('load', () => {
     else if (player.vy < 0) facing = 'up';
     else if (player.vy > 0) facing = 'down';
 
-    const isMoving = (player.vx !== 0 || player.vy !== 0);
+    // ✅ 실제로 "움직였는지" 기준으로 발소리/애니메이션 처리
+    const oldX = player.x;
+    const oldY = player.y;
 
-    // ✅ (1) 발소리: 이동 중 일정 간격으로 pool 재생
-    if (isMoving){
-      if (ts - lastStepTime >= STEP_INTERVAL){
-        playFootstep();
+    player.x += player.vx;
+    player.y += player.vy;
+
+    player.x = Math.max(0, Math.min(W - player.w, player.x));
+    player.y = Math.max(0, Math.min(H - player.h, player.y));
+
+    const moved = (player.x !== oldX || player.y !== oldY);
+
+    // ✅ 발소리: 키 입력이 아니라 "실제 이동"일 때만
+    if (moved){
+      if (ts - lastStepTime >= STEP_INTERVAL) {
+        try {
+          footstepAudio.currentTime = 0;
+          footstepAudio.play();
+        } catch (e) {}
         lastStepTime = ts;
       }
+    } else {
+      footstepAudio.pause();
+      footstepAudio.currentTime = 0;
     }
 
-    if (isMoving && (facing === 'left' || facing === 'right')){
+    // ✅ 걷기 프레임도 실제 이동일 때만
+    if (moved && (facing === 'left' || facing === 'right')){
       walkTimer += dt;
       if (walkTimer >= WALK_INTERVAL){
         walkTimer = 0;
@@ -1359,12 +1281,6 @@ window.addEventListener('load', () => {
       walkTimer = 0;
       walkFrame = 0;
     }
-
-    player.x += player.vx;
-    player.y += player.vy;
-
-    player.x = Math.max(0, Math.min(W - player.w, player.x));
-    player.y = Math.max(0, Math.min(H - player.h, player.y));
   }
 
   function loop(ts){
@@ -1379,8 +1295,6 @@ window.addEventListener('load', () => {
   ========================= */
   window.addEventListener('keydown', (e) => {
     ensureAudio();
-    unlockFootstep(); // ✅ (1) 첫 키 입력에서 footstep unlock
-
     keys.add(e.key);
 
     if (!bgmIsRunning) startBgm();
@@ -1416,6 +1330,7 @@ window.addEventListener('load', () => {
 
       spawnPop(n);
       paused = true;
+      keys.clear();
 
       if (n.key === 'timeline'){
         playSfxForKey('timeline');
