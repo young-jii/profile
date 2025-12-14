@@ -21,7 +21,7 @@ window.addEventListener('load', () => {
 
   if (!layer || !canvas) return;
 
-  // === show game immediately (no 3s gap) ===
+  // === show game immediately (no gap) ===
   layer.classList.add('on');
   layer.setAttribute('aria-hidden', 'false');
   document.body.classList.add('game-on');
@@ -33,12 +33,12 @@ window.addEventListener('load', () => {
   const H = canvas.height;
 
   const keys = new Set();
-  let paused = true; // intro에서 시작 전까지 멈춤
+  let paused = true; // intro until start
 
-  // === Player collision box (small), draw bigger sprite ===
+  // === Player collision box (small) ===
   const player = { x: 34, y: 80, w: 12, h: 12, vx: 0, vy: 0, speed: 1.35 };
 
-  const SRC_W = 16, SRC_H = 16;
+  // === Draw size (bigger on canvas) ===
   const DRAW_W = 32, DRAW_H = 32;
 
   const SPRITE_BASE = 'assets/css/images/';
@@ -64,23 +64,18 @@ window.addEventListener('load', () => {
   let walkTimer = 0;
   const WALK_INTERVAL = 140;
 
-  // === Fixed "path -> branches" map ===
-  // Path nodes (x increases left->right)
+  // === Fixed map: path -> branches (left->right) ===
   const nodes = [
     { key:'school',    label:'학교',    x: 70,  y: 90 },
     { key:'training',  label:'교육',    x: 125, y: 90 },
     { key:'company',   label:'경력',    x: 185, y: 90 },
-    // branch up
-    { key:'award',     label:'수상',    x: 230, y: 55 },
-    // branch down
-    { key:'cert',      label:'자격증',  x: 230, y: 125 },
+    { key:'award',     label:'수상',    x: 230, y: 55 },   // branch up
+    { key:'cert',      label:'자격증',  x: 230, y: 125 },  // branch down
     { key:'lang',      label:'언어',    x: 275, y: 125 },
-    // timeline sign near end
     { key:'timeline',  label:'연혁',    x: 295, y: 90 },
   ];
 
-  // Optional icon images (없어도 동작)
-  // 네가 아이콘을 넣어둔 폴더에 맞춰 파일명만 바꾸면 됨
+  // === Optional icons (없어도 동작) ===
   const iconBase = 'assets/css/images/';
   const iconFiles = {
     school:   'icon_school.png',
@@ -104,7 +99,9 @@ window.addEventListener('load', () => {
     return img && img.complete && img.naturalWidth > 0;
   }
 
-  // === Content (모달에 들어갈 내용) ===
+  // === Content: 모달에 들어갈 내용 ===
+  // ✅ 경력/수상에는 영상 포함
+  // ✅ 비디오 경로는 profile 루트 기준: ./questions_program.mp4, ./jingum_test.mp4
   const CONTENT = {
     school: {
       title: '학교',
@@ -136,6 +133,19 @@ window.addEventListener('load', () => {
       title: '경력',
       body: `
         <div class="k-card">
+          <p><b>대표 성과: 문항 코드 추출 자동화 프로그램</b></p>
+          <video class="modal-video" controls playsinline preload="metadata">
+            <source src="./questions_program.mp4" type="video/mp4" />
+            브라우저가 동영상을 지원하지 않습니다.
+          </video>
+          <p style="margin-top:10px;">
+            제가 기획부터 개발·배포까지 직접 진행한 자동화 도구입니다.<br/>
+            <b>1시간 이상 걸리던 업무가 20분 안쪽</b>으로 단축되면서,
+            반복 작업을 줄이고 검수 정확도를 높였습니다.
+          </p>
+        </div>
+
+        <div class="k-card">
           <p><b>천재교과서 (2021.08~2023.06)</b></p>
           <ul>
             <li>교재 개발 PM: 기획·집필·편집·검수 전 과정 운영</li>
@@ -143,11 +153,12 @@ window.addEventListener('load', () => {
             <li>문항 DB 재정비/기준 정립 → 개발 활용 가능한 구조 기준 마련</li>
           </ul>
         </div>
+
         <div class="k-card">
           <p><b>EBS (2024.07~현재)</b></p>
           <ul>
             <li>중학프리미엄 운영/기획: 강좌 데이터 관리, 서비스 개편, 페이지 구조 개선</li>
-            <li>2015→2022 교육과정 기준 분류체계 재설계, 부서 간 조율로 운영 프로세스 정비</li>
+            <li>2015→2022 교육과정 기준 분류체계 재설계 및 운영 프로세스 정비</li>
             <li>학습 이력/설문 데이터 분석(Python)로 개선안 도출 및 근거 자료화</li>
           </ul>
         </div>
@@ -158,10 +169,14 @@ window.addEventListener('load', () => {
       body: `
         <div class="k-card">
           <p><b>2023 제1회 K-디지털플랫폼 AI 경진대회</b> 특별상 (2023.12.13)</p>
-          <ul>
-            <li>짧은 시간 내 아이디어→구현→시연까지 완주</li>
-            <li>팀 협업/우선순위/발표 대응 경험</li>
-          </ul>
+          <video class="modal-video" controls playsinline preload="metadata">
+            <source src="./jingum_test.mp4" type="video/mp4" />
+            브라우저가 동영상을 지원하지 않습니다.
+          </video>
+          <p style="margin-top:10px;">
+            4인 팀 프로젝트로 진행한 <b>RAG 기반 질의응답(답파고)</b> 시연 영상입니다.<br/>
+            제한된 시간 내에 아이디어 → 구현 → 시연까지 완주해 <b>특별상</b>을 수상했습니다.
+          </p>
         </div>
       `
     },
@@ -207,35 +222,36 @@ window.addEventListener('load', () => {
     paused = false;
   }
 
+  // Typewriter: 텍스트 먼저 보여주고, 끝나면 HTML로 교체(영상 포함 가능)
   function openInfo(key){
     const data = CONTENT[key];
     if (!data) return;
 
     infoModalTitle.textContent = data.title;
-    // typewriter (simple): build once then reveal
+
     const html = data.body;
     infoModalBody.innerHTML = `<div class="typewrap"><div id="typeTarget"></div></div>`;
     const target = infoModalBody.querySelector('#typeTarget');
-    if (!target) {
+
+    openModal(infoModal);
+
+    if (!target){
       infoModalBody.innerHTML = html;
-      openModal(infoModal);
       return;
     }
 
-    // strip tags for typing, then show final formatted after short typing
-    const plain = html.replace(/<[^>]*>/g, '');
+    const plain = html.replace(/<[^>]*>/g, '').replace(/\s+\n/g,'\n');
     let i = 0;
     target.textContent = '';
-    openModal(infoModal);
 
     const timer = setInterval(() => {
       if (!infoModal.classList.contains('on')) { clearInterval(timer); return; }
       i += 2;
       target.textContent = plain.slice(0, i);
+
       if (i >= plain.length){
         clearInterval(timer);
-        // swap to formatted content
-        infoModalBody.innerHTML = html;
+        infoModalBody.innerHTML = html; // ✅ 영상 포함 HTML로 최종 교체
       }
     }, 12);
   }
@@ -254,9 +270,7 @@ window.addEventListener('load', () => {
 
   if (infoCloseBtn) infoCloseBtn.addEventListener('click', () => closeModal(infoModal));
   if (timelineCloseBtn) timelineCloseBtn.addEventListener('click', () => closeModal(timelineModal));
-  if (outroCloseBtn) outroCloseBtn.addEventListener('click', () => {
-    closeModal(outroModal);
-  });
+  if (outroCloseBtn) outroCloseBtn.addEventListener('click', () => closeModal(outroModal));
 
   // click outside to close
   [infoModal, timelineModal, outroModal].forEach(m => {
@@ -274,9 +288,8 @@ window.addEventListener('load', () => {
     });
   }
 
-  // === Career HUD (months-based, Asia/Seoul: 오늘 2025-12-14 기준으로 계산) ===
+  // === Career HUD (months-based) ===
   function monthDiffInclusive(startY, startM, endY, endM){
-    // month index
     const a = startY * 12 + (startM - 1);
     const b = endY * 12 + (endM - 1);
     return Math.max(0, b - a + 1);
@@ -287,10 +300,7 @@ window.addEventListener('load', () => {
     return `${y}년 ${m}개월`;
   }
   function updateCareerHUD(){
-    // 천재: 2021.08 ~ 2023.06
     const chunjae = monthDiffInclusive(2021, 8, 2023, 6);
-
-    // EBS: 2024.07 ~ 현재(오늘 기준)
     const now = new Date();
     const y = now.getFullYear();
     const m = now.getMonth() + 1;
@@ -321,7 +331,6 @@ window.addEventListener('load', () => {
 
   // === Render: background + path + nodes + player ===
   function drawBG(){
-    // grass
     for (let y=0; y<H; y+=16){
       for (let x=0; x<W; x+=16){
         const even = ((x+y)/16) % 2 === 0;
@@ -330,13 +339,14 @@ window.addEventListener('load', () => {
       }
     }
 
-    // main road (left->right)
+    // main road
     ctx.fillStyle = '#2a3646';
     ctx.fillRect(30, 86, 270, 12);
-    // branches
-    ctx.fillRect(222, 58, 12, 76); // vertical branch column
 
-    // edges glow
+    // branches
+    ctx.fillRect(222, 58, 12, 76);
+
+    // subtle edges
     ctx.fillStyle = 'rgba(255,255,255,0.04)';
     ctx.fillRect(30, 85, 270, 1);
     ctx.fillRect(30, 98, 270, 1);
@@ -347,7 +357,6 @@ window.addEventListener('load', () => {
     const x = Math.round(n.x - size/2);
     const y = Math.round(n.y - size/2);
 
-    // icon or fallback
     if (iconReady(n.key)){
       ctx.drawImage(icons[n.key], x, y, size, size);
     } else {
@@ -355,12 +364,11 @@ window.addEventListener('load', () => {
       ctx.fillRect(x, y, size, size);
     }
 
-    // label (Korean)
     ctx.font = '10px monospace';
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
     ctx.fillText(n.label, x - 2, y - 4);
 
-    // sparkle near nodes
+    // sparkle
     const t = performance.now() / 1000;
     const sx = n.x + Math.cos(t * 2 + n.x) * 8;
     const sy = n.y + Math.sin(t * 2 + n.y) * 6;
@@ -390,6 +398,8 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
+  // ✅ 캐릭터 안 보임 해결 버전:
+  // - 16x16 크롭을 없애고, 이미지 전체를 DRAW_W/DRAW_H로 그린다.
   function drawPlayer(){
     if (!allSpritesReady()){
       ctx.fillStyle = '#f7768e';
@@ -400,26 +410,26 @@ window.addEventListener('load', () => {
     const dx = Math.round(player.x - (DRAW_W - player.w)/2);
     const dy = Math.round(player.y - (DRAW_H - player.h)/2);
 
+    const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
+
     if (facing === 'up'){
-      ctx.drawImage(sprites.back, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
+      ctx.drawImage(sprites.back, dx, dy, DRAW_W, DRAW_H);
       return;
     }
     if (facing === 'down'){
-      ctx.drawImage(sprites.front, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
+      ctx.drawImage(sprites.front, dx, dy, DRAW_W, DRAW_H);
       return;
     }
 
-    const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
-
     if (facing === 'left'){
-      ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, dx, dy, DRAW_W, DRAW_H);
+      ctx.drawImage(sideImg, dx, dy, DRAW_W, DRAW_H);
       return;
     }
 
     if (facing === 'right'){
       ctx.save();
       ctx.scale(-1, 1);
-      ctx.drawImage(sideImg, 0, 0, SRC_W, SRC_H, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
+      ctx.drawImage(sideImg, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
       ctx.restore();
       return;
     }
@@ -510,7 +520,7 @@ window.addEventListener('load', () => {
       const n = nearestNode();
       if (!n) return;
 
-      // space look-at animation: face toward node for a moment
+      // face toward node briefly
       const dx = n.x - player.x;
       const dy = n.y - player.y;
       if (Math.abs(dx) > Math.abs(dy)) facing = dx > 0 ? 'right' : 'left';
@@ -518,7 +528,6 @@ window.addEventListener('load', () => {
 
       paused = true;
 
-      // open corresponding modal
       if (n.key === 'timeline'){
         openModal(timelineModal);
       } else {
@@ -527,11 +536,10 @@ window.addEventListener('load', () => {
     }
 
     if (e.key === 'Escape'){
-      // close whichever modal is open
+      // close open modal
       if (infoModal?.classList.contains('on')) { closeModal(infoModal); return; }
       if (timelineModal?.classList.contains('on')) { closeModal(timelineModal); return; }
       if (outroModal?.classList.contains('on')) { closeModal(outroModal); return; }
-      // if nothing open, show outro (same as exit)
       openModal(outroModal);
     }
   });
