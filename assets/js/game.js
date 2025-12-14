@@ -35,8 +35,91 @@ window.addEventListener('load', () => {
   const keys = new Set();
   let paused = true; // intro until start
 
+  /* =========================
+     Web Audio (SFX) - 복구
+     - iOS/Chrome 정책 때문에 "첫 사용자 입력" 시점에만 활성화 가능
+  ========================= */
+  let audioCtx = null;
+  function ensureAudio(){
+    if (!audioCtx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playTone({ type='sine', freq=440, dur=0.12, gain=0.12, attack=0.005, release=0.06, filter=null }){
+    const ac = ensureAudio();
+    if (!ac) return;
+
+    const t0 = ac.currentTime;
+
+    const o = ac.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(gain, t0 + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + release);
+
+    let lastNode = o;
+
+    if (filter){
+      const f = ac.createBiquadFilter();
+      f.type = filter.type || 'lowpass';
+      f.frequency.setValueAtTime(filter.freq || 1200, t0);
+      f.Q.setValueAtTime(filter.q ?? 0.7, t0);
+      lastNode.connect(f);
+      lastNode = f;
+    }
+
+    lastNode.connect(g);
+    g.connect(ac.destination);
+
+    o.start(t0);
+    o.stop(t0 + dur + release + 0.02);
+  }
+
+  // 카테고리별 "음색" 매핑
+  function playSfxForKey(key){
+    // 따뜻(학교), 부드러움(교육), 쿵(경력), 반짝(수상), 클릭(자격), airy(언어), 종(연혁)
+    switch (key){
+      case 'school':
+        playTone({ type:'triangle', freq: 440, dur:0.10, gain:0.10, filter:{type:'lowpass', freq:1200, q:0.8} });
+        playTone({ type:'sine', freq: 660, dur:0.08, gain:0.07, filter:{type:'lowpass', freq:1400, q:0.6} });
+        break;
+      case 'training':
+        playTone({ type:'sine', freq: 523.25, dur:0.12, gain:0.09, filter:{type:'lowpass', freq:1800, q:0.7} });
+        break;
+      case 'company':
+        playTone({ type:'square', freq: 110, dur:0.10, gain:0.12, filter:{type:'lowpass', freq:600, q:1.0} });
+        playTone({ type:'triangle', freq: 150, dur:0.08, gain:0.07, filter:{type:'lowpass', freq:700, q:0.9} });
+        break;
+      case 'award':
+        playTone({ type:'sine', freq: 880, dur:0.06, gain:0.08, filter:{type:'highpass', freq:600, q:0.8} });
+        playTone({ type:'sine', freq: 1320, dur:0.06, gain:0.06, filter:{type:'highpass', freq:700, q:0.9} });
+        break;
+      case 'cert':
+        playTone({ type:'square', freq: 740, dur:0.05, gain:0.06, filter:{type:'highpass', freq:800, q:0.7} });
+        break;
+      case 'lang':
+        playTone({ type:'sine', freq: 392, dur:0.10, gain:0.07, filter:{type:'bandpass', freq:900, q:0.8} });
+        break;
+      case 'timeline':
+        playTone({ type:'triangle', freq: 587.33, dur:0.10, gain:0.09 });
+        playTone({ type:'triangle', freq: 783.99, dur:0.10, gain:0.07 });
+        break;
+      default:
+        playTone({ type:'sine', freq: 600, dur:0.08, gain:0.06 });
+        break;
+    }
+  }
+
   // === Player collision box (small) ===
-  const player = { x: 34, y: 80, w: 12, h: 12, vx: 0, vy: 0, speed: 1.35 };
+  const player = { x: 52, y: 86, w: 12, h: 12, vx: 0, vy: 0, speed: 1.35 };
 
   // === Draw size (bigger on canvas) ===
   const DRAW_W = 32, DRAW_H = 32;
@@ -49,6 +132,7 @@ window.addEventListener('load', () => {
     side2: new Image(),
   };
 
+  // 괄호 파일명 안정 로딩
   sprites.front.src = encodeURI(SPRITE_BASE + 'dot_front.png');
   sprites.back.src  = encodeURI(SPRITE_BASE + 'dot_back.png');
   sprites.side1.src = encodeURI(SPRITE_BASE + 'dot_side(1).png');
@@ -63,18 +147,28 @@ window.addEventListener('load', () => {
   let walkTimer = 0;
   const WALK_INTERVAL = 140;
 
-  // === Fixed map: path -> branches (left->right) ===
+  /* =========================
+     ✅ 맵 위치 [to-be] 재배치
+     [to-be]
+       학교                           언어
+       --|-----경력----------|--------연혁
+       교육--수상                자격증
+  ========================= */
+
   const nodes = [
-    { key:'school',    label:'학교',    x: 70,  y: 90 },
-    { key:'training',  label:'교육',    x: 125, y: 90 },
-    { key:'company',   label:'경력',    x: 185, y: 90 },
-    { key:'award',     label:'수상',    x: 230, y: 55 },
-    { key:'cert',      label:'자격증',  x: 230, y: 125 },
-    { key:'lang',      label:'언어',    x: 275, y: 125 },
-    { key:'timeline',  label:'연혁',    x: 295, y: 90 },
+    { key:'school',   label:'학교',  x: 55,  y: 55  },  // top-left
+    { key:'training', label:'교육',  x: 55,  y: 125 },  // bottom-left
+    { key:'award',    label:'수상',  x: 110, y: 125 },  // right of training
+
+    { key:'company',  label:'경력',  x: 160, y: 90  },  // center on main line
+
+    { key:'lang',     label:'언어',  x: 250, y: 55  },  // top-right
+    { key:'cert',     label:'자격증', x: 250, y: 125 },  // bottom-right
+
+    { key:'timeline', label:'연혁',  x: 295, y: 90  },  // far right mid
   ];
 
-  // === Optional icons ===
+  // === Optional icons (없어도 동작) ===
   const iconBase = 'assets/css/images/';
   const iconFiles = {
     school:   'icon_school.png',
@@ -98,17 +192,17 @@ window.addEventListener('load', () => {
     return img && img.complete && img.naturalWidth > 0;
   }
 
-  // === Content ===
+  // === Content (모달 내용) ===
   const CONTENT = {
     school: {
       title: '학교',
       body: `
         <div class="k-card">
-          <p><b>핵심 키워드</b> 문학 기반 기획력 · 구조화 · 사용자 관점</p>
+          <p><b>핵심 키워드</b> 기획력 · 구조화 · 사용자 관점</p>
           <ul>
             <li>경희대학교 국어국문학과 (GPA 3.92/4.5)</li>
-            <li>텍스트를 “기준”으로 만들고, 기준으로 품질을 관리하는 습관</li>
-            <li>콘텐츠를 보는 사람(학습자/독자) 중심으로 기획하는 사고</li>
+            <li>텍스트를 “기준”으로 만들고 기준으로 품질을 관리하는 습관</li>
+            <li>콘텐츠를 보는 사람(학습자/독자) 중심으로 설계하는 사고</li>
           </ul>
         </div>
       `
@@ -138,9 +232,8 @@ window.addEventListener('load', () => {
             </video>
           </div>
           <p style="margin-top:10px;">
-            제가 기획부터 개발·배포까지 직접 진행한 자동화 도구입니다.<br/>
-            <b>1시간 이상 걸리던 업무가 20분 안쪽</b>으로 단축되면서,
-            반복 작업을 줄이고 검수 정확도를 높였습니다.
+            기획 → 개발 → 배포까지 직접 진행한 자동화 도구입니다.<br/>
+            <b>1시간 이상 걸리던 업무가 20분 안쪽</b>으로 단축되며 운영 효율과 정확도를 함께 높였습니다.
           </p>
         </div>
 
@@ -216,7 +309,6 @@ window.addEventListener('load', () => {
     modal.classList.add('on');
     modal.setAttribute('aria-hidden', 'false');
   }
-
   function closeModal(modal){
     if (!modal) return;
     modal.classList.remove('on');
@@ -224,48 +316,28 @@ window.addEventListener('load', () => {
     paused = false;
   }
 
-  // ✅ 비디오/무거운 콘텐츠가 있으면 typewriter 스킵
-  function hasVideo(html){
-    return /<video[\s>]/i.test(html);
-  }
-
-  function forceVideoLoad(container){
-    const vids = container.querySelectorAll('video');
-    vids.forEach(v => {
-      try{
-        v.load();
-        v.currentTime = 0;
-        v.playsInline = true;
-      }catch(e){}
-    });
-  }
-
+  // Typewriter: 텍스트 먼저 보여주고, 끝나면 HTML로 교체(영상 포함 가능)
   function openInfo(key){
     const data = CONTENT[key];
-    if (!data || !infoModal || !infoModalTitle || !infoModalBody) return;
+    if (!data) return;
 
     infoModalTitle.textContent = data.title;
 
     const html = data.body;
-    openModal(infoModal);
-
-    // ✅ 영상 포함(경력/수상)은 바로 렌더 + 로드
-    if (hasVideo(html)){
-      infoModalBody.innerHTML = html;
-      forceVideoLoad(infoModalBody);
-      return;
-    }
-
-    // typewriter (텍스트 중심만)
     infoModalBody.innerHTML = `<div class="typewrap"><div id="typeTarget"></div></div>`;
     const target = infoModalBody.querySelector('#typeTarget');
+
+    openModal(infoModal);
+
+    // ✅ SFX
+    playSfxForKey(key);
 
     if (!target){
       infoModalBody.innerHTML = html;
       return;
     }
 
-    const plain = html.replace(/<[^>]*>/g, '').replace(/\s+\n/g,'\n').trim();
+    const plain = html.replace(/<[^>]*>/g, '').replace(/\s+\n/g,'\n');
     let i = 0;
     target.textContent = '';
 
@@ -276,7 +348,7 @@ window.addEventListener('load', () => {
 
       if (i >= plain.length){
         clearInterval(timer);
-        infoModalBody.innerHTML = html;
+        infoModalBody.innerHTML = html; // ✅ 영상 포함 HTML로 최종 교체
       }
     }, 12);
   }
@@ -287,7 +359,6 @@ window.addEventListener('load', () => {
     introModal.setAttribute('aria-hidden','true');
     paused = false;
   });
-
   if (startGameBtn) startGameBtn.addEventListener('click', () => {
     introModal.classList.remove('on');
     introModal.setAttribute('aria-hidden','true');
@@ -310,6 +381,8 @@ window.addEventListener('load', () => {
   if (exitBtn){
     exitBtn.addEventListener('click', () => {
       paused = true;
+      // ✅ SFX: exit용 짧은 톤
+      playTone({ type:'triangle', freq: 220, dur:0.08, gain:0.08 });
       openModal(outroModal);
     });
   }
@@ -355,28 +428,36 @@ window.addEventListener('load', () => {
     return null;
   }
 
-  // === Render ===
+  /* =========================
+     Render
+  ========================= */
   function drawBG(){
-    // ✅ 타일 반복 제거 → 단색 배경 + 길만 그리기 (전체 깜빡임/부하 감소)
-    ctx.fillStyle = '#0b1217';
-    ctx.fillRect(0, 0, W, H);
+    // tile background
+    for (let y=0; y<H; y+=16){
+      for (let x=0; x<W; x+=16){
+        const even = ((x+y)/16) % 2 === 0;
+        ctx.fillStyle = even ? '#0f1a14' : '#0d1712';
+        ctx.fillRect(x, y, 16, 16);
+      }
+    }
 
-    // soft vignette 느낌(아주 약하게)
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(0, 0, W, 18);
-    ctx.fillRect(0, H-18, W, 18);
+    // main road: y=90 중심선
+    ctx.fillStyle = '#2a3646';
+    ctx.fillRect(55, 86, 240, 12); // from x=55 to x=295
 
-    // main road (가로)
-    ctx.fillStyle = '#273241';
-    ctx.fillRect(30, 86, 270, 12);
+    // left vertical connector (학교<->교육)
+    ctx.fillRect(49, 55, 12, 70);  // x around 55, from y=55 to y=125
 
-    // branch (세로)
-    ctx.fillRect(222, 58, 12, 76);
+    // right vertical connector (언어<->자격증)
+    ctx.fillRect(244, 55, 12, 70);
 
-    // road edge highlight
+    // education -> award branch (bottom row)
+    ctx.fillRect(55, 121, 55, 12); // from x=55 to x=110
+
+    // subtle edges
     ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    ctx.fillRect(30, 85, 270, 1);
-    ctx.fillRect(30, 98, 270, 1);
+    ctx.fillRect(55, 85, 240, 1);
+    ctx.fillRect(55, 98, 240, 1);
   }
 
   function drawNode(n){
@@ -391,11 +472,17 @@ window.addEventListener('load', () => {
       ctx.fillRect(x, y, size, size);
     }
 
+    // label (한글)
     ctx.font = '10px monospace';
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
     ctx.fillText(n.label, x - 2, y - 4);
 
-    // ✅ sparkle 제거(원하면 다시 옵션으로 넣을 수 있음)
+    // sparkle near icon (작게)
+    const t = performance.now() / 1000;
+    const sx = n.x + Math.cos(t * 2 + n.x) * 8;
+    const sy = n.y + Math.sin(t * 2 + n.y) * 6;
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
   }
 
   function drawPressSpace(){
@@ -420,6 +507,7 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
+  // 캐릭터 드로우
   function drawPlayer(){
     if (!allSpritesReady()){
       ctx.fillStyle = '#f7768e';
@@ -463,7 +551,9 @@ window.addEventListener('load', () => {
     drawPressSpace();
   }
 
-  // === Update loop ===
+  /* =========================
+     Update loop
+  ========================= */
   let lastTs = performance.now();
 
   function update(ts){
@@ -520,8 +610,13 @@ window.addEventListener('load', () => {
   }
   requestAnimationFrame(loop);
 
-  // === Keys ===
+  /* =========================
+     Keys
+  ========================= */
   window.addEventListener('keydown', (e) => {
+    // ✅ 오디오 컨텍스트는 사용자 입력에서만 활성화 가능
+    ensureAudio();
+
     keys.add(e.key);
 
     // Space starts game in intro
@@ -530,6 +625,7 @@ window.addEventListener('load', () => {
       introModal.classList.remove('on');
       introModal.setAttribute('aria-hidden','true');
       paused = false;
+      playTone({ type:'sine', freq: 660, dur:0.06, gain:0.07 });
       return;
     }
 
@@ -549,6 +645,7 @@ window.addEventListener('load', () => {
       paused = true;
 
       if (n.key === 'timeline'){
+        playSfxForKey('timeline');
         openModal(timelineModal);
       } else {
         openInfo(n.key);
@@ -556,9 +653,11 @@ window.addEventListener('load', () => {
     }
 
     if (e.key === 'Escape'){
-      if (infoModal?.classList.contains('on')) { closeModal(infoModal); return; }
-      if (timelineModal?.classList.contains('on')) { closeModal(timelineModal); return; }
-      if (outroModal?.classList.contains('on')) { closeModal(outroModal); return; }
+      // close open modal
+      if (infoModal?.classList.contains('on')) { closeModal(infoModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
+      if (timelineModal?.classList.contains('on')) { closeModal(timelineModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
+      if (outroModal?.classList.contains('on')) { closeModal(outroModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
+      playTone({ type:'triangle', freq: 220, dur:0.08, gain:0.08 });
       openModal(outroModal);
     }
   });
