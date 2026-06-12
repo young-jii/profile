@@ -31,6 +31,12 @@ window.addEventListener('load', () => {
   const touchControls = document.getElementById('touchControls');
   const actBtn = document.getElementById('actBtn');
 
+  const dialogueBar = document.getElementById('dialogueBar');
+  const dlgName = document.getElementById('dlgName');
+  const dlgText = document.getElementById('dlgText');
+  const dlgCta = document.getElementById('dlgCta');
+  const questCount = document.getElementById('questCount');
+
   // === Footstep Sound (file) ===
   const footstepAudio = new Audio('./assets/sounds/footstep.mp3');
   footstepAudio.volume = 0.35;
@@ -48,11 +54,33 @@ window.addEventListener('load', () => {
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
-  // ✅ 뷰포트(캔버스) vs 월드 크기 분리
-  const VIEW_W = canvas.width;   // 320
-  const VIEW_H = canvas.height;  // 180
+  // ✅ 뷰포트(캔버스)는 화면 비율에 맞춰 동적으로 / 월드는 고정
   const WORLD_W = 640;
   const WORLD_H = 360;
+  let VIEW_W = 320;
+  let VIEW_H = 180;
+
+  function fitCanvas(){
+    const aspect = Math.max(0.25, Math.min(4, window.innerWidth / Math.max(1, window.innerHeight)));
+    const TARGET = 320; // 긴 쪽이 보여줄 월드 픽셀 수 (도트 크기 유지)
+    if (aspect >= 1){
+      VIEW_W = TARGET;
+      VIEW_H = Math.round(TARGET / aspect);
+    } else {
+      VIEW_H = TARGET;
+      VIEW_W = Math.round(TARGET * aspect);
+    }
+    VIEW_W = Math.max(120, Math.min(VIEW_W, WORLD_W));
+    VIEW_H = Math.max(100, Math.min(VIEW_H, WORLD_H));
+    VIEW_W -= VIEW_W % 2;
+    VIEW_H -= VIEW_H % 2;
+    canvas.width = VIEW_W;
+    canvas.height = VIEW_H;
+    ctx.imageSmoothingEnabled = false;
+  }
+  fitCanvas();
+  window.addEventListener('resize', fitCanvas);
+  window.addEventListener('orientationchange', () => setTimeout(fitCanvas, 80));
 
   const keys = new Set();
   let paused = true; // intro until start
@@ -310,6 +338,43 @@ window.addEventListener('load', () => {
   let clearPlayed = false;
 
   /* =========================
+     ✅ RPG 대화창: 건물 앞 1차 인터랙션
+     - 첫 번째 Space/A: 한 줄 소개 대화창
+     - 두 번째 Space/A (또는 대화창 탭): 상세 시트 열기
+  ========================= */
+  const NODE_SUMMARY = {
+    school:   '국어국문학을 전공했어요. 글로 구조를 만드는 힘은 여기서 시작됐습니다.',
+    training: 'AI 추천 시스템부터 데이터 비즈니스 분석까지, 두 번의 집중 훈련 기록이에요.',
+    company:  '천재교과서에서 EBS까지 — 콘텐츠 기획과 자동화의 실전 기록입니다.',
+    award:    'K-디지털플랫폼 AI 경진대회 특별상, 그 뒷이야기를 들려드릴게요.',
+    cert:     'SQLD, ADsP, 컴활 1급… 도구를 다룰 줄 안다는 증명들이에요.',
+    lang:     'TOEIC 785 · Speaking IH — 글로벌 협업도 준비되어 있습니다.',
+    timeline: '2012년부터 지금까지, 걸어온 길을 한눈에 볼 수 있어요.',
+  };
+
+  let dlgNodeKey = null;
+
+  function showDialogue(n){
+    if (!dialogueBar) return;
+    dlgNodeKey = n.key;
+    if (dlgName) dlgName.textContent = n.label;
+    if (dlgText) dlgText.textContent = NODE_SUMMARY[n.key] || '';
+    if (dlgCta){
+      const isTouch = touchControls && getComputedStyle(touchControls).display !== 'none';
+      dlgCta.textContent = isTouch ? '▼ 들어가기 (A)' : '▼ 들어가기 (Space)';
+    }
+    dialogueBar.classList.add('on');
+    dialogueBar.setAttribute('aria-hidden', 'false');
+  }
+
+  function hideDialogue(){
+    if (!dialogueBar) return;
+    dlgNodeKey = null;
+    dialogueBar.classList.remove('on');
+    dialogueBar.setAttribute('aria-hidden', 'true');
+  }
+
+  /* =========================
      Quest Bar (HTML 체크리스트)
   ========================= */
   function buildQuestBar(){
@@ -320,15 +385,20 @@ window.addEventListener('load', () => {
       .join('');
   }
   function updateQuestBar(){
-    if (!questBar) return;
-    questBar.querySelectorAll('.q-chip').forEach(chip => {
-      const k = chip.getAttribute('data-k');
-      if (visited.has(k)) chip.classList.add('done');
-    });
-    const allDone = visited.size === VISIT_KEYS.length;
-    questBar.classList.toggle('all-done', allDone);
+    if (questBar){
+      questBar.querySelectorAll('.q-chip').forEach(chip => {
+        const k = chip.getAttribute('data-k');
+        if (visited.has(k)) chip.classList.add('done');
+      });
+      questBar.classList.toggle('all-done', visited.size === VISIT_KEYS.length);
+    }
+    if (questCount){
+      questCount.textContent = `★ ${visited.size}/${VISIT_KEYS.length}`;
+      questCount.style.color = (visited.size === VISIT_KEYS.length) ? '#f3d795' : '';
+    }
   }
   buildQuestBar();
+  updateQuestBar();
 
   /* =========================
      ALL CLEAR Banner (screen space)
@@ -410,6 +480,8 @@ window.addEventListener('load', () => {
 
     paused = true;
     keys.clear(); // ✅ 모달 열릴 때 키 stuck 방지
+    hideDialogue();
+    document.body.classList.add('sheet-open'); // ✅ 시트 열림: D-pad/대화창 숨김
     modal.classList.add('on');
     modal.setAttribute('aria-hidden', 'false');
     duckBgm(true);
@@ -424,6 +496,7 @@ window.addEventListener('load', () => {
     if (!modal) return;
     modal.classList.remove('on');
     modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('sheet-open');
     paused = false;
     keys.clear(); // ✅ 닫을 때도 한번 초기화
     duckBgm(false);
@@ -1127,6 +1200,7 @@ window.addEventListener('load', () => {
   function drawPressSpace(cam){
     const n = nearestNode();
     if (!n) return;
+    if (dlgNodeKey === n.key) return; // ✅ HTML 대화창이 떠 있으면 말풍선 생략
 
     const isTouch = touchControls && getComputedStyle(touchControls).display !== 'none';
     const text = isTouch ? 'Tap A' : 'Press Space';
@@ -1303,6 +1377,12 @@ window.addEventListener('load', () => {
 
     const moved = (player.x !== oldX || player.y !== oldY);
 
+    // ✅ 노드에서 멀어지면 대화창 자동 닫기
+    if (dlgNodeKey){
+      const nn = nearestNode();
+      if (!nn || nn.key !== dlgNodeKey) hideDialogue();
+    }
+
     // ✅ 발소리: 실제 이동일 때만
     if (moved){
       if (ts - lastStepTime >= STEP_INTERVAL) {
@@ -1352,13 +1432,21 @@ window.addEventListener('load', () => {
     if (paused) return;
 
     const n = nearestNode();
-    if (!n) return;
+    if (!n){ hideDialogue(); return; }
 
     const dx = n.x - player.x;
     const dy = n.y - player.y;
     if (Math.abs(dx) > Math.abs(dy)) facing = dx > 0 ? 'right' : 'left';
     else facing = dy > 0 ? 'down' : 'up';
 
+    // ✅ 1차: 대화창으로 한 줄 소개 / 2차: 상세 시트 진입
+    if (dlgNodeKey !== n.key){
+      showDialogue(n);
+      playTone({ type:'square', freq: 980, dur:0.04, gain:0.05, filter:{type:'highpass', freq:700, q:0.7} });
+      return;
+    }
+
+    hideDialogue();
     spawnPop(n);
     paused = true;
     keys.clear();
@@ -1398,6 +1486,7 @@ window.addEventListener('load', () => {
     }
 
     if (e.key === 'Escape'){
+      if (dlgNodeKey){ hideDialogue(); return; }
       if (infoModal?.classList.contains('on')) { closeModal(infoModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
       if (timelineModal?.classList.contains('on')) { closeModal(timelineModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
       if (outroModal?.classList.contains('on')) { closeModal(outroModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
@@ -1464,4 +1553,12 @@ window.addEventListener('load', () => {
       interactNearest();
     }
   });
+
+  // ✅ 대화창 자체를 탭/클릭해도 들어가기
+  if (dialogueBar){
+    dialogueBar.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (dlgNodeKey) interactNearest();
+    });
+  }
 });

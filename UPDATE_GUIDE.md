@@ -1,32 +1,25 @@
-# 포트폴리오 v2 업데이트 적용 가이드
+# 포트폴리오 v3 업데이트 — "Quest Book" 리디자인
 
-## 변경된 파일
-| 파일 | 내용 |
-|---|---|
-| `index.html` | OG 메타태그, 퀘스트바, 모바일 D-pad 마크업, 텍스트 이력서 링크, content.js 로드 |
-| `resume.html` | **신규** — 텍스트 이력서 (content.js 재사용) |
-| `assets/js/game.js` | **전면 개편** — 카메라+640×360 월드, 건물, 충돌, Y-소팅, 모바일 조작, 퀘스트, 엔딩 스탯창 |
-| `assets/js/content.js` | **신규** — 이력 콘텐츠 분리 (내용 수정은 이제 이 파일에서!) |
-| `assets/css/game.css` | v2 스타일 추가 (퀘스트 칩, 스탯창, 모바일 컨트롤) |
-| `images/og_thumb.png` | **신규** — 링크 공유용 썸네일 |
-| `.gitignore` | **신규** — node_modules 제외 |
+## 이번 버전의 변화
+- **풀스크린 게임 월드**: 캔버스가 화면 전체를 채우고, 모바일 세로 화면에서도 비율에 맞춰 시야가 조정됩니다.
+- **상단 HUD 오버레이**: 타이틀 + 경력 + 퀘스트 카운트(★ n/6) + EXIT 버튼.
+- **RPG 대화창 2단 인터랙션**: 건물 앞에서 A/Space → 한 줄 소개 대화창 → 한 번 더 누르거나 대화창 탭 → 상세 내용.
+- **콘텐츠 시트 리디자인**: 밝은 종이 질감의 "퀘스트 북". 모바일에서는 아래에서 올라오는 바텀시트(스크롤 문제 해결), 데스크톱에서는 가운데 책 형태.
+- **시트가 열리면 D-pad/A버튼 자동 숨김** (겹침 문제 해결).
+- resume.html 도 같은 종이 테마로 통일.
 
-## 적용 방법 (로컬 저장소에서)
+## 적용 방법 (로컬 리포 폴더 = ~/Developer/profile 에서)
 ```bash
-cd profile                      # 본인 로컬 리포 폴더로 이동
-unzip -o profile_v2_update.zip  # zip을 리포 루트에 풀기 (덮어쓰기)
-git mv vidieos videos           # ⚠️ 필수! 폴더명 오타 수정 (content.js가 ./videos/ 참조)
-git rm -r --cached node_modules # 리포에서 node_modules 제거 (파일은 로컬에 남음)
+cd ~/Developer/profile
+unzip -o ~/Downloads/profile_v3_update.zip   # zip 경로는 실제 다운로드 위치로
 git add -A
-git commit -m "v2: 탐험형 맵(카메라/건물/충돌), 모바일 조작, 퀘스트/엔딩 스탯, 텍스트 이력서, OG 태그"
+git commit -m "v3: Quest Book 리디자인 — 풀스크린 월드, 대화창 2단 인터랙션, 바텀시트"
 git push
 ```
+(이전에 `git mv vidieos videos` 와 `git rm -r --cached node_modules` 를 아직 안 했다면 commit 전에 함께 실행하세요.)
 
-push 후 1~2분 뒤 https://young-jii.github.io/profile/ 에서 확인하세요.
-(브라우저 캐시 때문에 옛 화면이 보이면 Ctrl+Shift+R 강력 새로고침)
-
-## 이후 이력 내용 수정은?
-- 각 건물의 상세 내용 → `assets/js/content.js`
-- 연혁(타임라인) → `index.html` + `resume.html` 의 타임라인 부분
-- 엔딩 스탯(레벨) → `game.js`의 `SKILL_STATS`
-- 게임 로직은 건드릴 필요 없음
+## 이후 수정 포인트
+- 건물 상세 내용 → `assets/js/content.js`
+- 대화창 한 줄 소개 → `game.js` 의 `NODE_SUMMARY`
+- 엔딩 스탯 레벨 → `game.js` 의 `SKILL_STATS`
+- 색/디자인 → `assets/css/game.css` 맨 위 `:root` 변수

@@ -13,13 +13,13 @@
 			font-display: swap;
 		}
 		:root{
-			--bg: #0c1118;
-			--card: rgba(255,255,255,0.045);
-			--line: rgba(255,255,255,0.10);
-			--text: rgba(255,255,255,0.88);
-			--dim: rgba(255,255,255,0.55);
-			--accent: #f6d365;
-			--green: #9ece6a;
+			--bg: #efe8d6;
+			--card: #fffdf6;
+			--line: #e0d6bd;
+			--text: #2e2a24;
+			--dim: #7c7466;
+			--accent: #9a5f12;
+			--green: #4d7c2f;
 		}
 		*{ box-sizing: border-box; }
 		body{
@@ -53,15 +53,16 @@
 			display: inline-block;
 			margin-top: 12px;
 			padding: 8px 14px;
-			border: 1px solid var(--line);
+			border: 2px solid var(--text);
 			border-radius: 10px;
 			color: var(--text);
 			text-decoration: none;
 			font-family: 'RoundedFixedsys', monospace;
 			font-size: 13px;
-			background: rgba(255,255,255,0.05);
+			background: var(--card);
+			box-shadow: 0 3px 0 rgba(46,42,36,0.4);
 		}
-		.back-to-game:hover{ background: rgba(255,255,255,0.10); }
+		.back-to-game:hover{ background: #f3ecd9; }
 
 		section{ margin-bottom: 36px; }
 		h2.sec{

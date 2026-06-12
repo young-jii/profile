@@ -1,20 +1,13 @@
+/* ============================================================
+   지영's 포트폴리오 게임 — v3 "Quest Book" 디자인
+   - 풀스크린 게임 월드 + 오버레이 HUD
+   - 콘텐츠: 밝은 종이 질감 시트 (모바일: 바텀시트)
+   - RPG 대화창 2단 인터랙션
+============================================================ */
+
 /* =========================
    Fonts
 ========================= */
-@font-face {
-  font-family: 'Paperozi';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-9Black.woff2') format('woff2');
-  font-weight: 900;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'ChangwonDangamRounded';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2511-1@1.0/ChangwonDangamRound-Regular.woff2') format('woff2');
-  font-weight: normal;
-  font-display: swap;
-}
-
 @font-face {
   font-family: 'RoundedFixedsys';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
@@ -22,550 +15,646 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'HsBombaram30';
-  src: url('https://gcore.jsdelivr.net/gh/projectnoonnu/noonfonts_20-10@1.1/HSBombaram3_Regular.woff') format('woff');
-  font-weight: normal;
-  font-display: swap;
+:root{
+  --night: #080c12;
+  --panel: rgba(13, 18, 27, 0.88);
+  --panel-line: rgba(255,255,255,0.14);
+
+  --paper: #f6f1e4;
+  --paper-soft: #fffdf6;
+  --paper-line: #e4dac3;
+  --ink: #2e2a24;
+  --ink-dim: #7c7466;
+  --frame: #2b2620;
+
+  --gold: #c98f2d;
+  --gold-soft: #f3d795;
+  --green: #4d7c2f;
+  --red: #c4504f;
+  --blue: #3d6db5;
+  --purple: #7a5cb8;
+  --teal: #2f8a99;
+
+  --pixel: 'RoundedFixedsys', monospace;
+  --body: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR', sans-serif;
 }
 
-@font-face {
-  font-family: 'ManhwaPromotionAgency';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_seven@1.2/KOMACON.woff') format('woff');
-  font-weight: normal;
-  font-display: swap;
-}
+/* =========================
+   기존 페이지 숨김 (게임이 메인)
+========================= */
+html.game-on, body.game-on{ overflow: hidden; }
+body.game-on #main, body.game-on #header, body.game-on #footer{ display: none !important; }
 
-/* ===== Game Layer ===== */
+/* =========================
+   Game Layer: 풀스크린
+========================= */
 #gameLayer{
   position: fixed;
   inset: 0;
   z-index: 9999;
   display: none;
-  place-items: center;
-
-  /* 뒤 페이지 안 비치게 */
-  background: rgba(8, 12, 18, 0.96);
-  backdrop-filter: blur(6px);
+  background: var(--night);
 }
+#gameLayer.on{ display: block; }
 
-#gameLayer.on{ display: grid; }
-
-/* 게임 무대(캔버스+UI) */
 .game-stage{
-  position: relative;
-  width: min(960px, 94vw);
-  aspect-ratio: 16 / 9;
-  max-height: 86vh;
-
-  display: grid;
-  grid-template-rows: 1fr auto;
-  gap: 10px;
+  position: absolute;
+  inset: 0;
 }
 
-/* Canvas */
 #gameCanvas{
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   image-rendering: pixelated;
-  border-radius: 16px;
-  box-shadow: 0 18px 60px rgba(0,0,0,0.45);
-  background: #0b0f14;
-}
-
-/* ===== UI pinned to canvas bottom ===== */
-.game-ui{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(14, 20, 30, 0.75);
-  border: 1px solid rgba(255,255,255,0.08);
-
-  /* ✅ 버튼/힌트 전용 폰트 */
-  font-family: 'RoundedFixedsys', monospace;
-}
-
-.game-left{
-  display: grid;
-  gap: 4px;
-}
-
-/* HUD + Hint 폰트 변경 */
-#careerHUD,
-#gameHint{
-  font-family: 'ManhwaPromotionAgency', sans-serif;
-  font-size: 14px;
-  letter-spacing: 0.2px;
-  opacity: 0.95;
-}
-
-/* ✅ 총 경력 강조(사라짐 방지)
-   - JS에서는 <span class="hl"> 를 사용하므로 hl도 같이 타겟팅
-   - 기존 career-total도 유지(혹시 다른 곳에서 쓸 수 있으니)
-*/
-#careerHUD .career-total,
-#careerHUD .hl{
-  color: #f6d365 !important; /* 노란 계열 */
-  font-weight: 900;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.35);
-}
-
-#exitGameBtn{
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  font-family: 'RoundedFixedsys', monospace;
-}
-
-#exitGameBtn:hover{
-  background: rgba(255,255,255,0.12);
-}
-
-/* ===== Modals ===== */
-.game-modal{
-  position: absolute;
-  inset: 0;
-  display: none;
-  place-items: center;
-  background: rgba(0,0,0,0.55);
-}
-
-.game-modal.on{ display: grid; }
-
-.game-modal-card{
-  width: min(820px, 92%);
-  max-height: min(82vh, 720px);
-
-  display: flex;
-  flex-direction: column;
-
-  border-radius: 18px;
-  overflow: hidden;
-  background: rgba(16, 22, 34, 0.95);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: 0 18px 70px rgba(0,0,0,0.55);
-
-  /* ✅ flex scroll 버그 방지 */
-  min-height: 0;
-}
-
-.game-modal-head{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 12px 14px;
-  background: rgba(255,255,255,0.06);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-
-.game-modal-title{
-  font-family: 'Paperozi', sans-serif;
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: 0.2px;
-}
-
-.game-modal-close{
-  cursor: pointer;
-  width: 36px;
-  height: 32px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: #fff;
-  font-size: 18px;
-  line-height: 1;
-
-  font-family: 'RoundedFixedsys', monospace;
-}
-
-.game-modal-body{
-  flex: 1 1 auto;
-  min-height: 0;
-
-  padding: 14px 14px;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-
-  font-family: 'ChangwonDangamRounded', sans-serif;
-  font-size: 16px;
-  line-height: 1.65;
-  letter-spacing: -0.7px;
-}
-
-/* ✅ 스크롤 디자인 (게임 톤에 맞춘 다크 스크롤)
-   - Firefox: scrollbar-width / scrollbar-color
-   - Webkit: ::-webkit-scrollbar
-*/
-.game-modal-body{
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.22) rgba(0,0,0,0.25);
-}
-
-.game-modal-body::-webkit-scrollbar{
-  width: 10px;
-}
-
-.game-modal-body::-webkit-scrollbar-track{
-  background: rgba(0,0,0,0.25);
-  border-radius: 12px;
-}
-
-.game-modal-body::-webkit-scrollbar-thumb{
-  background: rgba(255,255,255,0.18);
-  border-radius: 12px;
-  border: 2px solid rgba(0,0,0,0.25);
-}
-
-.game-modal-body::-webkit-scrollbar-thumb:hover{
-  background: rgba(255,255,255,0.28);
-}
-
-/* ✅ (요청 3) content 내부 "제목 강조" vs "내용 강조" 색상 분리 */
-.game-modal-body .k-title{
-  color: #f6d365;              /* 제목 강조: 경력 노랑과 동일 */
-  font-weight: 900;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.25);
-}
-
-.game-modal-body .k-em{
-  color: #9ae6ff;              /* 내용 강조: 노랑과 구분되는 시원한 하늘색 */
-  font-weight: 800;
-}
-
-/* 인트로/아웃트로/버튼류 */
-.modal-actions,
-.modal-primary{
-  font-family: 'RoundedFixedsys', monospace;
-}
-
-.modal-lead{
-  font-family: 'ManhwaPromotionAgency', monospace;
-  margin: 0 0 12px 0;
-  opacity: 0.95;
-}
-
-/* 버튼 */
-.modal-actions{
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-  flex-wrap: wrap;
-}
-
-.modal-primary{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.10);
-  color: #fff;
-  text-decoration: none;
-  font-weight: 700;
-  margin-bottom: 15px;
-}
-
-/* ===== Video frame ===== */
-.video-frame{
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: #000;
-  margin: 10px 0 12px;
-
-  aspect-ratio: 16 / 9;
-  position: relative;
-}
-
-.video-frame > video{
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  image-rendering: crisp-edges;
   display: block;
 }
 
-/* ===== Content cards ===== */
-.k-card{
-  padding: 12px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04);
-  margin-bottom: 10px;
-}
-
-/* ===== Timeline chips ===== */
-.tl-item{
+/* =========================
+   상단 HUD 바 (오버레이)
+========================= */
+#hudTop{
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 30;
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  margin-bottom: 8px;
-  border: 1px solid rgba(255,255,255,0.08);
+  gap: 12px;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 22px;
+  background: linear-gradient(to bottom, rgba(5,8,12,0.82), rgba(5,8,12,0.0));
+  pointer-events: none;
 }
+#hudTop > *{ pointer-events: auto; }
 
-.tl-edu   { background: rgba(255, 214, 102, 0.14); }
-.tl-cert  { background: rgba(122, 162, 247, 0.14); }
-.tl-work  { background: rgba(152, 236, 106, 0.12); }
-.tl-award { background: rgba(247, 118, 142, 0.12); }
-.tl-train { background: rgba(187, 154, 247, 0.12); }
-.tl-lang  { background: rgba(125, 207, 255, 0.12); }
+.hud-left{ min-width: 0; }
+.hud-title{
+  font-family: var(--pixel);
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--gold-soft);
+  text-shadow: 0 2px 0 rgba(0,0,0,0.6);
+  white-space: nowrap;
+}
+.career-hud{
+  margin-top: 3px;
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: rgba(255,255,255,0.66);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 62vw;
+}
+.career-hud .hl{ color: #fff; }
+
+.hud-right{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.quest-count{
+  font-family: var(--pixel);
+  font-size: 13px;
+  color: var(--gold-soft);
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  padding: 6px 10px;
+  text-shadow: none;
+}
+#exitGameBtn{
+  font-family: var(--pixel);
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.85);
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+#exitGameBtn:hover{ background: rgba(255,255,255,0.12); }
 
 /* =========================
-   Boot: show game first, hide old page
-   (index.html 에서 <html class="game-on">)
+   하단 HUD: 퀘스트 칩 + 힌트
 ========================= */
-html.game-on #gameLayer {
-  display: grid;
+#hudBottom{
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
 }
-
-html.game-on #main,
-html.game-on #header,
-html.game-on #footer {
-  display: none !important;
-}
-
-html.game-on,
-html.game-on body {
-  overflow: hidden;
-}
-
-/* ============================================================
-   ✅ v2 추가 스타일
-   - 보조 버튼(텍스트 이력서) / 퀘스트 칩 / 엔딩 스탯창
-   - 모바일 가상 D-pad + A버튼
-============================================================ */
-
-/* ----- 보조 버튼 (텍스트 이력서로 보기) ----- */
-.modal-secondary{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.78);
-  text-decoration: none;
-  font-weight: 700;
-  margin-bottom: 15px;
-  font-family: 'RoundedFixedsys', monospace;
-  transition: background .15s ease, color .15s ease;
-}
-.modal-secondary:hover{
-  background: rgba(255,255,255,0.10);
-  color: #fff;
-}
-
-/* ----- 퀘스트 체크리스트 칩 ----- */
 .quest-bar{
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 2px;
+  gap: 5px;
+  max-width: 60vw;
 }
 .q-chip{
-  font-family: 'RoundedFixedsys', monospace;
+  font-family: var(--pixel);
   font-size: 11px;
   line-height: 1;
-  padding: 4px 7px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.55);
+  padding: 6px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--panel-line);
+  background: var(--panel);
+  color: rgba(255,255,255,0.5);
   transition: all .25s ease;
 }
-.q-chip::before{
-  content: '□ ';
-}
+.q-chip::before{ content: '□ '; }
 .q-chip.done{
-  border-color: rgba(158, 206, 106, 0.55);
-  background: rgba(158, 206, 106, 0.14);
-  color: #cfe9b0;
+  border-color: rgba(201, 143, 45, 0.6);
+  color: var(--gold-soft);
 }
-.q-chip.done::before{
-  content: '✓ ';
-  color: #9ece6a;
-}
+.q-chip.done::before{ content: '✓ '; color: var(--gold); }
 .quest-bar.all-done .q-chip.done{
-  border-color: rgba(246, 211, 101, 0.65);
-  background: rgba(246, 211, 101, 0.12);
-  color: #f6d365;
+  background: rgba(201, 143, 45, 0.16);
 }
-.quest-bar.all-done .q-chip.done::before{
-  color: #f6d365;
+#gameHint{
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+  white-space: nowrap;
 }
 
-/* ----- 엔딩: 플레이 통계 + RPG 스탯창 ----- */
-.outro-stats{
-  margin-top: 16px;
-  display: grid;
+/* =========================
+   RPG 대화창 (1차 인터랙션)
+========================= */
+#dialogueBar{
+  position: absolute;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(12px);
+  width: min(660px, calc(100% - 28px));
+  z-index: 40;
+  background: var(--panel);
+  border: 2px solid rgba(255,255,255,0.55);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5), inset 0 0 0 2px rgba(0,0,0,0.35);
+  padding: 14px 16px 12px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .18s ease, transform .18s ease, visibility .18s;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#dialogueBar.on{
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.dlg-name{
+  display: inline-block;
+  font-family: var(--pixel);
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #14181f;
+  background: var(--gold-soft);
+  border-radius: 7px;
+  padding: 4px 9px;
+  margin-bottom: 7px;
+}
+.dlg-text{
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255,255,255,0.92);
+}
+.dlg-cta{
+  margin-top: 8px;
+  text-align: right;
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--gold-soft);
+  animation: dlgBlink 1.1s steps(2) infinite;
+}
+@keyframes dlgBlink{ 50%{ opacity: 0.25; } }
+
+/* =========================
+   콘텐츠 시트 (Quest Book)
+========================= */
+.game-modal{
+  position: fixed;
+  inset: 0;
+  z-index: 10010;
+  display: none;
+  place-items: center;
+  background: rgba(4, 7, 11, 0.66);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.game-modal.on{ display: grid; }
+
+.game-modal-card{
+  width: min(760px, calc(100% - 36px));
+  max-height: 88vh;
+  max-height: 88dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--frame);
+  border-radius: 18px;
+  box-shadow: 0 10px 0 rgba(0,0,0,0.4), 0 24px 60px rgba(0,0,0,0.5);
+  overflow: hidden;
+  animation: sheetIn .22s ease-out;
+}
+@keyframes sheetIn{
+  from{ opacity: 0; transform: translateY(16px) scale(0.985); }
+  to{ opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.game-modal-head{
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  font-family: 'RoundedFixedsys', monospace;
+  padding: 16px 18px 12px;
+  background: var(--paper);
+  border-bottom: 2px dashed var(--paper-line);
+}
+.game-modal-title{
+  font-family: var(--pixel);
+  font-size: 19px;
+  letter-spacing: 0.5px;
+  color: var(--ink);
+}
+.game-modal-title::before{
+  content: '◆ ';
+  color: var(--gold);
+}
+.game-modal-close{
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border: 2px solid var(--frame);
+  border-radius: 12px;
+  background: var(--paper-soft);
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(43,38,32,0.7);
+  transition: transform .1s ease, box-shadow .1s ease;
+}
+.game-modal-close:active{
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(43,38,32,0.7);
+}
+
+.game-modal-body{
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 18px 20px calc(26px + env(safe-area-inset-bottom));
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+.game-modal-body::-webkit-scrollbar{ width: 8px; }
+.game-modal-body::-webkit-scrollbar-track{ background: transparent; }
+.game-modal-body::-webkit-scrollbar-thumb{
+  background: #d8cdb2;
+  border-radius: 8px;
+}
+
+/* ----- 본문 콘텐츠 (content.js 의 클래스) ----- */
+.game-modal-body p{ margin: 0 0 12px; }
+.game-modal-body ul{ margin: 6px 0 14px; padding-left: 20px; }
+.game-modal-body li{ margin-bottom: 7px; }
+.game-modal-body a{ color: var(--blue); }
+.game-modal-body hr{
+  border: none;
+  border-top: 2px dashed var(--paper-line);
+  margin: 18px 0;
+}
+
+.game-modal-body .k-title{
+  display: block;
+  font-family: var(--pixel);
+  font-size: 16px;
+  color: #9a5f12;
+  margin-bottom: 4px;
+}
+.game-modal-body .k-em{
+  color: var(--green);
+  font-weight: 700;
+}
+.game-modal-body .k-card{
+  background: var(--paper-soft);
+  border: 1.5px solid var(--paper-line);
+  border-left: 5px solid var(--gold);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+  box-shadow: 0 2px 0 rgba(43,38,32,0.06);
+}
+.game-modal-body .k-card p:last-child{ margin-bottom: 0; }
+
+.game-modal-body .video-frame{ margin: 12px 0; }
+.game-modal-body .video-frame video{
+  width: 100%;
+  max-height: 340px;
+  border-radius: 10px;
+  border: 2px solid var(--frame);
+  background: #000;
+  display: block;
+}
+
+/* 타자기 연출 */
+.typewrap{
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+
+/* ----- 인트로/아웃트로 ----- */
+.modal-lead{
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--ink);
+}
+.modal-actions{
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.modal-primary, .modal-secondary{
+  font-family: var(--pixel);
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 18px;
+  border-radius: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .1s ease, box-shadow .1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.modal-primary{
+  border: 2px solid var(--frame);
+  background: var(--gold);
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  box-shadow: 0 4px 0 rgba(43,38,32,0.8);
+}
+.modal-primary:active{
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(43,38,32,0.8);
+}
+.modal-secondary{
+  border: 2px solid var(--frame);
+  background: var(--paper-soft);
+  color: var(--ink);
+  box-shadow: 0 4px 0 rgba(43,38,32,0.35);
+}
+.modal-secondary:active{
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(43,38,32,0.35);
+}
+
+.intro-kbd{
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 2px dashed var(--paper-line);
+  font-family: var(--pixel);
+  font-size: 12px;
+  color: var(--ink-dim);
+  line-height: 2;
+}
+.intro-kbd b{ color: var(--ink); }
+
+/* ----- 엔딩: 플레이 통계 + 스탯창 ----- */
+.outro-stats{
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
 }
 .outro-play{
   display: grid;
   gap: 4px;
   font-size: 14px;
-  opacity: 0.92;
 }
 .clear-badge{
   display: inline-block;
   width: fit-content;
-  padding: 4px 10px;
-  margin-bottom: 4px;
-  border: 1px solid rgba(246, 211, 101, 0.65);
-  border-radius: 8px;
-  background: rgba(246, 211, 101, 0.10);
-  color: #f6d365;
+  font-family: var(--pixel);
+  padding: 6px 12px;
+  margin-bottom: 6px;
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  background: rgba(201, 143, 45, 0.12);
+  color: #9a5f12;
   font-weight: 900;
   letter-spacing: 1px;
 }
 .stat-window{
-  padding: 12px 14px;
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 12px;
-  background: rgba(10, 14, 22, 0.65);
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.04);
+  padding: 14px 16px;
+  border: 2px solid var(--frame);
+  border-radius: 14px;
+  background: var(--paper-soft);
+  box-shadow: 0 4px 0 rgba(43,38,32,0.25);
 }
 .stat-title{
-  font-size: 12px;
+  font-family: var(--pixel);
+  font-size: 13px;
   letter-spacing: 1px;
-  color: rgba(255,255,255,0.65);
+  color: var(--ink-dim);
   margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed rgba(255,255,255,0.14);
+  padding-bottom: 9px;
+  border-bottom: 2px dashed var(--paper-line);
 }
 .stat-row{
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 3px 0;
-  font-size: 13px;
+  padding: 4px 0;
+  font-size: 14px;
 }
-.stat-name{
-  flex: 0 0 110px;
-  color: rgba(255,255,255,0.88);
-}
-.stat-sq{
-  display: inline-flex;
-  gap: 3px;
-}
+.stat-name{ flex: 0 0 116px; }
+.stat-sq{ display: inline-flex; gap: 3px; }
 .stat-sq .sq{
-  width: 10px;
-  height: 10px;
-  border: 1px solid rgba(255,255,255,0.30);
-  background: rgba(255,255,255,0.05);
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid #b9ad92;
+  background: var(--paper);
   display: inline-block;
 }
 .stat-sq .sq.fill{
-  background: #9ece6a;
-  border-color: #6f9b48;
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25);
+  background: var(--green);
+  border-color: #38591f;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2);
 }
 .stat-lv{
   margin-left: auto;
-  color: #f6d365;
-  font-weight: 700;
-  font-size: 12px;
+  font-family: var(--pixel);
+  color: #9a5f12;
+  font-size: 13px;
 }
 
-/* ----- 모바일 가상 컨트롤 ----- */
-#touchControls{
-  display: none; /* 기본 숨김: 터치 기기에서만 표시 */
-  pointer-events: none;
+/* ----- 연혁 타임라인 ----- */
+.tl-item{
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--paper-soft);
+  border: 1.5px solid var(--paper-line);
+  border-left-width: 5px;
+  border-radius: 10px;
+  font-size: 14px;
 }
+.tl-item span:last-child{
+  flex-shrink: 0;
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+.tl-edu{   border-left-color: var(--blue); }
+.tl-work{  border-left-color: var(--gold); }
+.tl-cert{  border-left-color: var(--teal); }
+.tl-award{ border-left-color: var(--red); }
+.tl-train{ border-left-color: var(--purple); }
+.tl-lang{  border-left-color: var(--green); }
+
+/* =========================
+   모바일: 시트는 바텀시트로
+========================= */
+@media (max-width: 700px){
+  .game-modal{
+    place-items: end center;
+  }
+  .game-modal-card{
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    animation: sheetUp .26s ease-out;
+  }
+  @keyframes sheetUp{
+    from{ transform: translateY(40px); opacity: 0.6; }
+    to{ transform: translateY(0); opacity: 1; }
+  }
+  /* 드래그 핸들 느낌 */
+  .game-modal-head{ position: relative; padding-top: 22px; }
+  .game-modal-head::before{
+    content: '';
+    position: absolute;
+    top: 9px; left: 50%;
+    transform: translateX(-50%);
+    width: 44px; height: 5px;
+    border-radius: 5px;
+    background: #d3c8ac;
+  }
+  .game-modal-title{ font-size: 17px; }
+  .game-modal-body{ font-size: 14.5px; padding: 16px 16px calc(30px + env(safe-area-inset-bottom)); }
+
+  .hud-title{ font-size: 13px; }
+  .career-hud{ font-size: 10px; max-width: 52vw; }
+  .quest-count{ font-size: 12px; padding: 5px 9px; }
+  #exitGameBtn{ font-size: 11px; padding: 6px 10px; }
+
+  /* 모바일에선 칩 대신 상단 카운트만 (화면 깔끔하게) */
+  .quest-bar{ display: none; }
+  #gameHint{ display: none; }
+}
+
+/* =========================
+   모바일 가상 컨트롤
+========================= */
+#touchControls{ display: none; }
 
 @media (pointer: coarse){
-  #touchControls{
-    display: block;
-    position: fixed;
-    inset: auto 0 0 0;
-    height: 0;
-    z-index: 10001;
-  }
+  #touchControls{ display: block; }
 
   #dpad{
     position: fixed;
-    left: 14px;
-    bottom: 18px;
-    width: 132px;
-    height: 132px;
+    left: calc(16px + env(safe-area-inset-left));
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    width: 138px;
+    height: 138px;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
-    gap: 2px;
-    pointer-events: none;
+    gap: 3px;
+    z-index: 50;
   }
   #dpad .dp{
-    pointer-events: auto;
     -webkit-tap-highlight-color: transparent;
     touch-action: none;
     user-select: none;
-    border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 10px;
-    background: rgba(14, 20, 30, 0.72);
+    -webkit-user-select: none;
+    border: 1.5px solid rgba(255,255,255,0.22);
+    border-radius: 12px;
+    background: rgba(13, 18, 27, 0.62);
+    backdrop-filter: blur(2px);
     color: rgba(255,255,255,0.85);
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1;
     display: grid;
     place-items: center;
+    padding: 0;
   }
   #dpad .dp.up{    grid-area: 1 / 2; }
   #dpad .dp.left{  grid-area: 2 / 1; }
   #dpad .dp.right{ grid-area: 2 / 3; }
   #dpad .dp.down{  grid-area: 3 / 2; }
   #dpad .dp.pressed{
-    background: rgba(122, 162, 247, 0.45);
-    border-color: rgba(122, 162, 247, 0.8);
+    background: rgba(201, 143, 45, 0.5);
+    border-color: var(--gold-soft);
   }
 
   #actBtn{
-    pointer-events: auto;
     position: fixed;
-    right: 20px;
-    bottom: 40px;
-    width: 64px;
-    height: 64px;
+    right: calc(22px + env(safe-area-inset-right));
+    bottom: calc(52px + env(safe-area-inset-bottom));
+    width: 68px;
+    height: 68px;
     border-radius: 50%;
-    border: 2px solid rgba(246, 211, 101, 0.65);
-    background: rgba(246, 211, 101, 0.18);
-    color: #f6d365;
-    font-family: 'RoundedFixedsys', monospace;
-    font-size: 22px;
+    border: 2.5px solid var(--gold-soft);
+    background: rgba(201, 143, 45, 0.3);
+    backdrop-filter: blur(2px);
+    color: var(--gold-soft);
+    font-family: var(--pixel);
+    font-size: 24px;
     font-weight: 900;
     -webkit-tap-highlight-color: transparent;
     touch-action: none;
     user-select: none;
+    -webkit-user-select: none;
+    z-index: 50;
   }
-  #actBtn:active{
-    background: rgba(246, 211, 101, 0.40);
-  }
+  #actBtn:active{ background: rgba(201, 143, 45, 0.55); }
 
-  /* 게임 무대를 위로 살짝 올려 컨트롤 공간 확보 */
-  .game-stage{
-    max-height: 70vh;
-    margin-bottom: 120px;
+  /* 대화창은 D-pad 위로 */
+  #dialogueBar{
+    bottom: calc(178px + env(safe-area-inset-bottom));
+    width: calc(100% - 24px);
   }
 }
 
-/* 좁은 화면에서 HUD 글자/칩 살짝 축소 */
-@media (max-width: 560px){
-  #careerHUD, #gameHint{ font-size: 12px; }
-  .q-chip{ font-size: 10px; padding: 3px 6px; }
-  .game-ui{ flex-wrap: wrap; }
+/* ✅ 시트가 열려있을 땐 게임 컨트롤/대화창 숨김 (겹침 방지) */
+body.sheet-open #touchControls,
+body.sheet-open #dialogueBar,
+body.sheet-open #hudBottom{
+  display: none !important;
 }

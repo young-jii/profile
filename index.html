@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="ko">
+<html lang="ko" class="game-on">
 	<head>
 		<title>박지영 | 게임으로 즐기는 포트폴리오</title>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
 		<meta name="description" content="화살표로 이동하고 Space로 확인하는 RPG형 이력서. 콘텐츠 기획 × 데이터 분석 × 자동화." />
 
 		<!-- ✅ OG 메타태그: 카톡/링크드인 등 링크 공유 시 미리보기 -->
@@ -13,32 +13,41 @@
 		<meta property="og:image" content="https://young-jii.github.io/profile/images/og_thumb.png" />
 		<meta property="og:url" content="https://young-jii.github.io/profile/" />
 		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="theme-color" content="#080c12" />
 
-		<!-- 기존 테마 CSS -->
-		<link rel="stylesheet" href="assets/css/main.css" />
-		<!-- Game CSS -->
-		<link rel="stylesheet" href="assets/css/game.css?v=2" />
-		<!-- ✅ 첫 로딩 깜빡임 방지: 게임을 즉시 on -->
-		<script>
-			document.documentElement.classList.add('game-on');
-		</script>
+		<!-- Game CSS (v3: Quest Book 디자인) -->
+		<link rel="stylesheet" href="assets/css/game.css?v=3" />
 	</head>
-	<body class="is-preload">
+	<body class="game-on">
 
 		<!-- Game Layer -->
 		<div id="gameLayer" aria-hidden="true">
 			<div class="game-stage">
 				<canvas id="gameCanvas" width="320" height="180"></canvas>
 
-				<!-- HUD / UI (캔버스 바로 아래에 붙게) -->
-				<div class="game-ui">
-					<div class="game-left">
+				<!-- 상단 HUD -->
+				<div id="hudTop">
+					<div class="hud-left">
+						<div class="hud-title">JIYOUNG'S PORTFOLIO</div>
 						<div id="careerHUD" class="career-hud">경력 계산중…</div>
-						<div id="gameHint">Move: Arrow Keys / D-pad · Interact: Space / A</div>
-						<!-- ✅ 퀘스트 체크리스트: 방문한 노드가 체크됨 -->
-						<div id="questBar" class="quest-bar"></div>
 					</div>
-					<button id="exitGameBtn" type="button">Exit Game</button>
+					<div class="hud-right">
+						<div id="questCount" class="quest-count">★ 0/6</div>
+						<button id="exitGameBtn" type="button">EXIT</button>
+					</div>
+				</div>
+
+				<!-- 하단 HUD: 퀘스트 칩 + 조작 힌트 -->
+				<div id="hudBottom">
+					<div id="questBar" class="quest-bar"></div>
+					<div id="gameHint">이동 ←↑↓→ · 확인 Space</div>
+				</div>
+
+				<!-- ✅ RPG 대화창 (건물 앞 1차 인터랙션) -->
+				<div id="dialogueBar" aria-hidden="true" role="button">
+					<div class="dlg-name" id="dlgName"></div>
+					<div class="dlg-text" id="dlgText"></div>
+					<div class="dlg-cta" id="dlgCta">▼ 들어가기</div>
 				</div>
 
 				<!-- ✅ 모바일 가상 컨트롤 (터치 기기에서만 표시) -->
@@ -52,7 +61,7 @@
 					<button type="button" id="actBtn" aria-label="상호작용">A</button>
 				</div>
 
-				<!-- Intro Modal -->
+				<!-- Intro: 타이틀 스크린 -->
 				<div id="introModal" class="game-modal on" aria-hidden="false">
 					<div class="game-modal-card">
 						<div class="game-modal-head">
@@ -61,24 +70,28 @@
 						</div>
 						<div class="game-modal-body">
 							<p class="modal-lead">
-								이 페이지는 "이력서를 게임으로" 만든 포트폴리오입니다.<br/>
-								화살표(또는 D-pad)로 마을을 돌아다니며,<br/>
-								건물 앞에서 Space(또는 A)로 내용을 확인해 주세요.<br/>
-								즐겁게 봐주시기를 바라요:)
+								이 페이지는 <b>"이력서를 게임으로"</b> 만든 포트폴리오입니다.<br/>
+								마을을 돌아다니며 건물에 들어가면<br/>
+								제가 일해 온 기록을 하나씩 확인할 수 있어요.<br/>
+								즐겁게 봐주시기를 바라요 :)
 							</p>
 							<div class="modal-actions">
-								<button id="startGameBtn" class="modal-primary" type="button">Start (Space)</button>
-								<a class="modal-secondary" href="resume.html">⏩ 텍스트 이력서로 보기</a>
+								<button id="startGameBtn" class="modal-primary" type="button">▶ START</button>
+								<a class="modal-secondary" href="resume.html">텍스트 이력서로 보기</a>
+							</div>
+							<div class="intro-kbd">
+								<b>PC</b> — 이동: 방향키 · 확인: Space · 나가기: ESC<br/>
+								<b>모바일</b> — 이동: D-pad · 확인: A 버튼
 							</div>
 						</div>
 					</div>
 				</div>
 
-				<!-- Outro Modal (Exit 클릭 시 열림) -->
+				<!-- Outro -->
 				<div id="outroModal" class="game-modal" aria-hidden="true">
 					<div class="game-modal-card">
 						<div class="game-modal-head">
-							<div class="game-modal-title"> 지금까지 박지영이었습니다:) </div>
+							<div class="game-modal-title">지금까지 박지영이었습니다 :)</div>
 							<button id="outroCloseBtn" class="game-modal-close" type="button">×</button>
 						</div>
 						<div class="game-modal-body">
@@ -88,14 +101,14 @@
 								다음 스테이지를 함께 플레이할 동료를 만날 수 있기를 기대합니다.
 							</p>
 							<div class="modal-actions">
-								<a class="modal-primary" href="mailto:jiyoung16park@gmail.com">Email</a>
+								<a class="modal-primary" href="mailto:jiyoung16park@gmail.com">📧 Email</a>
 								<a class="modal-secondary" href="resume.html">텍스트 이력서</a>
 							</div>
 						</div>
 					</div>
 				</div>
 
-				<!-- Info Modal (각 건물 Space 시 열림) -->
+				<!-- Info: 각 건물 콘텐츠 -->
 				<div id="infoModal" class="game-modal" aria-hidden="true">
 					<div class="game-modal-card">
 						<div class="game-modal-head">
@@ -106,7 +119,7 @@
 					</div>
 				</div>
 
-				<!-- Timeline Modal -->
+				<!-- Timeline -->
 				<div id="timelineModal" class="game-modal" aria-hidden="true">
 					<div class="game-modal-card">
 						<div class="game-modal-head">
@@ -134,14 +147,9 @@
 			</div>
 		</div>
 
-		<!-- ✅ 기존 페이지(텍스트/섹션)는 유지하되, 기본은 게임만 보여주고 싶다면 game.css에서 숨김 처리함 -->
-		<div id="main">
-			<!-- 필요하면 남겨두되, 게임이 메인이라면 아래 섹션은 굳이 수정 안 해도 됨 -->
-		</div>
-
 		<!-- Scripts -->
 		<!-- ✅ 콘텐츠 데이터(이력 내용)는 content.js 로 분리 — 내용 수정은 이 파일에서! -->
 		<script src="./assets/js/content.js?v=1" defer></script>
-		<script src="./assets/js/game.js?v=2" defer></script>
+		<script src="./assets/js/game.js?v=3" defer></script>
 	</body>
 </html>
