@@ -1,25 +1,24 @@
-# 포트폴리오 v3 업데이트 — "Quest Book" 리디자인
+# 포트폴리오 v4 — 스타듀밸리풍 낮 마을 + 새 캐릭터
 
 ## 이번 버전의 변화
-- **풀스크린 게임 월드**: 캔버스가 화면 전체를 채우고, 모바일 세로 화면에서도 비율에 맞춰 시야가 조정됩니다.
-- **상단 HUD 오버레이**: 타이틀 + 경력 + 퀘스트 카운트(★ n/6) + EXIT 버튼.
-- **RPG 대화창 2단 인터랙션**: 건물 앞에서 A/Space → 한 줄 소개 대화창 → 한 번 더 누르거나 대화창 탭 → 상세 내용.
-- **콘텐츠 시트 리디자인**: 밝은 종이 질감의 "퀘스트 북". 모바일에서는 아래에서 올라오는 바텀시트(스크롤 문제 해결), 데스크톱에서는 가운데 책 형태.
-- **시트가 열리면 D-pad/A버튼 자동 숨김** (겹침 문제 해결).
-- resume.html 도 같은 종이 테마로 통일.
+- **밝은 낮 배경**: 잔디 톤 변화 + 풀결 + 들꽃, 흙길 질감, 마을 연못(물결/연잎 애니메이션, 충돌 장애물)
+- **새 주인공 캐릭터**: 4방향 × 4프레임 걷기 사이클(팔 스윙·들썩임·눈 깜빡임), 위/아래 이동도 애니메이션, 대각선 속도 보정, 그림자, 가만히 있을 때 숨쉬기
+- **건물 이름이 지붕 명판으로**: 공중에 떠 있던 표지판 제거 (연혁 기념비만 표지판 유지)
+- **PC 시야 확대**: 넓은 화면에서 더 넓은 영역이 보여 답답함 해소
+- **누락 파일 복구**: 이전 push 과정에서 리포에서 빠졌던 `assets/sounds/footstep.mp3` 포함
+  (구 스프라이트 `dot_*.png`는 새 캐릭터로 대체되어 더 이상 필요 없음)
 
-## 적용 방법 (로컬 리포 폴더 = ~/Developer/profile 에서)
+## 적용 방법
 ```bash
 cd ~/Developer/profile
-unzip -o ~/Downloads/profile_v3_update.zip   # zip 경로는 실제 다운로드 위치로
+unzip -o ~/Downloads/profile_v4_update.zip
 git add -A
-git commit -m "v3: Quest Book 리디자인 — 풀스크린 월드, 대화창 2단 인터랙션, 바텀시트"
+git commit -m "v4: 스타듀밸리풍 낮 마을, 새 캐릭터(4방향 걷기), 연못, PC 시야 확대"
 git push
 ```
-(이전에 `git mv vidieos videos` 와 `git rm -r --cached node_modules` 를 아직 안 했다면 commit 전에 함께 실행하세요.)
+push 후 1~2분 뒤 사이트에서 Cmd+Shift+R (강력 새로고침)으로 확인하세요.
 
-## 이후 수정 포인트
-- 건물 상세 내용 → `assets/js/content.js`
-- 대화창 한 줄 소개 → `game.js` 의 `NODE_SUMMARY`
-- 엔딩 스탯 레벨 → `game.js` 의 `SKILL_STATS`
-- 색/디자인 → `assets/css/game.css` 맨 위 `:root` 변수
+## 수정 포인트
+- 캐릭터 외형: 새로 그리고 싶으면 `assets/css/images/char_sheet.png` (16×20px × 4열 × 3행) 교체
+- 연못 위치/크기: `game.js` 의 `pond`
+- 잔디/길 색감: `game.js` 의 `GRASS_TONES` 와 drawBG 내 색상

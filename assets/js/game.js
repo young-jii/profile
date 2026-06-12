@@ -62,7 +62,8 @@ window.addEventListener('load', () => {
 
   function fitCanvas(){
     const aspect = Math.max(0.25, Math.min(4, window.innerWidth / Math.max(1, window.innerHeight)));
-    const TARGET = 320; // 긴 쪽이 보여줄 월드 픽셀 수 (도트 크기 유지)
+    // ✅ PC는 시야를 넓게(픽셀 작게), 모바일은 픽셀 큼직하게
+    const TARGET = window.innerWidth >= 1100 ? 480 : 320;
     if (aspect >= 1){
       VIEW_W = TARGET;
       VIEW_H = Math.round(TARGET / aspect);
@@ -283,31 +284,22 @@ window.addEventListener('load', () => {
 
   /* =========================
      Player / Sprites
+     ✅ 새 캐릭터: 4방향 × 4프레임 걷기 사이클 (char_sheet.png)
+     - 행: 0=정면(down) 1=측면(left) 2=뒷면(up) / right는 left 미러
+     - 열: 0=서기 1=걸음A 2=서기(눈 깜빡) 3=걸음B
   ========================= */
   const player = { x: 72, y: 176, w: 12, h: 12, vx: 0, vy: 0, speed: 1.35 };
-  const DRAW_W = 32, DRAW_H = 32;
 
-  const SPRITE_BASE = 'assets/css/images/';
-  const sprites = {
-    front: new Image(),
-    back: new Image(),
-    side1: new Image(),
-    side2: new Image(),
-  };
+  const FRAME_W = 16, FRAME_H = 20;
+  const SHEET_ROW = { down: 0, left: 1, up: 2, right: 1 };
+  const charSheet = new Image();
+  charSheet.src = 'assets/css/images/char_sheet.png?v=1';
+  function sheetReady(){ return charSheet.complete && charSheet.naturalWidth > 0; }
 
-  sprites.front.src = encodeURI(SPRITE_BASE + 'dot_front.png');
-  sprites.back.src  = encodeURI(SPRITE_BASE + 'dot_back.png');
-  sprites.side1.src = encodeURI(SPRITE_BASE + 'dot_side(1).png');
-  sprites.side2.src = encodeURI(SPRITE_BASE + 'dot_side(2).png');
-
-  function allSpritesReady(){
-    return Object.values(sprites).every(img => img.complete && img.naturalWidth > 0);
-  }
-
-  let facing = 'right';
-  let walkFrame = 0;
+  let facing = 'down';
+  let walkFrame = 0;          // 0..3 사이클
   let walkTimer = 0;
-  const WALK_INTERVAL = 140;
+  const WALK_INTERVAL = 130;  // 프레임 전환 간격(ms)
 
   /* =========================
      Map: Roads / Nodes(건물) / Monument
@@ -321,6 +313,14 @@ window.addEventListener('load', () => {
     { x: 556, y: 120, w: 14,  h: 154 }, // 동쪽 세로길
     { x: 570, y: 182, w: 50,  h: 14 },  // 연혁 기념비로 가는 샛길
   ];
+
+  // ✅ 마을 연못 (스타듀밸리 무드 + 충돌 장애물)
+  const pond = { x: 200, y: 160, w: 84, h: 52 };
+
+  function inPond(x, y, pad = 0){
+    return x >= pond.x - pad && x <= pond.x + pond.w + pad &&
+           y >= pond.y - pad && y <= pond.y + pond.h + pad;
+  }
 
   // node.x / node.y = 상호작용 지점(건물 문 앞)
   const nodes = [
@@ -826,13 +826,14 @@ window.addEventListener('load', () => {
       if (inRoad(x, y, 6)) continue;
       if (nearNode(x, y)) continue;
       if (inBuilding(x, y)) continue;
+      if (inPond(x, y, 14)) continue;
 
       const roll = rng();
       if (roll < 0.58){
         props.push({ type:'grass', x, y, v: (rng()*3)|0 });
-      } else if (roll < 0.76){
+      } else if (roll < 0.68){
         solidsProps.push({ type:'rock', x, y, v: (rng()*3)|0 });
-      } else if (roll < 0.92){
+      } else if (roll < 0.90){
         solidsProps.push({ type:'tree', x, y, v: (rng()*3)|0 });
       }
     }
@@ -871,11 +872,14 @@ window.addEventListener('load', () => {
     // 기념비 받침
     solids.push({ x: 598, y: 184, w: 14, h: 8 });
 
+    // ✅ 연못 (모래 테두리 포함)
+    solids.push({ x: pond.x - 3, y: pond.y - 3, w: pond.w + 6, h: pond.h + 6 });
+
     // 입체 소품
     for (const p of solidsProps){
-      if (p.type === 'rock') solids.push({ x: p.x + 6, y: p.y + 10, w: 8, h: 5 });
-      else if (p.type === 'tree') solids.push({ x: p.x + 4, y: p.y + 12, w: 8, h: 6 });
-      else if (p.type === 'lamp') solids.push({ x: p.x - 1, y: p.y + 5, w: 4, h: 5 });
+      if (p.type === 'rock') solids.push({ x: p.x + 5, y: p.y + 11, w: 9, h: 5 });
+      else if (p.type === 'tree') solids.push({ x: p.x + 6, y: p.y + 13, w: 7, h: 5 });
+      else if (p.type === 'lamp') solids.push({ x: p.x, y: p.y + 6, w: 3, h: 5 });
     }
   }
   buildSolids();
@@ -907,28 +911,31 @@ window.addEventListener('load', () => {
     const oy = p.y + 8;
     const sway = Math.round(Math.sin(t*2 + (p.x+p.y)*0.02) * 1);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(ox, oy+4, 10, 2);
-
-    ctx.fillStyle = 'rgba(158, 206, 106, 0.85)';
+    ctx.fillStyle = '#4e8a3c';
     ctx.fillRect(ox+1, oy+1+sway, 1, 5);
-    ctx.fillRect(ox+4, oy-0+sway, 1, 6);
+    ctx.fillRect(ox+4, oy+0+sway, 1, 6);
     ctx.fillRect(ox+7, oy+2+sway, 1, 4);
 
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillStyle = '#9ed47a';
     ctx.fillRect(ox+4, oy+0+sway, 1, 1);
+    ctx.fillRect(ox+1, oy+1+sway, 1, 1);
   }
 
   function drawRock(p){
-    const ox = p.x + 5;
-    const oy = p.y + 9;
+    const ox = p.x + 4;
+    const oy = p.y + 8;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    ctx.fillRect(ox, oy+4, 10, 2);
+    ctx.fillStyle = 'rgba(50, 70, 35, 0.20)';
+    ctx.fillRect(ox, oy+6, 11, 2);
 
-    drawPixelRect(ox+1, oy, 8, 6, 'rgba(200,210,220,0.75)', 'rgba(0,0,0,0.35)');
-    ctx.fillStyle = 'rgba(255,255,255,0.14)';
-    ctx.fillRect(ox+2, oy+1, 2, 1);
+    drawPixelRect(ox, oy, 10, 7, '#9b9486', 'rgba(70,62,50,0.65)');
+    ctx.fillStyle = '#bdb6a6';
+    ctx.fillRect(ox+2, oy+1, 4, 2);
+    ctx.fillStyle = '#7e786c';
+    ctx.fillRect(ox+1, oy+5, 8, 2);
+    // 이끼
+    ctx.fillStyle = '#6fa653';
+    ctx.fillRect(ox+7, oy+1, 3, 1);
   }
 
   function drawTree(p, t){
@@ -936,37 +943,48 @@ window.addEventListener('load', () => {
     const sway = Math.round(Math.sin(t*1.6 + x*0.05) * 1);
 
     // 그림자
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    ctx.fillRect(x+3, y+16, 12, 3);
+    ctx.fillStyle = 'rgba(50, 70, 35, 0.22)';
+    ctx.fillRect(x+3, y+16, 14, 3);
 
     // 기둥
-    drawPixelRect(x+6, y+9, 4, 8, 'rgba(122,90,52,0.95)', 'rgba(0,0,0,0.35)');
+    drawPixelRect(x+7, y+8, 5, 9, '#7a4f2a', 'rgba(60,38,18,0.7)');
+    ctx.fillStyle = '#94653a';
+    ctx.fillRect(x+8, y+9, 1, 7);
 
-    // 잎 (2단)
-    drawPixelRect(x+1+sway, y+2, 14, 9, 'rgba(78,140,72,0.95)', 'rgba(0,0,0,0.35)');
-    drawPixelRect(x+3+sway, y-2, 10, 6, 'rgba(98,170,86,0.95)', 'rgba(0,0,0,0.30)');
-    ctx.fillStyle = 'rgba(255,255,255,0.10)';
-    ctx.fillRect(x+4+sway, y-1, 3, 2);
+    // 잎 (3톤 풍성하게)
+    drawPixelRect(x+1+sway, y+1, 17, 10, '#2f7d3a', 'rgba(25,60,28,0.55)');
+    drawPixelRect(x+3+sway, y-3, 13, 7, '#3e9a4a', 'rgba(25,60,28,0.45)');
+    ctx.fillStyle = '#62c46c';
+    ctx.fillRect(x+5+sway, y-2, 6, 3);
+    ctx.fillRect(x+4+sway, y+2, 3, 2);
+    // 잎 아래 음영
+    ctx.fillStyle = 'rgba(20, 50, 25, 0.22)';
+    ctx.fillRect(x+2+sway, y+8, 15, 3);
   }
 
   function drawPebble(p){
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillStyle = '#bb8f57';
     ctx.fillRect(p.x + 6, p.y + 2, 2, 2);
+    ctx.fillStyle = '#e2c084';
+    ctx.fillRect(p.x + 6, p.y + 2, 1, 1);
   }
 
   function drawLamp(p, t){
     const x = Math.round(p.x);
     const y = Math.round(p.y);
 
-    drawPixelRect(x, y, 2, 10, 'rgba(180,170,140,0.55)', 'rgba(0,0,0,0.30)');
-    drawPixelRect(x-1, y-2, 4, 3, 'rgba(200,190,160,0.55)', 'rgba(0,0,0,0.30)');
+    // 나무 기둥
+    drawPixelRect(x, y, 3, 11, '#8a5a32', 'rgba(60,38,18,0.7)');
+    // 등롱
+    drawPixelRect(x-1, y-4, 5, 5, '#f4c75c', '#8a5a32');
+    ctx.fillStyle = '#fff3c4';
+    ctx.fillRect(x, y-3, 2, 2);
+    drawPixelRect(x-2, y-6, 7, 2, '#6b4a2a', 'rgba(0,0,0,0.3)');
 
-    const glow = 0.10 + (Math.sin(t*3 + x*0.1)*0.04);
-    ctx.fillStyle = `rgba(255, 240, 180, ${glow})`;
-    ctx.fillRect(x-6, y+1, 14, 10);
-
-    ctx.fillStyle = 'rgba(255, 245, 210, 0.35)';
-    ctx.fillRect(x, y-1, 2, 2);
+    // 은은한 낮 글로우
+    const glow = 0.05 + (Math.sin(t*3 + x*0.1) * 0.02);
+    ctx.fillStyle = `rgba(255, 235, 170, ${glow})`;
+    ctx.fillRect(x-6, y-6, 15, 12);
   }
 
   /* =========================================================
@@ -996,21 +1014,31 @@ window.addEventListener('load', () => {
     const yWall = yBottom - hWall;
     const yRoof = yWall - hRoof;
 
-    // 그림자
-    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    // 그림자 (낮이라 연하게)
+    ctx.fillStyle = 'rgba(50, 70, 35, 0.22)';
     ctx.fillRect(x + 3, yBottom - 2, w, 4);
 
     // 벽
-    drawPixelRect(x, yWall, w, hWall, 'rgba(214,203,180,0.96)', 'rgba(0,0,0,0.35)');
-    ctx.fillStyle = 'rgba(0,0,0,0.10)';
+    drawPixelRect(x, yWall, w, hWall, 'rgba(244, 234, 210, 0.98)', 'rgba(90, 70, 45, 0.75)');
+    ctx.fillStyle = 'rgba(90, 70, 45, 0.14)';
     ctx.fillRect(x + 1, yBottom - 4, w - 2, 3);
 
     // 지붕 (노드 색)
     drawPixelRect(x - 3, yRoof, w + 6, hRoof, c.main, c.edge);
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
     ctx.fillRect(x - 1, yRoof + 2, w + 2, 2);
     ctx.fillStyle = 'rgba(0,0,0,0.15)';
     ctx.fillRect(x - 3, yRoof + hRoof - 3, w + 6, 3);
+
+    // ✅ 지붕 명판 (건물 이름 — 별도 표지판 대신)
+    ctx.font = '10px monospace';
+    const plateTw = Math.ceil(ctx.measureText(n.label).width);
+    const pw = plateTw + 10, ph = 12;
+    const plx = Math.round(b.cx - pw / 2);
+    const ply = yRoof + Math.round((hRoof - ph) / 2);
+    drawPixelRect(plx, ply, pw, ph, 'rgba(64, 45, 26, 0.94)', 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = isNear ? '#ffe9b3' : '#fff7e6';
+    ctx.fillText(n.label, plx + 5, ply + 9);
 
     // 창문 (따뜻한 불빛 깜빡임)
     const glow = 0.55 + Math.sin(t * 2.4 + b.cx * 0.1) * 0.15;
@@ -1167,34 +1195,133 @@ window.addEventListener('load', () => {
   /* =========================
      Render
   ========================= */
-  function drawBG(cam){
+  // 결정적 해시 (타일별 고정 랜덤)
+  function tileHash(x, y, salt = 0){
+    let h = (x * 374761393 + y * 668265263 + salt * 144665) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+
+  const GRASS_TONES = ['#77b24f', '#74ae4b', '#7ab453'];
+  const FLOWER_TONES = ['#ffffff', '#ffd95e', '#f49ac1', '#9db8ff'];
+
+  function drawBG(cam, t){
     const x0 = Math.floor(cam.x / 16) * 16;
     const y0 = Math.floor(cam.y / 16) * 16;
 
+    // ----- 잔디: 톤 변화 + 풀결 + 들꽃 -----
     for (let y = y0; y < cam.y + VIEW_H + 16; y += 16){
       for (let x = x0; x < cam.x + VIEW_W + 16; x += 16){
-        const even = ((x + y) / 16) % 2 === 0;
-        ctx.fillStyle = even ? '#0f1a14' : '#0d1712';
+        const h1 = tileHash(x, y, 1);
+        ctx.fillStyle = GRASS_TONES[(h1 * GRASS_TONES.length) | 0];
         ctx.fillRect(x, y, 16, 16);
+
+        const h2 = tileHash(x, y, 2);
+        if (h2 > 0.55){
+          // 풀결 (짙은 초록 점 두어 개)
+          ctx.fillStyle = '#639a40';
+          const gx = x + 3 + ((h2 * 9) | 0);
+          const gy = y + 3 + ((tileHash(x, y, 3) * 9) | 0);
+          ctx.fillRect(gx, gy, 2, 1);
+          ctx.fillRect(gx + 4, gy + 5, 1, 2);
+        }
+        if (h2 > 0.955){
+          // 들꽃
+          const fx = x + 4 + ((tileHash(x, y, 4) * 8) | 0);
+          const fy = y + 4 + ((tileHash(x, y, 5) * 8) | 0);
+          ctx.fillStyle = FLOWER_TONES[(tileHash(x, y, 6) * FLOWER_TONES.length) | 0];
+          ctx.fillRect(fx - 1, fy, 3, 1);
+          ctx.fillRect(fx, fy - 1, 1, 3);
+          ctx.fillStyle = '#e8b832';
+          ctx.fillRect(fx, fy, 1, 1);
+        }
       }
     }
 
-    // 길
+    // ----- 흙길 -----
     for (const r of roadRects){
-      ctx.fillStyle = '#2a3646';
+      ctx.fillStyle = '#d4a96c';
       ctx.fillRect(r.x, r.y, r.w, r.h);
-    }
-    // 길 가장자리 하이라이트
-    for (const r of roadRects){
-      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+
+      // 가장자리: 짙은 테두리 + 밝은 윗단 (입체감)
+      ctx.fillStyle = '#a87f48';
       if (r.w >= r.h){
         ctx.fillRect(r.x, r.y, r.w, 1);
         ctx.fillRect(r.x, r.y + r.h - 1, r.w, 1);
+        ctx.fillStyle = '#e2c084';
+        ctx.fillRect(r.x, r.y + 1, r.w, 1);
       } else {
         ctx.fillRect(r.x, r.y, 1, r.h);
         ctx.fillRect(r.x + r.w - 1, r.y, 1, r.h);
+        ctx.fillStyle = '#e2c084';
+        ctx.fillRect(r.x + 1, r.y, 1, r.h);
+      }
+
+      // 흙 얼룩/돌멩이 (해시 기반, 보이는 영역만)
+      const sx0 = Math.max(r.x, Math.floor(cam.x / 8) * 8);
+      const sx1 = Math.min(r.x + r.w, cam.x + VIEW_W + 8);
+      const sy0 = Math.max(r.y, Math.floor(cam.y / 8) * 8);
+      const sy1 = Math.min(r.y + r.h, cam.y + VIEW_H + 8);
+      for (let sy = sy0; sy < sy1; sy += 8){
+        for (let sx = sx0; sx < sx1; sx += 8){
+          const hh = tileHash(sx, sy, 7);
+          if (hh > 0.62){
+            ctx.fillStyle = '#c1955a';
+            ctx.fillRect(sx + ((hh * 5) | 0), sy + 2 + ((tileHash(sx, sy, 8) * 4) | 0), 2, 1);
+          }
+          if (hh > 0.93){
+            ctx.fillStyle = '#b08a55';
+            ctx.fillRect(sx + 3, sy + 4, 2, 2);
+          }
+        }
       }
     }
+
+    // ----- 연못 -----
+    drawPond(t);
+  }
+
+  function drawPond(t){
+    const p = pond;
+
+    // 모래 테두리
+    ctx.fillStyle = '#dfc98e';
+    ctx.fillRect(p.x - 3, p.y - 3, p.w + 6, p.h + 6);
+    ctx.fillStyle = '#c9ad6e';
+    ctx.fillRect(p.x - 3, p.y - 3, p.w + 6, 1);
+    ctx.fillRect(p.x - 3, p.y + p.h + 2, p.w + 6, 1);
+
+    // 물
+    ctx.fillStyle = '#4a92c8';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.fillStyle = '#3a7cb0';
+    ctx.fillRect(p.x, p.y, p.w, 2);
+    ctx.fillRect(p.x, p.y, 2, p.h);
+    ctx.fillStyle = '#5ea4d6';
+    ctx.fillRect(p.x + 2, p.y + p.h - 3, p.w - 4, 2);
+
+    // 물결 반짝임 (천천히 흐르는 애니메이션)
+    const phase = (t * 10) | 0;
+    for (let i = 0; i < 7; i++){
+      const hx = tileHash(i, phase % 4, 9);
+      const hy = tileHash(i, 11, 10);
+      const wx = p.x + 6 + ((hx * (p.w - 16)) | 0);
+      const wy = p.y + 5 + ((hy * (p.h - 12)) | 0);
+      const shimmer = Math.sin(t * 2.2 + i * 1.7) * 0.5 + 0.5;
+      ctx.fillStyle = `rgba(214, 238, 255, ${0.25 + shimmer * 0.35})`;
+      ctx.fillRect(wx, wy, 5, 1);
+    }
+
+    // 연잎 + 연꽃
+    const bobL = Math.round(Math.sin(t * 1.4) * 1);
+    ctx.fillStyle = '#4e9a44';
+    ctx.fillRect(p.x + 14, p.y + 34 + bobL, 9, 6);
+    ctx.fillStyle = '#67b85a';
+    ctx.fillRect(p.x + 15, p.y + 35 + bobL, 7, 4);
+    ctx.fillStyle = '#f7b8d4';
+    ctx.fillRect(p.x + 60, p.y + 14 - bobL, 4, 3);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(p.x + 61, p.y + 15 - bobL, 2, 1);
   }
 
   function drawPressSpace(cam){
@@ -1222,36 +1349,39 @@ window.addEventListener('load', () => {
     ctx.fillText(text, bx + pad, by + 11);
   }
 
-  function drawPlayer(){
-    if (!allSpritesReady()){
-      ctx.fillStyle = '#f7768e';
-      ctx.fillRect(player.x, player.y, player.w, player.h);
+  function drawPlayer(t){
+    const footX = player.x + player.w / 2;
+    const footY = player.y + player.h;
+
+    // 그림자
+    ctx.fillStyle = 'rgba(40, 60, 30, 0.28)';
+    ctx.fillRect(Math.round(footX - 6), footY - 2, 12, 3);
+
+    const dx = Math.round(footX - FRAME_W / 2);
+    const dy = Math.round(footY - FRAME_H);
+
+    if (!sheetReady()){
+      // 시트 로딩 전 임시 도트 인형 (네모 방지)
+      drawPixelRect(dx + 4, dy + 1, 8, 8, '#4a3322', 'rgba(0,0,0,0.3)');
+      drawPixelRect(dx + 5, dy + 9, 6, 5, '#f06a85', 'rgba(0,0,0,0.3)');
+      drawPixelRect(dx + 5, dy + 14, 6, 5, '#344058', 'rgba(0,0,0,0.3)');
       return;
     }
 
-    const dx = Math.round(player.x - (DRAW_W - player.w)/2);
-    const dy = Math.round(player.y - (DRAW_H - player.h)/2 - 6); // 발 위치 보정
+    const row = SHEET_ROW[facing] ?? 0;
+    const sx = walkFrame * FRAME_W;
+    const sy = row * FRAME_H;
 
-    const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
+    // 가만히 있을 때 숨쉬기 들썩임
+    const idleBob = (walkFrame === 0 && Math.sin(t * 2.2) > 0.55) ? -1 : 0;
 
-    if (facing === 'up'){
-      ctx.drawImage(sprites.back, dx, dy, DRAW_W, DRAW_H);
-      return;
-    }
-    if (facing === 'down'){
-      ctx.drawImage(sprites.front, dx, dy, DRAW_W, DRAW_H);
-      return;
-    }
-    if (facing === 'left'){
-      ctx.drawImage(sideImg, dx, dy, DRAW_W, DRAW_H);
-      return;
-    }
     if (facing === 'right'){
       ctx.save();
       ctx.scale(-1, 1);
-      ctx.drawImage(sideImg, -(dx + DRAW_W), dy, DRAW_W, DRAW_H);
+      ctx.drawImage(charSheet, sx, sy, FRAME_W, FRAME_H, -(dx + FRAME_W), dy + idleBob, FRAME_W, FRAME_H);
       ctx.restore();
-      return;
+    } else {
+      ctx.drawImage(charSheet, sx, sy, FRAME_W, FRAME_H, dx, dy + idleBob, FRAME_W, FRAME_H);
     }
   }
 
@@ -1271,7 +1401,7 @@ window.addEventListener('load', () => {
     ctx.translate(-cam.x, -cam.y);
 
     // 1) 바닥
-    drawBG(cam);
+    drawBG(cam, t);
 
     // 2) 평면 소품 (잔디/자갈)
     for (const p of props){
@@ -1303,13 +1433,14 @@ window.addEventListener('load', () => {
       }
     }
 
-    drawables.push({ sortY: player.y + player.h, draw: drawPlayer });
+    drawables.push({ sortY: player.y + player.h, draw: () => drawPlayer(t) });
 
     drawables.sort((a, b) => a.sortY - b.sortY);
     for (const d of drawables) d.draw();
 
-    // 4) 표지판 + 팝 + 말풍선 (오브젝트 위에)
+    // 4) 표지판(기념비 전용) + 팝 + 말풍선 (오브젝트 위에)
     for (const n of nodes){
+      if (n.building) continue; // 건물은 지붕 명판으로 대체
       const isNear = !!near && near.key === n.key;
       drawSignboard(n, t, isNear);
     }
@@ -1355,10 +1486,18 @@ window.addEventListener('load', () => {
     const up    = keys.has('ArrowUp');
     const down  = keys.has('ArrowDown');
 
-    if (left)  player.vx = -player.speed;
-    if (right) player.vx =  player.speed;
-    if (up)    player.vy = -player.speed;
-    if (down)  player.vy =  player.speed;
+    if (left)  player.vx = -1;
+    if (right) player.vx =  1;
+    if (up)    player.vy = -1;
+    if (down)  player.vy =  1;
+
+    // ✅ 대각선 이동 속도 보정 (자연스러운 움직임)
+    if (player.vx !== 0 && player.vy !== 0){
+      player.vx *= 0.7071;
+      player.vy *= 0.7071;
+    }
+    player.vx *= player.speed;
+    player.vy *= player.speed;
 
     if (player.vx < 0) facing = 'left';
     else if (player.vx > 0) facing = 'right';
@@ -1397,12 +1536,12 @@ window.addEventListener('load', () => {
       footstepAudio.currentTime = 0;
     }
 
-    // ✅ 걷기 프레임도 실제 이동일 때만
-    if (moved && (facing === 'left' || facing === 'right')){
+    // ✅ 걷기 사이클: 모든 방향에서 4프레임 애니메이션
+    if (moved){
       walkTimer += dt;
       if (walkTimer >= WALK_INTERVAL){
         walkTimer = 0;
-        walkFrame = (walkFrame === 0) ? 1 : 0;
+        walkFrame = (walkFrame + 1) % 4;
       }
     } else {
       walkTimer = 0;
