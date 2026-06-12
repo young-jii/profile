@@ -514,48 +514,6 @@ window.addEventListener('load', () => {
     return `${mm}분 ${String(ss).padStart(2,'0')}초`;
   }
 
-  // =========================================================
-  // ✅ Typewriter: 남은 시간(durationMs) 안에 항상 끝내기 (rAF 기반)
-  // =========================================================
-  function runTypewriter({ target, plain, durationMs = 2000, onDone, isAlive }){
-    const text = plain || '';
-    const total = text.length;
-
-    if (!target || total === 0){
-      onDone && onDone();
-      return;
-    }
-
-    const start = performance.now();
-
-    function frame(now){
-      if (isAlive && !isAlive()) return;
-
-      const t = Math.min(1, (now - start) / Math.max(1, durationMs));
-      const count = Math.min(total, Math.max(1, Math.floor(total * t)));
-      target.textContent = text.slice(0, count);
-
-      if (t >= 1){
-        target.textContent = text;
-        onDone && onDone();
-        return;
-      }
-      requestAnimationFrame(frame);
-    }
-
-    requestAnimationFrame(frame);
-  }
-
-  function toPlainTextFromHtml(html){
-    return (html || '')
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/br>/gi, '\n')
-      .replace(/<[^>]*>/g, '')
-      .replace(/\n{3,}/g, '\n\n')
-      .replace(/[ \t]{2,}/g, ' ')
-      .trim();
-  }
-
   /* =========================
      Outro: 플레이 통계 + RPG 스탯창
   ========================= */
@@ -617,43 +575,13 @@ window.addEventListener('load', () => {
     if (!data) return;
 
     infoModalTitle.textContent = data.title;
+    infoModalBody.innerHTML = data.body; // ✅ 타자기 연출 제거: 내용 바로 표시
+    infoModalBody.scrollTop = 0;
 
-    const html = data.body;
-    infoModalBody.innerHTML = `<div class="typewrap"><div id="typeTarget"></div></div>`;
-    const target = infoModalBody.querySelector('#typeTarget');
-
-    // ✅ 효과음/방문 처리 먼저
     playSfxForKey(key);
     markVisited(key);
 
-    // ✅ "팝업 오픈 애니메이션 포함 2초" 만들기
-    const TOTAL_MS = 2000;
-    const openAnimMs = MODAL_OPEN_ANIM_MS;
-
-    await openModal(infoModal, { openAnimMs });
-
-    if (!infoModal.classList.contains('on')) return;
-
-    if (!target){
-      infoModalBody.innerHTML = html;
-      return;
-    }
-
-    const typeMs = Math.max(120, TOTAL_MS - openAnimMs);
-
-    const plain = toPlainTextFromHtml(html);
-    target.textContent = '';
-
-    runTypewriter({
-      target,
-      plain,
-      durationMs: typeMs,
-      isAlive: () => infoModal.classList.contains('on'),
-      onDone: () => {
-        if (!infoModal.classList.contains('on')) return;
-        infoModalBody.innerHTML = html; // 완료 후 원본 HTML로 교체
-      }
-    });
+    openModal(infoModal);
   }
 
   /* =========================
