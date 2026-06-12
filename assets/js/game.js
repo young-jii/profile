@@ -1,8 +1,17 @@
+/* ============================================================
+   지영's 포트폴리오 게임 v2
+   - 카메라 + 640×360 월드 (탐험형 맵)
+   - 노드 → 픽셀 건물 / 충돌 / Y-소팅
+   - 모바일 가상 D-pad + A버튼 + 노드 탭
+   - 퀘스트 체크리스트 / 엔딩 스탯창
+   - 콘텐츠는 assets/js/content.js 로 분리 (window.CONTENT)
+============================================================ */
 window.addEventListener('load', () => {
   const layer  = document.getElementById('gameLayer');
   const canvas = document.getElementById('gameCanvas');
   const exitBtn = document.getElementById('exitGameBtn');
   const careerHUD = document.getElementById('careerHUD');
+  const questBar = document.getElementById('questBar');
 
   const introModal = document.getElementById('introModal');
   const introCloseBtn = document.getElementById('introCloseBtn');
@@ -18,6 +27,9 @@ window.addEventListener('load', () => {
 
   const timelineModal = document.getElementById('timelineModal');
   const timelineCloseBtn = document.getElementById('timelineCloseBtn');
+
+  const touchControls = document.getElementById('touchControls');
+  const actBtn = document.getElementById('actBtn');
 
   // === Footstep Sound (file) ===
   const footstepAudio = new Audio('./assets/sounds/footstep.mp3');
@@ -36,8 +48,11 @@ window.addEventListener('load', () => {
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
-  const W = canvas.width;
-  const H = canvas.height;
+  // ✅ 뷰포트(캔버스) vs 월드 크기 분리
+  const VIEW_W = canvas.width;   // 320
+  const VIEW_H = canvas.height;  // 180
+  const WORLD_W = 640;
+  const WORLD_H = 360;
 
   const keys = new Set();
   let paused = true; // intro until start
@@ -241,7 +256,7 @@ window.addEventListener('load', () => {
   /* =========================
      Player / Sprites
   ========================= */
-  const player = { x: 60, y: 92, w: 12, h: 12, vx: 0, vy: 0, speed: 1.35 };
+  const player = { x: 72, y: 176, w: 12, h: 12, vx: 0, vy: 0, speed: 1.35 };
   const DRAW_W = 32, DRAW_H = 32;
 
   const SPRITE_BASE = 'assets/css/images/';
@@ -267,16 +282,27 @@ window.addEventListener('load', () => {
   const WALK_INTERVAL = 140;
 
   /* =========================
-     Map Nodes
+     Map: Roads / Nodes(건물) / Monument
+     - 북쪽 길 + 남쪽 길 + 양옆 세로길 = 한 바퀴 도는 루프
+     - 동쪽 끝 샛길에 '연혁' 기념비(골인 지점)
   ========================= */
+  const roadRects = [
+    { x: 70,  y: 120, w: 500, h: 14 },  // 북쪽 길
+    { x: 70,  y: 260, w: 500, h: 14 },  // 남쪽 길
+    { x: 70,  y: 120, w: 14,  h: 154 }, // 서쪽 세로길
+    { x: 556, y: 120, w: 14,  h: 154 }, // 동쪽 세로길
+    { x: 570, y: 182, w: 50,  h: 14 },  // 연혁 기념비로 가는 샛길
+  ];
+
+  // node.x / node.y = 상호작용 지점(건물 문 앞)
   const nodes = [
-    { key:'school',   label:'학교',   x: 55,  y: 55  },
-    { key:'training', label:'교육',   x: 55,  y: 125 },
-    { key:'award',    label:'수상',   x: 110, y: 125 },
-    { key:'company',  label:'경력',   x: 160, y: 90  },
-    { key:'lang',     label:'언어',   x: 250, y: 55  },
-    { key:'cert',     label:'자격증', x: 250, y: 125 },
-    { key:'timeline', label:'연혁',   x: 295, y: 90  },
+    { key:'school',   label:'학교',   x: 140, y: 126, building:{ cx:140, bottom:120 } },
+    { key:'company',  label:'경력',   x: 300, y: 126, building:{ cx:300, bottom:120 } },
+    { key:'lang',     label:'언어',   x: 460, y: 126, building:{ cx:460, bottom:120 } },
+    { key:'training', label:'교육',   x: 140, y: 266, building:{ cx:140, bottom:260 } },
+    { key:'award',    label:'수상',   x: 300, y: 266, building:{ cx:300, bottom:260 } },
+    { key:'cert',     label:'자격증', x: 460, y: 266, building:{ cx:460, bottom:260 } },
+    { key:'timeline', label:'연혁',   x: 604, y: 189, building:null }, // 황금 기념비
   ];
 
   const VISIT_KEYS = ['school','training','company','award','cert','lang'];
@@ -284,9 +310,30 @@ window.addEventListener('load', () => {
   let clearPlayed = false;
 
   /* =========================
-     ALL CLEAR Banner (canvas)
+     Quest Bar (HTML 체크리스트)
   ========================= */
-  let allClearBanner = { active:false, t:0, dur:1000 };
+  function buildQuestBar(){
+    if (!questBar) return;
+    questBar.innerHTML = nodes
+      .filter(n => VISIT_KEYS.includes(n.key))
+      .map(n => `<span class="q-chip" data-k="${n.key}">${n.label}</span>`)
+      .join('');
+  }
+  function updateQuestBar(){
+    if (!questBar) return;
+    questBar.querySelectorAll('.q-chip').forEach(chip => {
+      const k = chip.getAttribute('data-k');
+      if (visited.has(k)) chip.classList.add('done');
+    });
+    const allDone = visited.size === VISIT_KEYS.length;
+    questBar.classList.toggle('all-done', allDone);
+  }
+  buildQuestBar();
+
+  /* =========================
+     ALL CLEAR Banner (screen space)
+  ========================= */
+  let allClearBanner = { active:false, t:0, dur:1400 };
 
   function drawAllClear(){
     if (!allClearBanner.active) return;
@@ -301,7 +348,7 @@ window.addEventListener('load', () => {
     const bw = tw + padX * 2;
     const bh = 26;
 
-    const x = Math.round(W / 2 - bw / 2);
+    const x = Math.round(VIEW_W / 2 - bw / 2);
     const yBase = 18;
 
     let y;
@@ -333,6 +380,7 @@ window.addEventListener('load', () => {
 
     const before = visited.size;
     visited.add(key);
+    updateQuestBar();
 
     if (!clearPlayed && before !== visited.size && visited.size === VISIT_KEYS.length){
       clearPlayed = true;
@@ -343,407 +391,14 @@ window.addEventListener('load', () => {
     }
   }
 
-  const iconBase = 'assets/css/images/';
-  const iconFiles = {
-    school:   'icon_school.png',
-    training: 'icon_training.png',
-    company:  'icon_company.png',
-    award:    'icon_award.png',
-    cert:     'icon_cert.png',
-    lang:     'icon_lang.png',
-    timeline: 'icon_timeline.png',
-  };
-
-  const icons = {};
-  Object.keys(iconFiles).forEach(k => {
-    const img = new Image();
-    img.src = encodeURI(iconBase + iconFiles[k]);
-    icons[k] = img;
-  });
-
-  function iconReady(k){
-    const img = icons[k];
-    return img && img.complete && img.naturalWidth > 0;
-  }
-
-    /* =========================
-       Content (모달 내용)
-    ========================= */
-    const CONTENT = {
-      school: {
-        title: '학교',
-        body: `
-        <div class="k-card">
-          <p>
-            <b class="k-title">한 줄 요약</b><br/>
-            국어국문학 전공으로 <b class="k-em">‘이야기/문장’</b>을 다루는 힘을 키우고, 이를 <b class="k-em">‘서비스/데이터’</b>로 확장할 기반을 만들었습니다.
-          </p>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">학력</b></p>
-          <ul>
-            <li><b class="k-em">경희대학교 국어국문학과</b> (GPA 3.92/4.5)</li>
-            <li>텍스트와 정보의 <b class="k-em">‘기준’</b>을 정의하고, 그 기준에 따라 <b class="k-em">품질</b>을 관리하는 사고 방식을 학문적으로 훈련</li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">이 시기에 길러진 역량</b></p>
-          <ul>
-            <li><b class="k-title">기획 역량</b>: 전달 목적과 핵심 메시지를 먼저 설정한 뒤, 전체 구조를 설계하는 방식 훈련</li>
-            <li><b class="k-title">구조화 능력</b>: 복잡하고 산발적인 정보를 기준·정의·목차 체계로 정리해 이해도를 높이도록 학습</li>
-            <li><b class="k-title">사용자 관점</b>: 읽는 사람과 사용하는 사람의 흐름을 고려해, 혼란 지점을 사전에 줄이려는 접근 방식 훈련</li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">업무 관점으로의 확장</b></p>
-          <p>
-            이 시기의 경험을 통해, 좋은 콘텐츠와 서비스는 항상
-            ‘만드는 사람’이 아닌 ‘사용하는 사람’을 기준으로 설계되어야 한다는 관점을 갖게 되었습니다.<br/><br/>
-            이후의 커리어에서도 저는
-            <b class="k-em">기준을 정의하고</b> → <b class="k-em">업무와 정보의 흐름을 구조화하며</b> → <b class="k-em">오류와 불확실성을 줄이는 방식</b>으로
-            일관되게 업무를 수행해 왔습니다.
-          </p>
-        </div>
-        `
-      },
-  
-      training: {
-        title: '교육',
-        body: `
-        <div class="k-card">
-          <p>
-            <b class="k-title">한 줄 요약</b><br/>
-            이론 중심의 학습을 넘어, 데이터를 통해 <b class="k-em">문제를 정의</b>하고 <b class="k-em">근거를 만드는</b> 업무 방식으로 확장한 시기였습니다.
-          </p>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">주요 과정</b></p>
-          <ul>
-            <li><b class="k-em">협업 필터링/자연어처리 기반 추천 분석 시스템 제작</b> (2023.06~2023.12)</li>
-            <li><b class="k-em">고객경험 데이터 기반 데이터 비즈니스 분석</b> (2024.02~2024.07)</li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">이 과정을 통해 강화한 역량</b></p>
-          <ul>
-            <li>
-              <b class="k-title">데이터 전처리·가공</b>:
-              Python(Pandas)을 활용해 불완전한 원천 데이터를 <b class="k-em">분석 가능한 형태로 정제</b>
-            </li>
-            <li>
-              <b class="k-title">지표 해석</b>:
-              수치를 나열하는 데 그치지 않고, 맥락과 원인을 설명할 수 있는 <b class="k-em">해석 중심</b>의 분석
-            </li>
-            <li>
-              <b class="k-title">업무 자동화</b>:
-              반복 작업을 코드로 정리해 <b class="k-em">효율</b>을 높이고, 재사용 가능한 방식으로 개선
-            </li>
-            <li>
-              <b class="k-title">협업 경험</b>:
-              기획·개발·분석 역할이 다른 구성원들과 목표와 기준을 맞추며 결과를 도출
-            </li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">업무 관점의 변화</b></p>
-          <p>
-            이 교육을 통해 실무에서 중요한 것은 ‘기술 자체’보다
-            <b class="k-em">문제를 어떻게 정의하는지</b>,
-            <b class="k-em">현실의 데이터를 어떻게 다루는지</b>,
-            그리고 <b class="k-em">팀이 바로 활용할 수 있는 형태로 결과를 전달하는지</b>라는 점을 체감했습니다.<br/>
-            이후 저는 <b class="k-em">데이터 기반의 설득력 있는 기획</b>과,
-            <b class="k-em">현장에서 즉시 활용 가능한 자동화와 개선</b> 작업을 선호하게 되었습니다.
-          </p>
-        </div>
-        `
-      },
-  
-      company: {
-        title: '경력',
-        body: `
-        <div class="k-card">
-          <p>
-            <b class="k-title">한 줄 요약</b><br/>
-            교육 콘텐츠 기획에서 출발해 플랫폼 운영·기획까지 확장하며,
-            <b class="k-em">기준 설정·프로세스 정비·자동화</b>를 통해 운영 품질과 효율을 개선해 왔습니다.
-          </p>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">대표 성과: 문항 코드 추출 자동화 프로그램 개발</b></p>
-          <div class="video-frame">
-            <video controls playsinline preload="metadata">
-              <source src="./vidieos/questions_program.mp4" type="video/mp4" />
-              브라우저가 동영상을 지원하지 않습니다.
-            </video>
-          </div>
-          <ul style="margin-top:10px;">
-            <li>
-              <b class="k-title">문제 정의</b>:
-              문항 코드 확인·추출을 수작업에 의존해 <b class="k-em">시간 소요</b>와 <b class="k-em">오류</b>가 반복 발생
-            </li>
-            <li>
-              <b class="k-title">개선 방식</b>:
-              업무 흐름을 단계별로 분해하고 규칙을 정의한 뒤,
-              <b class="k-em">자동 추출·정리 프로그램</b>을 직접 구현
-            </li>
-            <li>
-              <b class="k-title">성과</b>:
-              작업 시간 <b class="k-em">1시간 이상 → 20분 내</b>로 단축,
-              반복 작업 감소 및 <b class="k-em">정확도·일관성</b> 향상
-            </li>
-          </ul>
-          <p style="margin-top:10px;">
-            이 경험을 통해, 작은 자동화라도 현업에 적용될 때
-            <b class="k-em">팀 전체의 시간과 품질</b>을 동시에 개선할 수 있다는 확신을 갖게 되었습니다.
-          </p>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">천재교과서 (2021.08~2023.06)</b></p>
-          <p style="margin:6px 0 10px;">
-            <b class="k-title">역할</b> 교재 개발 PM / 국어 교육 콘텐츠 기획·개발
-          </p>
-          <ul>
-            <li>
-              <b class="k-title">교재 개발 PM</b>:
-              기획·집필·편집·검수 전 과정을 관리하며 <b class="k-em">일정·품질·커뮤니케이션</b> 총괄
-            </li>
-            <li>
-              <b class="k-title">커리큘럼 및 기준 설계</b>:
-              학습 목표와 난이도 기준을 구조화해 콘텐츠 <b class="k-em">일관성</b> 확보
-            </li>
-            <li>
-              <b class="k-title">외부 협업 관리</b>:
-              집필진·프리랜서·디자이너와 협업하며 산출물 <b class="k-em">품질</b> 관리
-            </li>
-            <li>
-              <b class="k-title">문항 데이터 구조 개선</b>:
-              오류 유형을 체계화하고, 개발·운영에 활용 가능한 <b class="k-em">기준</b> 정립
-            </li>
-            <li>
-              <b class="k-title">디지털 연계</b>:
-              밀크티(초등 학습 플랫폼) 국어 콘텐츠 검수 및 연계 콘텐츠 제작
-            </li>
-          </ul>
-          <p style="margin-top:10px;">
-            <b class="k-title">업무 인식</b>:
-            콘텐츠 기획은 결과물을 만드는 일이 아니라,
-            사용자가 막히는 지점을 <b class="k-em">기준과 구조</b>로 해결하는 과정임을 체득했습니다.
-          </p>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">EBS (2024.07~현재)</b></p>
-          <p style="margin:6px 0 10px;">
-            <b class="k-title">역할</b> 중학프리미엄 플랫폼 운영·기획 / 강좌 데이터 및 프로세스 관리
-          </p>
-          <ul>
-            <li>
-              <b class="k-title">플랫폼 운영</b>:
-              강좌 데이터 관리, 서비스 개편 대응, 페이지 구조 개선
-            </li>
-            <li>
-              <b class="k-title">분류체계 재설계</b>:
-              2015 → 2022 개정 교육과정 기준으로 강좌 분류 체계 <b class="k-em">전면 재정비</b>
-            </li>
-            <li>
-              <b class="k-title">데이터 기반 개선</b>:
-              학습 이력·조회·완강·설문 데이터를 가공·분석해 운영 개선안 도출
-            </li>
-            <li>
-              <b class="k-title">운영 프로세스 정비</b>:
-              검수 권한·업무 흐름·이슈 대응 기준을 정리해 운영 오류 감소
-            </li>
-          </ul>
-          <p style="margin-top:10px;">
-            <b class="k-title">업무 인식</b>:
-            운영의 완성은 문제를 처리하는 데서 끝나는 것이 아니라, 같은 문제가 반복되지 않도록 <b class="k-em">구조를 만드는 것</b>이라는 관점을 갖게 되었습니다.
-          </p>
-        </div>
-        `
-      },
-  
-      award: {
-        title: '수상',
-        body: `
-        <div class="k-card">
-          <p>
-            <b class="k-title">한 줄 요약</b><br/>
-            제한된 기간 안에서 아이디어를 서비스 형태로 구현하고, 실제 시연 가능한 결과물로 완주해 성과를 만든 경험입니다.
-          </p>
-        </div>
-  
-        <div class="k-card">
-          <p>
-            <b class="k-title">2023 제1회 K-디지털플랫폼 AI 경진대회</b> 특별상
-            <span style="font-size:13px;">(2023.12.13)</span>
-          </p>
-          <div class="video-frame">
-            <video controls playsinline preload="metadata">
-              <source src="./vidieos/jingum_test.mp4" type="video/mp4" />
-              브라우저가 동영상을 지원하지 않습니다.
-            </video>
-          </div>
-          <ul style="margin-top:10px;">
-            <li><b class="k-title">형태</b>: 4인 팀 프로젝트</li>
-            <li>
-              <b class="k-title">주제</b>:
-              가이드 문서를 기반으로 질의에 응답하는
-              <b class="k-em">RAG 기반 질의응답 서비스(답파고)</b> 구현
-            </li>
-            <li>
-              <b class="k-title">성과</b>:
-              기획 아이디어를 실제 동작 가능한 서비스로 구현해
-              <b class="k-em">특별상 수상</b>
-            </li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">담당 역할 및 기여</b></p>
-          <ul>
-            <li>
-              <b class="k-title">가이드 DB 설계</b>:
-              예시 가이드 문서를 구조화해,
-              질의응답에 활용 가능한 <b class="k-em">기준 데이터</b>로 정리
-            </li>
-            <li>
-              <b class="k-title">서비스 구현</b>:
-              Django를 활용해 문답 형태의 웹 서비스 프로토타입 제작
-            </li>
-            <li>
-              <b class="k-title">유사도 기반 응답 로직</b>:
-              가이드 자료를 임베딩하고, 질문 문장과의 유사도를 계산해 적절한 답변을 반환하는 흐름 구성
-            </li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">업무 방식에서의 강점</b></p>
-          <ul>
-            <li>제한된 시간 내 완성을 위해, 기능을 <b class="k-em">‘시연 가능 여부’</b> 기준으로 우선순위화</li>
-            <li>심사자가 이해하기 쉽도록, 서비스 흐름과 사용 시나리오를 중심으로 결과물 정리</li>
-            <li>협업 과정에서 화면·데이터·시나리오 기준을 명확히 해 속도와 품질을 동시에 확보</li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">업무 인식</b></p>
-          <p>
-            1박 2일이라는 짧은 해커톤 기간 동안, 아이디어 구상부터 구현, 시연까지 전 과정을 직접 완주하며 <b class="k-em">‘완성’의 경험</b>을 처음으로 온전히 해볼 수 있었습니다.<br/>
-            이 과정에서 성과는 아이디어의 크기보다 <b class="k-em">끝까지 만들어 결과물로 남기는 실행력</b>에서 나온다는 점을 체감했고,
-            실제로 동작하는 결과물을 만들어냈다는 성취감은 어떤 과제든 해낼 수 있다는 자신감으로 이어졌습니다.<br/>
-            이후 저는 프로젝트를 시작할 때 <b class="k-em">완료 가능한 범위를 명확히 설정하고</b>, 빠르게 완성한 뒤 개선해 나가는 방식을 제 일의 기준으로 삼고 있습니다.
-          </p>
-        </div>
-        `
-      },
-  
-      cert: {
-        title: '자격증',
-        body: `
-        <div class="k-card">
-          <p>
-            <b class="k-title">한 줄 요약</b><br/>
-            “필요하면 배워서 갖추는 사람”이라는 신뢰를 만들기 위해 꾸준히 기반 역량을 쌓았습니다.
-          </p>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">업무 기반 자격</b></p>
-          <ul>
-            <li>
-              <b class="k-title">워드프로세서</b> (2019.09.13):
-              문서 구조화, 기준 정리, 명확한 전달을 위한 작성 역량
-            </li>
-            <li>
-              <b class="k-title">GTQ 1급</b> (2020.02.07):
-              이미지 편집 및 시각 자료 품질 개선
-            </li>
-            <li>
-              <b class="k-title">컴퓨터활용능력 1급</b> (2020.08.28):
-              데이터 정리, 검증, 기본 분석을 통한 업무 효율화
-            </li>
-            <li>
-              <b class="k-title">SQLD</b> (2024.04.05):
-              데이터 조회, 정합성 확인, 운영·분석 업무 연계
-            </li>
-            <li>
-              <b class="k-title">ADsP</b> (2025.09.05):
-              지표 설정, 가설 수립, 데이터 기반 의사결정 관점 강화
-            </li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">업무 인식</b></p>
-          <p>
-            자격증은 취득 자체가 목표가 아니라, <b class="k-em">실무에서 바로 꺼내 쓸 수 있는 도구</b>를 하나씩 늘리는 과정이라고 생각합니다.<br/>
-            저는 필요한 역량을 선제적으로 학습하고, 이를 실제 업무에 적용한 뒤 문서화해 재사용 가능한 형태로 남기는 방식을 선호합니다.
-          </p>
-        </div>
-        `
-      },
-  
-      lang: {
-        title: '언어',
-        body: `
-        <div class="k-card">
-          <p>
-            <b class="k-title">한 줄 요약</b><br/>
-            언어는 소통 도구이자 업무의 <b class="k-em">‘품질’</b>을 만드는 도구로 활용해 왔습니다.
-          </p>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">한국어</b></p>
-          <ul>
-            <li>국어국문학 전공 + 교재 기획/교정/교열/편집 실무 경험</li>
-            <li>복잡한 내용을 “짧고 정확하게” 정리해 문서로 남기는 역량</li>
-            <li>기획서/가이드/프로세스 문서로 팀 협업 효율을 높이는 방식</li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">영어</b></p>
-          <ul>
-            <li>TOEIC 785 (2024.06.30)</li>
-            <li>TOEIC Speaking IH 150 (2025.09.13)</li>
-            <li>해외 자료·기술 문서·리서치 자료 이해 가능, 기본적인 업무 커뮤니케이션 수행</li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">일본어</b></p>
-          <ul>
-            <li>일상 회화 학습 및 여행 환경에서의 실사용 경험</li>
-            <li>콘텐츠 및 문화적 맥락을 이해하는 데 활용 가능</li>
-          </ul>
-        </div>
-  
-        <div class="k-card">
-          <p><b class="k-title">깨달음</b></p>
-          <p>
-            팀에서 신뢰를 얻는 사람은 말을 많이 하는 사람이 아니라, <b class="k-em">상대의 말을 끝까지 듣고 오해 없이 정리해주는 사람</b>이라고 생각합니다.<br/>
-            저는 먼저 이야기를 충분히 듣고 공감한 뒤, 말과 글로 쟁점을 구조화해 구성원 모두가 같은 방향으로 이해할 수 있도록 돕는 역할에 강점이 있습니다.
-          </p>
-        </div>
-        `
-      }
-    };
+  /* =========================
+     Content (assets/js/content.js 에서 로드)
+  ========================= */
+  const CONTENT = window.CONTENT || {};
 
   /* =========================
      Modal helpers + ducking
   ========================= */
-  // ✅ 모달 오픈 애니메이션(transition) 시간(ms)
-  // CSS transition이 0.2s면 200, 0.25s면 250 이런 식으로 맞추면 됨
   const MODAL_OPEN_ANIM_MS = 220;
 
   function openModal(modal, opts = {}){
@@ -759,7 +414,6 @@ window.addEventListener('load', () => {
     modal.setAttribute('aria-hidden', 'false');
     duckBgm(true);
 
-    // ✅ 오픈 애니메이션 끝난 타이밍을 알려줌 (2초 계산용)
     return new Promise((resolve) => {
       if (openAnimMs <= 0) { resolve(); return; }
       setTimeout(resolve, openAnimMs);
@@ -787,7 +441,7 @@ window.addEventListener('load', () => {
     return `${mm}분 ${String(ss).padStart(2,'0')}초`;
   }
 
-    // =========================================================
+  // =========================================================
   // ✅ Typewriter: 남은 시간(durationMs) 안에 항상 끝내기 (rAF 기반)
   // =========================================================
   function runTypewriter({ target, plain, durationMs = 2000, onDone, isAlive }){
@@ -829,6 +483,25 @@ window.addEventListener('load', () => {
       .trim();
   }
 
+  /* =========================
+     Outro: 플레이 통계 + RPG 스탯창
+  ========================= */
+  const SKILL_STATS = [
+    { name: '콘텐츠 기획',     lv: 5 },
+    { name: '프로세스 설계',   lv: 5 },
+    { name: '커뮤니케이션',    lv: 5 },
+    { name: '데이터 분석',     lv: 4 },
+    { name: '자동화 (Python)', lv: 4 },
+  ];
+
+  function statBlocks(lv, max = 5){
+    let s = '';
+    for (let i = 0; i < max; i++){
+      s += `<i class="sq ${i < lv ? 'fill' : ''}"></i>`;
+    }
+    return s;
+  }
+
   function fillOutroStats(){
     const body = getOutroBody();
     if (!body) return;
@@ -838,6 +511,7 @@ window.addEventListener('load', () => {
 
     const visitedCount = visited.size;
     const totalCount = VISIT_KEYS.length;
+    const cleared = visitedCount === totalCount;
 
     let box = body.querySelector('.outro-stats');
     if (!box){
@@ -847,8 +521,21 @@ window.addEventListener('load', () => {
     }
 
     box.innerHTML = `
-      <div>플레이 시간: <b>${formatMs(playMs)}</b></div>
-      <div>방문 노드: <b>${visitedCount}/${totalCount}</b></div>
+      <div class="outro-play">
+        ${cleared ? '<div class="clear-badge">★ ALL CLEAR ★</div>' : ''}
+        <div>플레이 시간: <b>${formatMs(playMs)}</b></div>
+        <div>방문 노드: <b>${visitedCount}/${totalCount}</b></div>
+      </div>
+      <div class="stat-window">
+        <div class="stat-title">CHARACTER STATUS — 박지영</div>
+        ${SKILL_STATS.map(s => `
+          <div class="stat-row">
+            <span class="stat-name">${s.name}</span>
+            <span class="stat-sq">${statBlocks(s.lv)}</span>
+            <span class="stat-lv">Lv.${s.lv}</span>
+          </div>
+        `).join('')}
+      </div>
     `;
   }
 
@@ -870,10 +557,8 @@ window.addEventListener('load', () => {
     const TOTAL_MS = 2000;
     const openAnimMs = MODAL_OPEN_ANIM_MS;
 
-    // 모달을 열고(= paused 처리 포함), 오픈 애니메이션 시간만큼 기다림
     await openModal(infoModal, { openAnimMs });
 
-    // 닫혔으면 중단
     if (!infoModal.classList.contains('on')) return;
 
     if (!target){
@@ -881,7 +566,6 @@ window.addEventListener('load', () => {
       return;
     }
 
-    // 오픈 애니메이션을 제외한 "남은 시간"만큼 타이핑
     const typeMs = Math.max(120, TOTAL_MS - openAnimMs);
 
     const plain = toPlainTextFromHtml(html);
@@ -899,26 +583,21 @@ window.addEventListener('load', () => {
     });
   }
 
-  // close buttons
-  if (introCloseBtn) introCloseBtn.addEventListener('click', () => {
+  /* =========================
+     Intro / Close / Exit buttons
+  ========================= */
+  function startGame(){
     ensureAudio();
-    if (!bgmIsRunning) startBgm(); // ✅ 클릭으로 시작해도 BGM 켜지게
+    if (!bgmIsRunning) startBgm();
     introModal.classList.remove('on');
     introModal.setAttribute('aria-hidden','true');
     paused = false;
     duckBgm(false);
-  });
-
-  if (startGameBtn) startGameBtn.addEventListener('click', () => {
-    ensureAudio();
-    if (!bgmIsRunning) startBgm(); // ✅ 클릭으로 시작해도 BGM 켜지게
-    introModal.classList.remove('on');
-    introModal.setAttribute('aria-hidden','true');
-    paused = false;
-    duckBgm(false);
-
     if (playStartTs === null) playStartTs = performance.now();
-  });
+  }
+
+  if (introCloseBtn) introCloseBtn.addEventListener('click', startGame);
+  if (startGameBtn) startGameBtn.addEventListener('click', startGame);
 
   if (infoCloseBtn) infoCloseBtn.addEventListener('click', () => closeModal(infoModal));
   if (timelineCloseBtn) timelineCloseBtn.addEventListener('click', () => closeModal(timelineModal));
@@ -947,20 +626,21 @@ window.addEventListener('load', () => {
     }, { passive:true });
   });
 
-  // ✅ 2) 플레이 시간 측정
+  // ✅ 플레이 시간 측정
   let playStartTs = null;
   let playEndTs = null;
 
-  if (exitBtn){
-    exitBtn.addEventListener('click', () => {
-      paused = true;
-      keys.clear();
+  function openOutro(){
+    paused = true;
+    keys.clear();
+    playEndTs = performance.now();
+    fillOutroStats();
+    stopBgmFadeOut();
+    openModal(outroModal);
+  }
 
-      playEndTs = performance.now();
-      fillOutroStats();
-      stopBgmFadeOut();
-      openModal(outroModal);
-    });
+  if (exitBtn){
+    exitBtn.addEventListener('click', openOutro);
   }
 
   /* =========================
@@ -1000,18 +680,19 @@ window.addEventListener('load', () => {
   }
 
   function nearestNode(){
-    const zone = { x: player.x - 8, y: player.y - 8, w: player.w + 16, h: player.h + 16 };
+    const cx = player.x + player.w / 2;
+    const cy = player.y + player.h / 2;
+    let best = null;
+    let bestD = 26; // 상호작용 반경
     for (const n of nodes){
-      const bw = 18, bh = 18;
-      const bx = n.x - bw/2;
-      const by = n.y - bh/2;
-      if (rectsOverlap(zone.x, zone.y, zone.w, zone.h, bx, by, bw, bh)) return n;
+      const d = Math.hypot(n.x - cx, n.y - cy);
+      if (d < bestD){ bestD = d; best = n; }
     }
-    return null;
+    return best;
   }
 
   /* =========================================================
-     Retro props: grass/rocks/lamps (random but fixed)
+     Retro props: grass/rocks/trees/lamps (random but fixed)
   ========================================================= */
   function mulberry32(seed){
     return function(){
@@ -1022,28 +703,29 @@ window.addEventListener('load', () => {
     };
   }
 
-  const props = [];
+  const props = [];       // 평면(잔디/자갈) - 바닥에 그려짐
+  const solidsProps = []; // 입체(바위/나무/가로등) - Y소팅 + 충돌
   const rng = mulberry32(20251214);
 
-  const roadRects = [
-    { x:55, y:86,  w:240, h:12 },
-    { x:49, y:55,  w:12,  h:70 },
-    { x:244,y:55,  w:12,  h:70 },
-    { x:55, y:121, w:55,  h:12 },
-  ];
-
-  function inRoad(x,y){
+  function inRoad(x, y, pad = 0){
     for (const r of roadRects){
-      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return true;
+      if (x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad) return true;
     }
     return false;
   }
 
-  function nearNode(x,y){
+  function nearNode(x, y, dist = 34){
     for (const n of nodes){
-      const dx = x - n.x;
-      const dy = y - n.y;
-      if (Math.sqrt(dx*dx + dy*dy) < 22) return true;
+      if (Math.hypot(x - n.x, y - n.y) < dist) return true;
+    }
+    return false;
+  }
+
+  function inBuilding(x, y){
+    for (const n of nodes){
+      const b = n.building;
+      if (!b) continue;
+      if (x >= b.cx - 30 && x <= b.cx + 30 && y >= b.bottom - 46 && y <= b.bottom + 8) return true;
     }
     return false;
   }
@@ -1052,39 +734,91 @@ window.addEventListener('load', () => {
 
   function initProps(){
     props.length = 0;
+    solidsProps.length = 0;
 
-    const lampXs = [80, 120, 200, 235, 275];
-    lampXs.forEach((x, idx) => {
-      const yTop = 74 + (idx % 2 === 0 ? -2 : 2);
-      const yBot = 110 + (idx % 2 === 1 ? -2 : 2);
-
-      props.push({ type:'lamp', x: x, y: yTop });
-      props.push({ type:'lamp', x: x + 6, y: yBot });
+    // 가로등: 북쪽/남쪽 길을 따라 배치
+    const lampXs = [95, 220, 380, 520];
+    lampXs.forEach((x) => {
+      solidsProps.push({ type:'lamp', x: x, y: 106 });        // 북쪽 길 위
+      solidsProps.push({ type:'lamp', x: x + 8, y: 278 });    // 남쪽 길 아래
     });
+    solidsProps.push({ type:'lamp', x: 588, y: 168 });        // 기념비 샛길
 
-    const attempts = 120;
-    for (let i=0; i<attempts; i++){
-      const x = snap16(16 + rng() * (W - 32));
-      const y = snap16(16 + rng() * (H - 32));
+    // 잔디/바위/나무 랜덤 배치 (길/건물/노드 주변 제외)
+    const attempts = 320;
+    for (let i = 0; i < attempts; i++){
+      const x = snap16(16 + rng() * (WORLD_W - 48));
+      const y = snap16(16 + rng() * (WORLD_H - 48));
 
-      if (inRoad(x,y)) continue;
-      if (nearNode(x,y)) continue;
+      if (inRoad(x, y, 6)) continue;
+      if (nearNode(x, y)) continue;
+      if (inBuilding(x, y)) continue;
 
       const roll = rng();
-      if (roll < 0.70){
+      if (roll < 0.58){
         props.push({ type:'grass', x, y, v: (rng()*3)|0 });
-      } else if (roll < 0.95){
-        props.push({ type:'rock', x, y, v: (rng()*3)|0 });
+      } else if (roll < 0.76){
+        solidsProps.push({ type:'rock', x, y, v: (rng()*3)|0 });
+      } else if (roll < 0.92){
+        solidsProps.push({ type:'tree', x, y, v: (rng()*3)|0 });
       }
     }
 
-    for (let x=55; x<=295; x+=16){
-      props.push({ type:'pebble', x, y: 82 });
-      props.push({ type:'pebble', x, y: 100 });
+    // 길 위 자갈 디테일
+    for (const r of roadRects){
+      if (r.w >= r.h){
+        for (let x = r.x + 4; x <= r.x + r.w - 8; x += 16){
+          props.push({ type:'pebble', x, y: r.y + 2 });
+          props.push({ type:'pebble', x: x + 8, y: r.y + r.h - 6 });
+        }
+      } else {
+        for (let y = r.y + 4; y <= r.y + r.h - 8; y += 16){
+          props.push({ type:'pebble', x: r.x + 2, y });
+        }
+      }
     }
   }
   initProps();
 
+  /* =========================
+     Collision solids
+  ========================= */
+  const solids = [];
+
+  function buildSolids(){
+    solids.length = 0;
+
+    // 건물 베이스 (아래쪽만 막아서 지붕 뒤로는 걸어다닐 수 있게)
+    for (const n of nodes){
+      const b = n.building;
+      if (!b) continue;
+      solids.push({ x: b.cx - 22, y: b.bottom - 14, w: 44, h: 14 });
+    }
+
+    // 기념비 받침
+    solids.push({ x: 598, y: 184, w: 14, h: 8 });
+
+    // 입체 소품
+    for (const p of solidsProps){
+      if (p.type === 'rock') solids.push({ x: p.x + 6, y: p.y + 10, w: 8, h: 5 });
+      else if (p.type === 'tree') solids.push({ x: p.x + 4, y: p.y + 12, w: 8, h: 6 });
+      else if (p.type === 'lamp') solids.push({ x: p.x - 1, y: p.y + 5, w: 4, h: 5 });
+    }
+  }
+  buildSolids();
+
+  function collides(px, py){
+    // 발밑 박스 기준 충돌 (자연스러운 겹침)
+    const bx = px + 1, by = py + 6, bw = 10, bh = 6;
+    for (const s of solids){
+      if (rectsOverlap(bx, by, bw, bh, s.x, s.y, s.w, s.h)) return true;
+    }
+    return false;
+  }
+
+  /* =========================
+     Pixel draw helpers
+  ========================= */
   function drawPixelRect(x, y, w, h, fill, stroke){
     ctx.fillStyle = fill;
     ctx.fillRect(x, y, w, h);
@@ -1098,7 +832,7 @@ window.addEventListener('load', () => {
   function drawGrass(p, t){
     const ox = p.x + 4;
     const oy = p.y + 8;
-    const sway = Math.sin(t*2 + (p.x+p.y)*0.02) * 1;
+    const sway = Math.round(Math.sin(t*2 + (p.x+p.y)*0.02) * 1);
 
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
     ctx.fillRect(ox, oy+4, 10, 2);
@@ -1124,6 +858,24 @@ window.addEventListener('load', () => {
     ctx.fillRect(ox+2, oy+1, 2, 1);
   }
 
+  function drawTree(p, t){
+    const x = p.x, y = p.y;
+    const sway = Math.round(Math.sin(t*1.6 + x*0.05) * 1);
+
+    // 그림자
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(x+3, y+16, 12, 3);
+
+    // 기둥
+    drawPixelRect(x+6, y+9, 4, 8, 'rgba(122,90,52,0.95)', 'rgba(0,0,0,0.35)');
+
+    // 잎 (2단)
+    drawPixelRect(x+1+sway, y+2, 14, 9, 'rgba(78,140,72,0.95)', 'rgba(0,0,0,0.35)');
+    drawPixelRect(x+3+sway, y-2, 10, 6, 'rgba(98,170,86,0.95)', 'rgba(0,0,0,0.30)');
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.fillRect(x+4+sway, y-1, 3, 2);
+  }
+
   function drawPebble(p){
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(p.x + 6, p.y + 2, 2, 2);
@@ -1144,17 +896,8 @@ window.addEventListener('load', () => {
     ctx.fillRect(x, y-1, 2, 2);
   }
 
-  function drawProps(t){
-    for (const p of props){
-      if (p.type === 'grass') drawGrass(p, t);
-      else if (p.type === 'rock') drawRock(p);
-      else if (p.type === 'lamp') drawLamp(p, t);
-      else if (p.type === 'pebble') drawPebble(p);
-    }
-  }
-
   /* =========================================================
-     Signboard + Node Animation
+     Buildings + Monument + Signboard
   ========================================================= */
   function nodeColor(key){
     switch(key){
@@ -1164,9 +907,95 @@ window.addEventListener('load', () => {
       case 'award': return { main:'#f7768e', edge:'#a73d52' };
       case 'cert': return { main:'#7dcfff', edge:'#3b7f95' };
       case 'lang': return { main:'#9ece6a', edge:'#4f7a2f' };
-      case 'timeline': return { main:'#9ece6a', edge:'#4f7a2f' };
+      case 'timeline': return { main:'#f6d365', edge:'#a8842b' };
       default: return { main:'#7aa2f7', edge:'#3b5fb3' };
     }
+  }
+
+  function drawBuilding(n, t, isNear){
+    const b = n.building;
+    if (!b) return;
+
+    const c = nodeColor(n.key);
+    const w = 44, hWall = 20, hRoof = 14;
+    const x = Math.round(b.cx - w/2);
+    const yBottom = b.bottom;
+    const yWall = yBottom - hWall;
+    const yRoof = yWall - hRoof;
+
+    // 그림자
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.fillRect(x + 3, yBottom - 2, w, 4);
+
+    // 벽
+    drawPixelRect(x, yWall, w, hWall, 'rgba(214,203,180,0.96)', 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = 'rgba(0,0,0,0.10)';
+    ctx.fillRect(x + 1, yBottom - 4, w - 2, 3);
+
+    // 지붕 (노드 색)
+    drawPixelRect(x - 3, yRoof, w + 6, hRoof, c.main, c.edge);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(x - 1, yRoof + 2, w + 2, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(x - 3, yRoof + hRoof - 3, w + 6, 3);
+
+    // 창문 (따뜻한 불빛 깜빡임)
+    const glow = 0.55 + Math.sin(t * 2.4 + b.cx * 0.1) * 0.15;
+    ctx.fillStyle = `rgba(255,226,150,${glow})`;
+    ctx.fillRect(x + 7, yWall + 5, 7, 7);
+    ctx.fillRect(x + w - 14, yWall + 5, 7, 7);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.strokeRect(x + 7.5, yWall + 5.5, 6, 6);
+    ctx.strokeRect(x + w - 13.5, yWall + 5.5, 6, 6);
+
+    // 문 (가까우면 하이라이트)
+    const dw = 10, dh = 13;
+    const doorX = Math.round(b.cx - dw/2);
+    drawPixelRect(doorX, yBottom - dh, dw, dh,
+      isNear ? 'rgba(126,92,50,1)' : 'rgba(96,70,40,1)', 'rgba(0,0,0,0.40)');
+    ctx.fillStyle = 'rgba(255,235,170,0.9)';
+    ctx.fillRect(doorX + dw - 3, yBottom - 7, 1, 2);
+
+    if (isNear){
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+      ctx.strokeRect(doorX - 1.5, yBottom - dh - 1.5, dw + 3, dh + 3);
+    }
+  }
+
+  function drawMonument(n, t, isNear){
+    const x = Math.round(n.x);
+    const yBase = Math.round(n.y + 3);
+    const c = nodeColor('timeline');
+
+    // ALL CLEAR 후 황금빛 글로우
+    if (clearPlayed){
+      const glowA = 0.10 + (Math.sin(t * 6.0) * 0.06);
+      ctx.fillStyle = `rgba(246, 211, 101, ${glowA})`;
+      ctx.fillRect(x - 18, yBase - 36, 36, 44);
+      ctx.strokeStyle = `rgba(246, 211, 101, ${0.45 + glowA})`;
+      ctx.strokeRect(x - 14.5, yBase - 32.5, 29, 38);
+    } else if (isNear){
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fillRect(x - 14, yBase - 32, 28, 38);
+    }
+
+    // 그림자 + 받침
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.fillRect(x - 7, yBase + 2, 18, 3);
+    drawPixelRect(x - 7, yBase - 4, 14, 7, 'rgba(170,180,195,0.85)', 'rgba(0,0,0,0.35)');
+
+    // 깃대
+    drawPixelRect(x - 1, yBase - 28, 2, 24, 'rgba(200,200,210,0.85)', 'rgba(0,0,0,0.30)');
+
+    // 황금 깃발 (펄럭임)
+    const wave = Math.round(Math.sin(t * 4) * 1);
+    drawPixelRect(x + 1, yBase - 28 + wave, 13, 9, c.main, c.edge);
+    ctx.fillStyle = 'rgba(255,255,255,0.30)';
+    ctx.fillRect(x + 2, yBase - 27 + wave, 11, 2);
+
+    // 별 장식
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x + 6, yBase - 25 + wave, 2, 2);
   }
 
   function drawSignboard(n, t, isNear){
@@ -1211,53 +1040,6 @@ window.addEventListener('load', () => {
     }
   }
 
-  function drawNodeIcon(n, t, isNear){
-    const baseSize = 18;
-    const phase = (n.x * 0.07 + n.y * 0.05);
-    const pulse = 1 + (Math.sin(t * 3.0 + phase) * 0.03) + (isNear ? 0.05 : 0);
-    const bounce = Math.sin(t * 2.2 + phase) * (isNear ? 1.8 : 1.0);
-
-    if (clearPlayed && n.key === 'timeline'){
-      const glowA = 0.10 + (Math.sin(t * 6.0) * 0.06);
-      ctx.fillStyle = `rgba(246, 211, 101, ${glowA})`;
-      ctx.fillRect(Math.round(n.x - baseSize/2) - 10, Math.round(n.y - baseSize/2 + bounce) - 10, baseSize + 20, baseSize + 20);
-
-      ctx.strokeStyle = `rgba(246, 211, 101, ${0.45 + glowA})`;
-      ctx.strokeRect(
-        Math.round(n.x - baseSize/2) - 7 + 0.5,
-        Math.round(n.y - baseSize/2 + bounce) - 7 + 0.5,
-        baseSize + 14,
-        baseSize + 14
-      );
-    } else if (isNear){
-      ctx.fillStyle = 'rgba(255,255,255,0.08)';
-      ctx.fillRect(Math.round(n.x - baseSize/2) - 6, Math.round(n.y - baseSize/2 + bounce) - 6, baseSize + 12, baseSize + 12);
-    }
-
-    ctx.save();
-    ctx.translate(Math.round(n.x), Math.round(n.y + bounce));
-    ctx.scale(pulse, pulse);
-    ctx.translate(-Math.round(n.x), -Math.round(n.y + bounce));
-
-    if (iconReady(n.key)){
-      ctx.drawImage(icons[n.key], Math.round(n.x - baseSize/2), Math.round(n.y - baseSize/2 + bounce), baseSize, baseSize);
-    } else {
-      const c = nodeColor(n.key);
-      drawPixelRect(
-        Math.round(n.x - baseSize/2),
-        Math.round(n.y - baseSize/2 + bounce),
-        baseSize, baseSize,
-        c.main, c.edge
-      );
-    }
-    ctx.restore();
-
-    const sx = n.x + Math.cos(t * 2 + n.x) * 8;
-    const sy = (n.y + bounce) + Math.sin(t * 2 + n.y) * 6;
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
-  }
-
   /* =========================================================
      "!" Pop
   ========================================================= */
@@ -1298,41 +1080,65 @@ window.addEventListener('load', () => {
   }
 
   /* =========================
+     Camera
+  ========================= */
+  function getCamera(){
+    const cx = Math.round(player.x + player.w/2 - VIEW_W/2);
+    const cy = Math.round(player.y + player.h/2 - VIEW_H/2);
+    return {
+      x: Math.max(0, Math.min(WORLD_W - VIEW_W, cx)),
+      y: Math.max(0, Math.min(WORLD_H - VIEW_H, cy)),
+    };
+  }
+
+  /* =========================
      Render
   ========================= */
-  function drawBG(){
-    for (let y=0; y<H; y+=16){
-      for (let x=0; x<W; x+=16){
-        const even = ((x+y)/16) % 2 === 0;
+  function drawBG(cam){
+    const x0 = Math.floor(cam.x / 16) * 16;
+    const y0 = Math.floor(cam.y / 16) * 16;
+
+    for (let y = y0; y < cam.y + VIEW_H + 16; y += 16){
+      for (let x = x0; x < cam.x + VIEW_W + 16; x += 16){
+        const even = ((x + y) / 16) % 2 === 0;
         ctx.fillStyle = even ? '#0f1a14' : '#0d1712';
         ctx.fillRect(x, y, 16, 16);
       }
     }
 
-    ctx.fillStyle = '#2a3646';
-    ctx.fillRect(55, 86, 240, 12);
-    ctx.fillRect(49, 55, 12, 70);
-    ctx.fillRect(244, 55, 12, 70);
-    ctx.fillRect(55, 121, 55, 12);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    ctx.fillRect(55, 85, 240, 1);
-    ctx.fillRect(55, 98, 240, 1);
+    // 길
+    for (const r of roadRects){
+      ctx.fillStyle = '#2a3646';
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+    }
+    // 길 가장자리 하이라이트
+    for (const r of roadRects){
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      if (r.w >= r.h){
+        ctx.fillRect(r.x, r.y, r.w, 1);
+        ctx.fillRect(r.x, r.y + r.h - 1, r.w, 1);
+      } else {
+        ctx.fillRect(r.x, r.y, 1, r.h);
+        ctx.fillRect(r.x + r.w - 1, r.y, 1, r.h);
+      }
+    }
   }
 
-  function drawPressSpace(){
+  function drawPressSpace(cam){
     const n = nearestNode();
     if (!n) return;
 
-    const text = 'Press Space';
+    const isTouch = touchControls && getComputedStyle(touchControls).display !== 'none';
+    const text = isTouch ? 'Tap A' : 'Press Space';
     ctx.font = '10px monospace';
     const pad = 6;
     const tw = ctx.measureText(text).width;
     const bw = tw + pad * 2;
     const bh = 16;
 
-    const bx = Math.max(6, Math.min(W - bw - 6, player.x + player.w/2 - bw/2));
-    const by = Math.max(6, player.y - 22);
+    // 화면 안에 머물도록 카메라 기준 클램프
+    const bx = Math.max(cam.x + 4, Math.min(cam.x + VIEW_W - bw - 4, player.x + player.w/2 - bw/2));
+    const by = Math.max(cam.y + 4, player.y - 22);
 
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
     ctx.fillRect(bx, by, bw, bh);
@@ -1350,7 +1156,7 @@ window.addEventListener('load', () => {
     }
 
     const dx = Math.round(player.x - (DRAW_W - player.w)/2);
-    const dy = Math.round(player.y - (DRAW_H - player.h)/2);
+    const dy = Math.round(player.y - (DRAW_H - player.h)/2 - 6); // 발 위치 보정
 
     const sideImg = (walkFrame === 0) ? sprites.side1 : sprites.side2;
 
@@ -1381,23 +1187,64 @@ window.addEventListener('load', () => {
     const dt = now - lastRenderTs;
     lastRenderTs = now;
 
-    ctx.clearRect(0,0,W,H);
-    drawBG();
-
+    const cam = getCamera();
     const t = now / 1000;
-    drawProps(t);
-
     const near = nearestNode();
-    for (const n of nodes){
-      const isNear = !!near && near.key === n.key;
-      drawNodeIcon(n, t, isNear);
-      drawSignboard(n, t, isNear);
+
+    ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+
+    ctx.save();
+    ctx.translate(-cam.x, -cam.y);
+
+    // 1) 바닥
+    drawBG(cam);
+
+    // 2) 평면 소품 (잔디/자갈)
+    for (const p of props){
+      if (p.type === 'grass') drawGrass(p, t);
+      else if (p.type === 'pebble') drawPebble(p);
     }
 
-    drawPops();
-    drawPlayer();
-    drawPressSpace();
+    // 3) 입체 오브젝트 Y-소팅 (바위/나무/가로등/건물/기념비/플레이어)
+    const drawables = [];
 
+    for (const p of solidsProps){
+      const sortY =
+        p.type === 'tree' ? p.y + 18 :
+        p.type === 'rock' ? p.y + 15 :
+        p.y + 10; // lamp
+      drawables.push({ sortY, draw: () => {
+        if (p.type === 'rock') drawRock(p);
+        else if (p.type === 'tree') drawTree(p, t);
+        else if (p.type === 'lamp') drawLamp(p, t);
+      }});
+    }
+
+    for (const n of nodes){
+      const isNear = !!near && near.key === n.key;
+      if (n.building){
+        drawables.push({ sortY: n.building.bottom, draw: () => drawBuilding(n, t, isNear) });
+      } else {
+        drawables.push({ sortY: n.y + 5, draw: () => drawMonument(n, t, isNear) });
+      }
+    }
+
+    drawables.push({ sortY: player.y + player.h, draw: drawPlayer });
+
+    drawables.sort((a, b) => a.sortY - b.sortY);
+    for (const d of drawables) d.draw();
+
+    // 4) 표지판 + 팝 + 말풍선 (오브젝트 위에)
+    for (const n of nodes){
+      const isNear = !!near && near.key === n.key;
+      drawSignboard(n, t, isNear);
+    }
+    drawPops();
+    drawPressSpace(cam);
+
+    ctx.restore();
+
+    // 5) 스크린 고정 UI
     drawAllClear();
     updatePops(dt);
   }
@@ -1444,19 +1291,19 @@ window.addEventListener('load', () => {
     else if (player.vy < 0) facing = 'up';
     else if (player.vy > 0) facing = 'down';
 
-    // ✅ 실제로 "움직였는지" 기준으로 발소리/애니메이션 처리
     const oldX = player.x;
     const oldY = player.y;
 
-    player.x += player.vx;
-    player.y += player.vy;
+    // ✅ 축 분리 이동 + 충돌 체크 (벽에 비비면서 미끄러지게)
+    const nx = Math.max(0, Math.min(WORLD_W - player.w, player.x + player.vx));
+    if (!collides(nx, player.y)) player.x = nx;
 
-    player.x = Math.max(0, Math.min(W - player.w, player.x));
-    player.y = Math.max(0, Math.min(H - player.h, player.y));
+    const ny = Math.max(0, Math.min(WORLD_H - player.h, player.y + player.vy));
+    if (!collides(player.x, ny)) player.y = ny;
 
     const moved = (player.x !== oldX || player.y !== oldY);
 
-    // ✅ 발소리: 키 입력이 아니라 "실제 이동"일 때만
+    // ✅ 발소리: 실제 이동일 때만
     if (moved){
       if (ts - lastStepTime >= STEP_INTERVAL) {
         try {
@@ -1491,10 +1338,52 @@ window.addEventListener('load', () => {
   requestAnimationFrame(loop);
 
   /* =========================
+     Interact (Space / A버튼 / 탭 공용)
+  ========================= */
+  function interactNearest(){
+    if (!layer.classList.contains('on')) return;
+
+    // 인트로가 떠 있으면 = 게임 시작
+    if (introModal && introModal.classList.contains('on')){
+      startGame();
+      playTone({ type:'sine', freq: 660, dur:0.06, gain:0.07 });
+      return;
+    }
+    if (paused) return;
+
+    const n = nearestNode();
+    if (!n) return;
+
+    const dx = n.x - player.x;
+    const dy = n.y - player.y;
+    if (Math.abs(dx) > Math.abs(dy)) facing = dx > 0 ? 'right' : 'left';
+    else facing = dy > 0 ? 'down' : 'up';
+
+    spawnPop(n);
+    paused = true;
+    keys.clear();
+
+    if (n.key === 'timeline'){
+      playSfxForKey('timeline');
+      openModal(timelineModal);
+    } else {
+      openInfo(n.key);
+    }
+  }
+
+  /* =========================
      Keys
   ========================= */
+  const ARROWS = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'];
+
   window.addEventListener('keydown', (e) => {
     ensureAudio();
+
+    // 게임 중 화살표/스페이스로 페이지가 스크롤되지 않게
+    if (ARROWS.includes(e.key) || e.key === ' '){
+      if (layer.classList.contains('on')) e.preventDefault();
+    }
+
     keys.add(e.key);
 
     if (!bgmIsRunning) startBgm();
@@ -1503,54 +1392,76 @@ window.addEventListener('load', () => {
       playStartTs = performance.now();
     }
 
-    if (introModal && introModal.classList.contains('on') && e.key === ' '){
-      e.preventDefault();
-      introModal.classList.remove('on');
-      introModal.setAttribute('aria-hidden','true');
-      paused = false;
-
-      if (playStartTs === null) playStartTs = performance.now();
-
-      playTone({ type:'sine', freq: 660, dur:0.06, gain:0.07 });
-      duckBgm(false);
-      return;
-    }
-
     if (e.key === ' '){
-      e.preventDefault();
-      if (!layer.classList.contains('on')) return;
-
-      const n = nearestNode();
-      if (!n) return;
-
-      const dx = n.x - player.x;
-      const dy = n.y - player.y;
-      if (Math.abs(dx) > Math.abs(dy)) facing = dx > 0 ? 'right' : 'left';
-      else facing = dy > 0 ? 'down' : 'up';
-
-      spawnPop(n);
-      paused = true;
-      keys.clear();
-
-      if (n.key === 'timeline'){
-        playSfxForKey('timeline');
-        openModal(timelineModal);
-      } else {
-        openInfo(n.key);
-      }
+      interactNearest();
+      return;
     }
 
     if (e.key === 'Escape'){
       if (infoModal?.classList.contains('on')) { closeModal(infoModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
       if (timelineModal?.classList.contains('on')) { closeModal(timelineModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
       if (outroModal?.classList.contains('on')) { closeModal(outroModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
+      if (introModal?.classList.contains('on')) return;
 
-      playEndTs = performance.now();
-      fillOutroStats();
-      stopBgmFadeOut();
-      openModal(outroModal);
+      openOutro();
     }
   });
 
   window.addEventListener('keyup', (e) => keys.delete(e.key));
+
+  /* =========================
+     ✅ Mobile: 가상 D-pad + A버튼 + 캔버스 탭
+  ========================= */
+  function bindHoldButton(el, key){
+    if (!el) return;
+    const down = (e) => {
+      e.preventDefault();
+      ensureAudio();
+      if (!bgmIsRunning) startBgm();
+      keys.add(key);
+      el.classList.add('pressed');
+      if (playStartTs === null && !paused) playStartTs = performance.now();
+    };
+    const up = (e) => {
+      if (e) e.preventDefault();
+      keys.delete(key);
+      el.classList.remove('pressed');
+    };
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointerleave', () => up());
+    el.addEventListener('pointercancel', () => up());
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  if (touchControls){
+    touchControls.querySelectorAll('[data-dir]').forEach(btn => {
+      bindHoldButton(btn, btn.getAttribute('data-dir'));
+    });
+  }
+
+  if (actBtn){
+    actBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      ensureAudio();
+      if (!bgmIsRunning) startBgm();
+      interactNearest();
+    });
+    actBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  // 캔버스 탭/클릭: 가까운 노드를 탭하면 상호작용
+  canvas.addEventListener('click', (e) => {
+    if (paused) return;
+    const rect = canvas.getBoundingClientRect();
+    const cam = getCamera();
+    const wx = (e.clientX - rect.left) * (VIEW_W / rect.width) + cam.x;
+    const wy = (e.clientY - rect.top) * (VIEW_H / rect.height) + cam.y;
+
+    const n = nearestNode();
+    if (!n) return;
+    if (Math.hypot(wx - n.x, wy - n.y) < 30){
+      interactNearest();
+    }
+  });
 });

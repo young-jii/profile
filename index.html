@@ -1,132 +1,147 @@
 <!DOCTYPE HTML>
-<html>
-<head>
-  <title>jiyoung profile</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<html lang="ko">
+	<head>
+		<title>박지영 | 게임으로 즐기는 포트폴리오</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<meta name="description" content="화살표로 이동하고 Space로 확인하는 RPG형 이력서. 콘텐츠 기획 × 데이터 분석 × 자동화." />
 
-  <!-- 기존 테마 CSS -->
-  <link rel="stylesheet" href="assets/css/main.css" />
+		<!-- ✅ OG 메타태그: 카톡/링크드인 등 링크 공유 시 미리보기 -->
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="박지영 | 게임으로 즐기는 포트폴리오" />
+		<meta property="og:description" content="화살표로 이동하고 Space로 확인하는 RPG형 이력서. 콘텐츠 기획 × 데이터 분석 × 자동화." />
+		<meta property="og:image" content="https://young-jii.github.io/profile/images/og_thumb.png" />
+		<meta property="og:url" content="https://young-jii.github.io/profile/" />
+		<meta name="twitter:card" content="summary_large_image" />
 
-  <!-- Game CSS -->
-  <link rel="stylesheet" href="assets/css/game.css" />
+		<!-- 기존 테마 CSS -->
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<!-- Game CSS -->
+		<link rel="stylesheet" href="assets/css/game.css?v=2" />
+		<!-- ✅ 첫 로딩 깜빡임 방지: 게임을 즉시 on -->
+		<script>
+			document.documentElement.classList.add('game-on');
+		</script>
+	</head>
+	<body class="is-preload">
 
-  <!-- ✅ 첫 로딩 깜빡임 방지: 게임을 즉시 on -->
-  <script>
-    document.documentElement.classList.add('game-on');
-  </script>
-</head>
+		<!-- Game Layer -->
+		<div id="gameLayer" aria-hidden="true">
+			<div class="game-stage">
+				<canvas id="gameCanvas" width="320" height="180"></canvas>
 
-<body class="is-preload">
+				<!-- HUD / UI (캔버스 바로 아래에 붙게) -->
+				<div class="game-ui">
+					<div class="game-left">
+						<div id="careerHUD" class="career-hud">경력 계산중…</div>
+						<div id="gameHint">Move: Arrow Keys / D-pad · Interact: Space / A</div>
+						<!-- ✅ 퀘스트 체크리스트: 방문한 노드가 체크됨 -->
+						<div id="questBar" class="quest-bar"></div>
+					</div>
+					<button id="exitGameBtn" type="button">Exit Game</button>
+				</div>
 
-<!-- Game Layer -->
-<div id="gameLayer" aria-hidden="true">
-  <div class="game-stage">
-    <canvas id="gameCanvas" width="320" height="180"></canvas>
+				<!-- ✅ 모바일 가상 컨트롤 (터치 기기에서만 표시) -->
+				<div id="touchControls" aria-hidden="true">
+					<div id="dpad">
+						<button type="button" class="dp up"    data-dir="ArrowUp"    aria-label="위로 이동">▲</button>
+						<button type="button" class="dp left"  data-dir="ArrowLeft"  aria-label="왼쪽으로 이동">◀</button>
+						<button type="button" class="dp right" data-dir="ArrowRight" aria-label="오른쪽으로 이동">▶</button>
+						<button type="button" class="dp down"  data-dir="ArrowDown"  aria-label="아래로 이동">▼</button>
+					</div>
+					<button type="button" id="actBtn" aria-label="상호작용">A</button>
+				</div>
 
-    <!-- HUD / UI (캔버스 바로 아래에 붙게) -->
-    <div class="game-ui">
-      <div class="game-left">
-        <div id="careerHUD" class="career-hud">경력 계산중…</div>
-        <div id="gameHint">Move: Arrow Keys · Interact: Space</div>
-      </div>
-      <button id="exitGameBtn" type="button">Exit Game</button>
-    </div>
+				<!-- Intro Modal -->
+				<div id="introModal" class="game-modal on" aria-hidden="false">
+					<div class="game-modal-card">
+						<div class="game-modal-head">
+							<div class="game-modal-title">지영's 포트폴리오</div>
+							<button id="introCloseBtn" class="game-modal-close" type="button">×</button>
+						</div>
+						<div class="game-modal-body">
+							<p class="modal-lead">
+								이 페이지는 "이력서를 게임으로" 만든 포트폴리오입니다.<br/>
+								화살표(또는 D-pad)로 마을을 돌아다니며,<br/>
+								건물 앞에서 Space(또는 A)로 내용을 확인해 주세요.<br/>
+								즐겁게 봐주시기를 바라요:)
+							</p>
+							<div class="modal-actions">
+								<button id="startGameBtn" class="modal-primary" type="button">Start (Space)</button>
+								<a class="modal-secondary" href="resume.html">⏩ 텍스트 이력서로 보기</a>
+							</div>
+						</div>
+					</div>
+				</div>
 
-    <!-- Intro Modal -->
-    <div id="introModal" class="game-modal on" aria-hidden="false">
-      <div class="game-modal-card">
-        <div class="game-modal-head">
-          <div class="game-modal-title">지영's 포트폴리오</div>
-          <button id="introCloseBtn" class="game-modal-close" type="button">×</button>
-        </div>
-        <div class="game-modal-body">
-          <p class="modal-lead">
-            이 페이지는 “이력서를 게임으로” 만든 포트폴리오입니다.<br/>
-            화살표로 이동하고, 아이콘 근처에서 Space로 내용을 확인해 주세요.<br/>
-            즐겁게 봐주시기를 바라요:)
-          </p>
-          <div class="modal-actions">
-            <button id="startGameBtn" class="modal-primary" type="button">Start (Space)</button>
-          </div>
-        </div>
-      </div>
-    </div>
+				<!-- Outro Modal (Exit 클릭 시 열림) -->
+				<div id="outroModal" class="game-modal" aria-hidden="true">
+					<div class="game-modal-card">
+						<div class="game-modal-head">
+							<div class="game-modal-title"> 지금까지 박지영이었습니다:) </div>
+							<button id="outroCloseBtn" class="game-modal-close" type="button">×</button>
+						</div>
+						<div class="game-modal-body">
+							<p class="modal-lead">
+								이 페이지는 제가 어떻게 일해왔고,<br/>
+								어떤 방식으로 문제를 해결하는지를 담은 기록입니다.<br/><br/>
+								다음 스테이지를 함께 플레이할 동료를 만날 수 있기를 기대합니다.
+							</p>
+							<div class="modal-actions">
+								<a class="modal-primary" href="mailto:jiyoung16park@gmail.com">Email</a>
+								<a class="modal-secondary" href="resume.html">텍스트 이력서</a>
+							</div>
+						</div>
+					</div>
+				</div>
 
-    <!-- Outro Modal (Exit 클릭 시 열림) -->
-    <div id="outroModal" class="game-modal" aria-hidden="true">
-      <div class="game-modal-card">
-        <div class="game-modal-head">
-          <div class="game-modal-title"> 지금까지 박지영이었습니다:) </div>
-          <button id="outroCloseBtn" class="game-modal-close" type="button">×</button>
-        </div>
-        <div class="game-modal-body">
-          <p class="modal-lead">
-          이 페이지는 제가 어떻게 일해왔고,<br/>
-          어떤 방식으로 문제를 해결하는지를 담은 기록입니다.<br/><br/>
-          다음 스테이지를 함께 플레이할 동료를 만날 수 있기를 기대합니다.
-          </p>
-          <div class="modal-actions">
-            <a class="modal-primary" href="mailto:jiyoung16park@gmail.com">Email</a>
-          </div>
-        </div>
-      </div>
-    </div>
+				<!-- Info Modal (각 건물 Space 시 열림) -->
+				<div id="infoModal" class="game-modal" aria-hidden="true">
+					<div class="game-modal-card">
+						<div class="game-modal-head">
+							<div class="game-modal-title" id="infoModalTitle">정보</div>
+							<button id="infoCloseBtn" class="game-modal-close" type="button">×</button>
+						</div>
+						<div class="game-modal-body" id="infoModalBody"></div>
+					</div>
+				</div>
 
-    <!-- Info Modal (각 아이콘 Space 시 열림) -->
-    <div id="infoModal" class="game-modal" aria-hidden="true">
-      <div class="game-modal-card">
-        <div class="game-modal-head">
-          <div class="game-modal-title" id="infoModalTitle">정보</div>
-          <button id="infoCloseBtn" class="game-modal-close" type="button">×</button>
-        </div>
-        <div class="game-modal-body" id="infoModalBody"></div>
-      </div>
-    </div>
+				<!-- Timeline Modal -->
+				<div id="timelineModal" class="game-modal" aria-hidden="true">
+					<div class="game-modal-card">
+						<div class="game-modal-head">
+							<div class="game-modal-title">Life Timeline</div>
+							<button id="timelineCloseBtn" class="game-modal-close" type="button">×</button>
+						</div>
+						<div class="game-modal-body" id="timelineBody">
+							<div class="tl-item tl-edu"><span>은광여자고등학교 졸업 | 인문계</span><span>2012.03 ~ 2015.02</span></div>
+							<div class="tl-item tl-edu"><span>경희대학교 졸업 | 국어국문학과 | 학점: 3.92/4.5</span><span>2016.03 ~ 2022.02</span></div>
+							<div class="tl-item tl-cert"><span>워드프로세서 | 대한상공회의소</span><span>2019.09.13</span></div>
+							<div class="tl-item tl-cert"><span>GTQ그래픽기술자격 1급 | 한국생산성본부</span><span>2020.02.07</span></div>
+							<div class="tl-item tl-cert"><span>컴퓨터활용능력 1급 | 대한상공회의소</span><span>2020.08.28</span></div>
+							<div class="tl-item tl-work"><span>천재교과서 | 콘텐츠2 국어부 초등국어팀</span><span>2021.08 ~ 2023.06</span></div>
+							<div class="tl-item tl-train"><span>협업 필터링 및 자연어 처리 기반 A.I. 추천 분석 시스템 제작 과정 | 성균관대학교 산학협력단</span><span>2023.06 ~ 2023.12</span></div>
+							<div class="tl-item tl-award"><span>2023 제 1회 K - 디지털플랫폼 AI 경진대회 | 특별상 수상</span><span>2023.12.13</span></div>
+							<div class="tl-item tl-train"><span>고객경험데이터를 활용한 데이터 비즈니스 분석가 과정 | IT 여성기업인협회</span><span>2024.02 ~ 2024.07</span></div>
+							<div class="tl-item tl-cert"><span>SQL 개발자 | 한국데이터산업진흥원</span><span>2024.04.05</span></div>
+							<div class="tl-item tl-cert"><span>데이터 분석 준전문가 | 한국데이터산업진흥원</span><span>2025.09.05</span></div>
+							<div class="tl-item tl-lang"><span>TOEIC | 785점</span><span>2024.06.30</span></div>
+							<div class="tl-item tl-lang"><span>TOEIC Speaking | Intermediate High (Speaking Score 150)</span><span>2025.09.13</span></div>
+							<div class="tl-item tl-work"><span>EBS(한국교육방송공사) | 디지털교육서비스부</span><span>2024.07 ~ (현재)</span></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 
-    <!-- Timeline Modal -->
-    <div id="timelineModal" class="game-modal" aria-hidden="true">
-      <div class="game-modal-card">
-        <div class="game-modal-head">
-          <div class="game-modal-title">Life Timeline</div>
-          <button id="timelineCloseBtn" class="game-modal-close" type="button">×</button>
-        </div>
-        <div class="game-modal-body" id="timelineBody">
-          <div class="tl-item tl-edu"><span>은광여자고등학교 졸업 | 인문계</span><span>2012.03 ~ 2015.02</span></div>
-          <div class="tl-item tl-edu"><span>경희대학교 졸업 | 국어국문학과 | 학점: 3.92/4.5</span><span>2016.03 ~ 2022.02</span></div>
+		<!-- ✅ 기존 페이지(텍스트/섹션)는 유지하되, 기본은 게임만 보여주고 싶다면 game.css에서 숨김 처리함 -->
+		<div id="main">
+			<!-- 필요하면 남겨두되, 게임이 메인이라면 아래 섹션은 굳이 수정 안 해도 됨 -->
+		</div>
 
-          <div class="tl-item tl-cert"><span>워드프로세서 | 대한상공회의소</span><span>2019.09.13</span></div>
-          <div class="tl-item tl-cert"><span>GTQ그래픽기술자격 1급 | 한국생산성본부</span><span>2020.02.07</span></div>
-          <div class="tl-item tl-cert"><span>컴퓨터활용능력 1급 | 대한상공회의소</span><span>2020.08.28</span></div>
-
-          <div class="tl-item tl-work"><span>천재교과서 | 콘텐츠2 국어부 초등국어팀</span><span>2021.08 ~ 2023.06</span></div>
-          <div class="tl-item tl-train"><span>협업 필터링 및 자연어 처리 기반 A.I. 추천 분석 시스템 제작 과정 | 성균관대학교 산학협력단</span><span>2023.06 ~ 2023.12</span></div>
-          <div class="tl-item tl-award"><span>2023 제 1회 K - 디지털플랫폼 AI 경진대회 | 특별상 수상</span><span>2023.12.13</span></div>
-          <div class="tl-item tl-train"><span>고객경험데이터를 활용한 데이터 비즈니스 분석가 과정 | IT 여성기업인협회</span><span>2024.02 ~ 2024.07</span></div>
-
-          <div class="tl-item tl-cert"><span>SQL 개발자 | 한국데이터산업진흥원</span><span>2024.04.05</span></div>
-          <div class="tl-item tl-cert"><span>데이터 분석 준전문가 | 한국데이터산업진흥원</span><span>2025.09.05</span></div>
-
-          <div class="tl-item tl-lang"><span>TOEIC | 785점</span><span>2024.06.30</span></div>
-          <div class="tl-item tl-lang"><span>TOEIC Speaking | Intermediate High (Speaking Score 150)</span><span>2025.09.13</span></div>
-
-          <div class="tl-item tl-work"><span>EBS(한국교육방송공사) | 디지털교육서비스부</span><span>2024.07 ~ (현재)</span></div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-  <!-- ✅ 기존 페이지(텍스트/섹션)는 유지하되, 기본은 게임만 보여주고 싶다면 game.css에서 숨김 처리함 -->
-  <div id="main">
-    <!-- 필요하면 남겨두되, 게임이 메인이라면 아래 섹션은 굳이 수정 안 해도 됨 -->
-  </div>
-
-  <!-- Scripts -->
-  <script src="./assets/js/game.js?v=1" defer></script>
-</body>
+		<!-- Scripts -->
+		<!-- ✅ 콘텐츠 데이터(이력 내용)는 content.js 로 분리 — 내용 수정은 이 파일에서! -->
+		<script src="./assets/js/content.js?v=1" defer></script>
+		<script src="./assets/js/game.js?v=2" defer></script>
+	</body>
 </html>
-
-
-
