@@ -707,6 +707,7 @@ body.game-on #main, body.game-on #header, body.game-on #footer{ display: none !i
 /* ✅ 시트가 열려있을 땐 게임 컨트롤/대화창 숨김 (겹침 방지) */
 body.sheet-open #touchControls,
 body.sheet-open #dialogueBar,
+body.sheet-open #npcDialogue,
 body.sheet-open #hudBottom{
   display: none !important;
 }
@@ -741,4 +742,112 @@ body.sheet-open #hudBottom{
 @keyframes panelIn{
   from{ transform: translateX(36px); opacity: 0.45; }
   to{ transform: translateX(0); opacity: 1; }
+}
+
+/* ============================================================
+   ✅ NPC 대화창 + 선택지 (동물의 숲 무드)
+============================================================ */
+#npcDialogue{
+  position: absolute;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(14px);
+  width: min(680px, calc(100% - 28px));
+  z-index: 45;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s ease, transform .2s ease, visibility .2s;
+  pointer-events: none;
+}
+#npcDialogue.on{
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.npc-box{
+  position: relative;
+  background: var(--paper);
+  border: 3px solid var(--frame);
+  border-radius: 20px;
+  box-shadow: 0 7px 0 rgba(43,38,32,0.45), 0 16px 32px rgba(0,0,0,0.4);
+  padding: 16px 20px 18px;
+  cursor: pointer;
+}
+.npc-name{
+  position: absolute;
+  top: -14px;
+  left: 18px;
+  font-family: var(--body);
+  font-weight: 800;
+  font-size: 13px;
+  color: #fff;
+  background: var(--gold);
+  border: 2px solid var(--frame);
+  border-radius: 11px;
+  padding: 4px 12px;
+  box-shadow: 0 3px 0 rgba(43,38,32,0.4);
+}
+.npc-text{
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-line;
+  min-height: 2.6em;
+  padding-top: 4px;
+}
+.npc-cta{
+  position: absolute;
+  right: 16px;
+  bottom: 10px;
+  font-size: 12px;
+  color: var(--gold);
+  animation: dlgBlink 1.1s steps(2) infinite;
+}
+.npc-choices{
+  display: none;
+  margin-top: 10px;
+  gap: 9px;
+  flex-direction: column;
+}
+#npcDialogue.menu-on .npc-choices{ display: flex; }
+.npc-choice{
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 15px;
+  text-align: left;
+  padding: 13px 16px;
+  border: 3px solid var(--frame);
+  border-radius: 15px;
+  background: var(--paper-soft);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(43,38,32,0.3);
+  transition: transform .08s ease, box-shadow .08s ease, background .12s ease;
+}
+.npc-choice:active{
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(43,38,32,0.3);
+}
+.npc-choice.sel{
+  background: var(--gold-soft);
+  border-color: var(--gold);
+}
+.npc-choice.sel::before{
+  content: '▶ ';
+  color: var(--gold);
+}
+
+@media (max-width: 700px){
+  #npcDialogue{
+    bottom: calc(150px + env(safe-area-inset-bottom));
+    width: calc(100% - 24px);
+  }
+  .npc-text{ font-size: 14.5px; }
+  .npc-choice{ font-size: 14px; padding: 12px 14px; }
+}
+@media (pointer: coarse){
+  #npcDialogue{ bottom: calc(186px + env(safe-area-inset-bottom)); }
 }

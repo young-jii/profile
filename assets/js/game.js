@@ -35,6 +35,12 @@ window.addEventListener('load', () => {
   const dlgName = document.getElementById('dlgName');
   const dlgText = document.getElementById('dlgText');
   const dlgCta = document.getElementById('dlgCta');
+
+  const npcDialogue = document.getElementById('npcDialogue');
+  const npcNameEl = document.getElementById('npcName');
+  const npcTextEl = document.getElementById('npcText');
+  const npcCtaEl = document.getElementById('npcCta');
+  const npcChoicesEl = document.getElementById('npcChoices');
   const questCount = document.getElementById('questCount');
 
   // === Footstep Sound (file) ===
@@ -300,6 +306,70 @@ window.addEventListener('load', () => {
   let walkFrame = 0;          // 0..3 사이클
   let walkTimer = 0;
   const WALK_INTERVAL = 130;  // 프레임 전환 간격(ms)
+
+  // ✅ NPC 스프라이트 시트 (6명 × 2프레임: 일반/눈깜빡)
+  const npcSheet = new Image();
+  npcSheet.src = 'assets/css/images/npc_sheet.png?v=1';
+  function npcSheetReady(){ return npcSheet.complete && npcSheet.naturalWidth > 0; }
+  const NPC_COL = { school:0, company:1, training:2, award:3, cert:4, lang:5 };
+
+  /* =========================
+     ✅ Scene 상태머신: 'town' ↔ 'interior'
+  ========================= */
+  let scene = 'town';
+  let interiorKey = null;     // 현재 들어간 건물 key
+  let transition = null;      // {phase:'out'|'in', t, dur, next}
+
+  // 인테리어 내부 좌표계 (각 방은 독립 200×150)
+  const ROOM_W = 200, ROOM_H = 150;
+  const roomPlayer = { x: 92, y: 120, w: 12, h: 12 };
+  const npc = { x: 94, y: 60, w: 12, h: 12 };
+  let npcBlink = 0;
+
+  // NPC 대화 데이터: 방마다 인사 + 짧은 요약 + 이름/직함
+  const NPC_DATA = {
+    school: {
+      name: '김 교수',
+      hello: '어서 와요! 국어국문학과에 잘 왔어요.\n지영 씨는 글로 구조를 만드는 데 재능이 있었죠.',
+      short: '경희대 국어국문학과 졸업(학점 3.92/4.5).\n글의 뼈대를 세우는 힘이 여기서 시작됐어요.',
+      bye: '언제든 또 들러요. 응원할게요!',
+    },
+    company: {
+      name: '이 팀장',
+      hello: '오, 지영 씨 왔구나!\n우리 팀에서 정말 많은 걸 해냈었지.',
+      short: '천재교과서→EBS. 콘텐츠 기획부터\n문항코드 추출 자동화까지 직접 만들었어요.',
+      bye: '다음 프로젝트도 기대할게. 수고했어!',
+    },
+    training: {
+      name: '박 멘토',
+      hello: '반가워요! 여기는 배움의 공간이에요.\n지영 씨는 늘 끝까지 파고드는 분이었죠.',
+      short: 'AI 추천 시스템 과정 + 데이터 비즈니스\n분석가 과정. 두 번의 집중 훈련 기록이에요.',
+      bye: '계속 성장하는 모습, 멋져요!',
+    },
+    award: {
+      name: '심사위원',
+      hello: '아, 그때 그 수상자시군요!\n인상 깊은 결과물이었습니다.',
+      short: 'K-디지털플랫폼 AI 경진대회 특별상 수상.\n문제 정의부터 구현까지 인정받았어요.',
+      bye: '앞으로의 도전도 응원합니다!',
+    },
+    cert: {
+      name: '자격 사서',
+      hello: '어서 오세요. 이곳은 자격의 전당이에요.\n차근차근 쌓아온 게 보이네요.',
+      short: 'SQLD · ADsP · 컴활 1급 · GTQ 1급 등.\n도구를 제대로 다룰 줄 안다는 증명이에요.',
+      bye: '필요한 자격은 또 찾아오면 돼요!',
+    },
+    lang: {
+      name: 'Jamie',
+      hello: 'Hi! Welcome :)\n글로벌 협업도 문제없이 준비된 분이에요.',
+      short: 'TOEIC 785 · Speaking IH(150).\n읽고 말하는 것 모두 준비되어 있어요.',
+      bye: 'See you again! 다음에 또 봐요!',
+    },
+  };
+
+  // 방 테마 색 (벽/바닥) — nodeColor는 아래에서 함수 선언(호이스팅)됨
+  function roomTheme(key){
+    return nodeColor(key);
+  }
 
   /* =========================
      Map: Roads / Nodes(건물) / Monument
@@ -641,7 +711,10 @@ window.addEventListener('load', () => {
   }
 
   if (exitBtn){
-    exitBtn.addEventListener('click', openOutro);
+    exitBtn.addEventListener('click', () => {
+      if (scene === 'interior'){ exitInterior(); return; }
+      openOutro();
+    });
   }
 
   /* =========================
@@ -1130,7 +1203,7 @@ window.addEventListener('load', () => {
     return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
   }
 
-  const GRASS_TONES = ['#77b24f', '#74ae4b', '#7ab453'];
+  const GRASS_TONES = ['#94cf63', '#8fc95d', '#9bd56a'];
   const FLOWER_TONES = ['#ffffff', '#ffd95e', '#f49ac1', '#9db8ff'];
 
   function drawBG(cam, t){
@@ -1147,7 +1220,7 @@ window.addEventListener('load', () => {
         const h2 = tileHash(x, y, 2);
         if (h2 > 0.55){
           // 풀결 (짙은 초록 점 두어 개)
-          ctx.fillStyle = '#639a40';
+          ctx.fillStyle = '#7ab84f';
           const gx = x + 3 + ((h2 * 9) | 0);
           const gy = y + 3 + ((tileHash(x, y, 3) * 9) | 0);
           ctx.fillRect(gx, gy, 2, 1);
@@ -1168,20 +1241,20 @@ window.addEventListener('load', () => {
 
     // ----- 흙길 -----
     for (const r of roadRects){
-      ctx.fillStyle = '#d4a96c';
+      ctx.fillStyle = '#e6c68a';
       ctx.fillRect(r.x, r.y, r.w, r.h);
 
       // 가장자리: 짙은 테두리 + 밝은 윗단 (입체감)
-      ctx.fillStyle = '#a87f48';
+      ctx.fillStyle = '#c8a060';
       if (r.w >= r.h){
         ctx.fillRect(r.x, r.y, r.w, 1);
         ctx.fillRect(r.x, r.y + r.h - 1, r.w, 1);
-        ctx.fillStyle = '#e2c084';
+        ctx.fillStyle = '#f3dca8';
         ctx.fillRect(r.x, r.y + 1, r.w, 1);
       } else {
         ctx.fillRect(r.x, r.y, 1, r.h);
         ctx.fillRect(r.x + r.w - 1, r.y, 1, r.h);
-        ctx.fillStyle = '#e2c084';
+        ctx.fillStyle = '#f3dca8';
         ctx.fillRect(r.x + 1, r.y, 1, r.h);
       }
 
@@ -1194,11 +1267,11 @@ window.addEventListener('load', () => {
         for (let sx = sx0; sx < sx1; sx += 8){
           const hh = tileHash(sx, sy, 7);
           if (hh > 0.62){
-            ctx.fillStyle = '#c1955a';
+            ctx.fillStyle = '#d8b878';
             ctx.fillRect(sx + ((hh * 5) | 0), sy + 2 + ((tileHash(sx, sy, 8) * 4) | 0), 2, 1);
           }
           if (hh > 0.93){
-            ctx.fillStyle = '#b08a55';
+            ctx.fillStyle = '#cba968';
             ctx.fillRect(sx + 3, sy + 4, 2, 2);
           }
         }
@@ -1318,9 +1391,29 @@ window.addEventListener('load', () => {
     const now = performance.now();
     const dt = now - lastRenderTs;
     lastRenderTs = now;
-
-    const cam = getCamera();
     const t = now / 1000;
+
+    if (scene === 'interior'){
+      renderInterior(t);
+    } else {
+      renderTown(t, dt);
+    }
+
+    // ✅ 씬 전환 페이드
+    if (transition){
+      let a = 0;
+      if (transition.phase === 'out') a = Math.min(1, transition.t / transition.dur);
+      else a = 1 - Math.min(1, transition.t / transition.dur);
+      ctx.fillStyle = `rgba(8, 10, 14, ${a})`;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
+
+    drawAllClear();
+    updatePops(dt);
+  }
+
+  function renderTown(t, dt){
+    const cam = getCamera();
     const near = nearestNode();
 
     ctx.clearRect(0, 0, VIEW_W, VIEW_H);
@@ -1376,10 +1469,6 @@ window.addEventListener('load', () => {
     drawPressSpace(cam);
 
     ctx.restore();
-
-    // 5) 스크린 고정 UI
-    drawAllClear();
-    updatePops(dt);
   }
 
   /* =========================
@@ -1396,6 +1485,26 @@ window.addEventListener('load', () => {
       if (allClearBanner.t >= allClearBanner.dur){
         allClearBanner.active = false;
       }
+    }
+
+    // ✅ 씬 전환 진행
+    if (transition){
+      transition.t += dt;
+      if (transition.t >= transition.dur){
+        const next = transition.next;
+        transition = null;
+        if (next) next();
+      }
+      // 전환 중엔 입력 무시
+      footstepAudio.pause();
+      return;
+    }
+
+    // ✅ 인테리어 씬
+    if (scene === 'interior'){
+      if (paused) return;
+      updateInterior(dt, ts);
+      return;
     }
 
     if (paused){
@@ -1484,6 +1593,376 @@ window.addEventListener('load', () => {
   }
   requestAnimationFrame(loop);
 
+  /* =========================================================
+     ✅ 건물 내부(Interior) 씬 + NPC 대화 시스템
+  ========================================================= */
+  let npcState = 'idle';   // 'idle' | 'hello' | 'menu' | 'short' | 'bye'
+  let npcLine = '';
+
+  function enterInterior(key){
+    interiorKey = key;
+    hideDialogue();
+    spawnPop({ x: player.x, y: player.y }); // 입장 팝
+    playSfxForKey(key);
+
+    transition = { phase:'out', t:0, dur:260, next:() => {
+      scene = 'interior';
+      // 방 입구(아래 문) 앞에 배치
+      roomPlayer.x = ROOM_W/2 - roomPlayer.w/2;
+      roomPlayer.y = ROOM_H - 30;
+      facing = 'up';
+      npcState = 'idle';
+      markVisited(key);
+      transition = { phase:'in', t:0, dur:260, next:null };
+    }};
+  }
+
+  function exitInterior(){
+    hideNpcDialogue();
+    transition = { phase:'out', t:0, dur:260, next:() => {
+      scene = 'town';
+      const wasKey = interiorKey;
+      interiorKey = null;
+      npcState = 'idle';
+      // 마을의 해당 건물 문 앞으로 복귀
+      const n = nodes.find(nn => nn.key === wasKey);
+      if (n){ player.x = n.x - player.w/2; player.y = n.y + 6; facing = 'down'; }
+      transition = { phase:'in', t:0, dur:260, next:null };
+    }};
+  }
+
+  function nearNpc(){
+    const cx = roomPlayer.x + roomPlayer.w/2;
+    const cy = roomPlayer.y + roomPlayer.h/2;
+    return Math.hypot((npc.x+npc.w/2) - cx, (npc.y+npc.h/2) - cy) < 30;
+  }
+
+  function showNpcDialogue(name, text, cta='▼'){
+    if (!npcDialogue) return;
+    npcLine = text;
+    if (npcNameEl) npcNameEl.textContent = name;
+    if (npcTextEl) npcTextEl.textContent = text;
+    if (npcCtaEl) npcCtaEl.textContent = cta;
+    npcDialogue.classList.add('on');
+    npcDialogue.setAttribute('aria-hidden','false');
+  }
+
+  function hideNpcDialogue(){
+    if (!npcDialogue) return;
+    npcDialogue.classList.remove('on');
+    npcDialogue.classList.remove('menu-on');
+    npcDialogue.setAttribute('aria-hidden','true');
+    if (npcChoicesEl) npcChoicesEl.innerHTML = '';
+  }
+
+  function showNpcMenu(){
+    if (!npcChoicesEl) return;
+    const choices = [
+      { label:'📖 자세한 이야기', act:'detail' },
+      { label:'💬 핵심만 짧게',   act:'short' },
+      { label:'👋 다음에 올게요',  act:'bye' },
+    ];
+    npcChoicesEl.innerHTML = choices.map((c,i) =>
+      `<button type="button" class="npc-choice" data-act="${c.act}" data-i="${i}">${c.label}</button>`
+    ).join('');
+    npcChoicesEl.querySelectorAll('.npc-choice').forEach(btn => {
+      btn.addEventListener('click', () => chooseNpc(btn.getAttribute('data-act')));
+    });
+    npcDialogue.classList.add('menu-on');
+    npcMenuIdx = 0;
+    highlightChoice();
+  }
+
+  let npcMenuIdx = 0;
+  function highlightChoice(){
+    if (!npcChoicesEl) return;
+    npcChoicesEl.querySelectorAll('.npc-choice').forEach((b,i) => {
+      b.classList.toggle('sel', i === npcMenuIdx);
+    });
+  }
+
+  function chooseNpc(act){
+    const d = NPC_DATA[interiorKey];
+    if (!d) return;
+    if (act === 'detail'){
+      hideNpcDialogue();
+      npcState = 'idle';
+      playSfxForKey(interiorKey);
+      openInfo(interiorKey);  // 기존 상세 패널 재사용
+    } else if (act === 'short'){
+      npcState = 'short';
+      npcDialogue.classList.remove('menu-on');
+      if (npcChoicesEl) npcChoicesEl.innerHTML = '';
+      showNpcDialogue(d.name, d.short, '▼ 더 듣기');
+      playTone({ type:'sine', freq: 640, dur:0.05, gain:0.05 });
+    } else if (act === 'bye'){
+      npcState = 'bye';
+      npcDialogue.classList.remove('menu-on');
+      if (npcChoicesEl) npcChoicesEl.innerHTML = '';
+      showNpcDialogue(d.name, d.bye, '▼ 닫기');
+      playTone({ type:'sine', freq: 560, dur:0.06, gain:0.05 });
+    }
+  }
+
+  // NPC와 상호작용 (Space/A/탭) — 대화 진행
+  function talkNpc(){
+    const d = NPC_DATA[interiorKey];
+    if (!d) return;
+
+    if (npcState === 'idle'){
+      npcState = 'hello';
+      showNpcDialogue(d.name, d.hello, '▼');
+      playTone({ type:'triangle', freq: 720, dur:0.05, gain:0.06 });
+    } else if (npcState === 'hello'){
+      npcState = 'menu';
+      showNpcDialogue(d.name, '무엇이 궁금하세요?', '');
+      showNpcMenu();
+    } else if (npcState === 'short'){
+      // 짧게 듣고 다시 메뉴로
+      npcState = 'menu';
+      showNpcDialogue(d.name, '또 궁금한 게 있나요?', '');
+      showNpcMenu();
+    } else if (npcState === 'bye'){
+      hideNpcDialogue();
+      npcState = 'idle';
+    }
+  }
+
+  /* =========================================================
+     인테리어 렌더링
+  ========================================================= */
+  function interiorCam(){
+    // 방이 화면보다 작으면 가운데 정렬
+    return {
+      x: Math.round(ROOM_W/2 - VIEW_W/2),
+      y: Math.round(ROOM_H/2 - VIEW_H/2),
+    };
+  }
+
+  function roomFurniture(key){
+    // 방마다 다른 소품 (테이블/책장/액자 등) — [x,y,w,h,fill,edge]
+    const c = nodeColor(key);
+    switch(key){
+      case 'school': return [
+        [24,40,30,16,'#caa15e','#8c6a2b'],   // 교탁
+        [150,36,26,22,'#3a5a3a','#244024'],  // 칠판
+      ];
+      case 'company': return [
+        [30,44,40,18,'#8a8f98','#5a5f68'],   // 책상
+        [140,40,30,20,'#7aa2f7','#3b5fb3'],  // 모니터 보드
+      ];
+      case 'training': return [
+        [28,42,34,18,'#a98ed6','#6f50b4'],   // 강의 테이블
+        [146,38,28,20,'#bb9af7','#6f50b4'],  // 화이트보드
+      ];
+      case 'award': return [
+        [150,40,26,22,'#f7d24a','#a8842b'],  // 트로피 진열장
+        [28,44,30,16,'#c4504f','#7a2e2d'],   // 레드 카펫 단상
+      ];
+      case 'cert': return [
+        [22,30,22,32,'#8a6a44','#5a432a'],   // 책장
+        [150,30,22,32,'#8a6a44','#5a432a'],  // 책장
+      ];
+      case 'lang': return [
+        [30,42,34,18,'#7fbf8f','#4f7a2f'],   // 테이블
+        [144,36,30,22,'#9ece6a','#4f7a2f'],  // 세계지도 보드
+      ];
+      default: return [];
+    }
+  }
+
+  function drawNpc(t){
+    const footX = npc.x + npc.w/2;
+    const footY = npc.y + npc.h;
+
+    // 그림자
+    ctx.fillStyle = 'rgba(40,40,40,0.22)';
+    ctx.fillRect(Math.round(footX-6), footY-2, 12, 3);
+
+    const dx = Math.round(footX - 8);
+    const dy = Math.round(footY - 20);
+    const col = NPC_COL[interiorKey] ?? 0;
+    const blink = (Math.sin(t*1.3) > 0.92) ? 1 : 0;
+
+    if (npcSheetReady()){
+      ctx.drawImage(npcSheet, col*16, blink*20, 16, 20, dx, dy, 16, 20);
+    } else {
+      drawPixelRect(dx+4, dy+1, 8, 8, '#5a4030', 'rgba(0,0,0,0.3)');
+      drawPixelRect(dx+4, dy+9, 8, 6, nodeColor(interiorKey).main, 'rgba(0,0,0,0.3)');
+    }
+
+    // 머리 위 느낌표/말풍선 (대화 전)
+    if (npcState === 'idle'){
+      const bob = Math.round(Math.sin(t*3)*1);
+      const ix = Math.round(footX);
+      const iy = dy - 8 + bob;
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.fillRect(ix-4, iy-7, 9, 9);
+      ctx.fillStyle = '#3a8a4a';
+      ctx.fillRect(ix-1, iy-6, 2, 5);
+      ctx.fillRect(ix-1, iy, 2, 2);
+    }
+  }
+
+  function drawInteriorPlayer(t){
+    const footX = roomPlayer.x + roomPlayer.w/2;
+    const footY = roomPlayer.y + roomPlayer.h;
+
+    ctx.fillStyle = 'rgba(40,40,40,0.22)';
+    ctx.fillRect(Math.round(footX-6), footY-2, 12, 3);
+
+    const dx = Math.round(footX - FRAME_W/2);
+    const dy = Math.round(footY - FRAME_H);
+    if (!sheetReady()){
+      drawPixelRect(dx+4, dy+1, 8, 8, '#4a3322', null);
+      return;
+    }
+    const row = SHEET_ROW[facing] ?? 0;
+    const sx = walkFrame * FRAME_W;
+    const sy = row * FRAME_H;
+    if (facing === 'right'){
+      ctx.save(); ctx.scale(-1,1);
+      ctx.drawImage(charSheet, sx, sy, FRAME_W, FRAME_H, -(dx+FRAME_W), dy, FRAME_W, FRAME_H);
+      ctx.restore();
+    } else {
+      ctx.drawImage(charSheet, sx, sy, FRAME_W, FRAME_H, dx, dy, FRAME_W, FRAME_H);
+    }
+  }
+
+  function renderInterior(t){
+    if (!interiorKey){ ctx.fillStyle = '#1a1410'; ctx.fillRect(0,0,VIEW_W,VIEW_H); return; }
+    const cam = interiorCam();
+    const c = nodeColor(interiorKey);
+
+    // 방 밖 여백 (PC 넓은 화면): 어두운 배경 + 비네트
+    ctx.fillStyle = '#1a1410';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    ctx.save();
+    ctx.translate(-cam.x, -cam.y);
+
+    // 방 바깥 테두리 그림자 (입체감)
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(-6, -6, ROOM_W + 12, ROOM_H + 12);
+
+    // 바닥 (나무마루 — 따뜻한 톤)
+    for (let y = 28; y < ROOM_H; y += 8){
+      for (let x = 0; x < ROOM_W; x += 16){
+        const odd = ((x + y) / 8) % 2 === 0;
+        ctx.fillStyle = odd ? '#caa770' : '#c09f66';
+        ctx.fillRect(x, y, 16, 8);
+        ctx.fillStyle = 'rgba(120,90,50,0.18)';
+        ctx.fillRect(x, y, 16, 1);
+      }
+    }
+    // 윗벽 (테마색)
+    ctx.fillStyle = c.main;
+    ctx.fillRect(0, 0, ROOM_W, 28);
+    ctx.fillStyle = c.edge;
+    ctx.fillRect(0, 26, ROOM_W, 4);
+    // 벽지 무늬
+    for (let x = 8; x < ROOM_W; x += 24){
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(x, 8, 2, 2);
+      ctx.fillRect(x+10, 16, 2, 2);
+    }
+    // 창문 2개
+    for (const wx of [40, 130]){
+      drawPixelRect(wx, 6, 26, 16, '#bfe3f2', 'rgba(0,0,0,0.3)');
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillRect(wx+2, 8, 4, 12);
+      ctx.fillStyle = c.edge;
+      ctx.fillRect(wx+12, 6, 2, 16);
+    }
+
+    // 가구
+    for (const f of roomFurniture(interiorKey)){
+      drawPixelRect(f[0], f[1], f[2], f[3], f[4], f[5]);
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(f[0], f[1], f[2], 2);
+    }
+
+    // 출구 매트 (아래 중앙)
+    drawPixelRect(ROOM_W/2 - 14, ROOM_H - 10, 28, 8, '#b5a06a', '#8a7a48');
+    ctx.fillStyle = '#7a6a40';
+    ctx.font = '7px monospace';
+    ctx.fillText('EXIT', ROOM_W/2 - 9, ROOM_H - 4);
+
+    // Y-소팅: NPC vs 플레이어
+    const order = [
+      { y: npc.y + npc.h, draw: () => drawNpc(t) },
+      { y: roomPlayer.y + roomPlayer.h, draw: () => drawInteriorPlayer(t) },
+    ].sort((a,b) => a.y - b.y);
+    order.forEach(o => o.draw());
+
+    // 상호작용 힌트
+    if (npcState === 'idle' && nearNpc()){
+      const isTouch = touchControls && getComputedStyle(touchControls).display !== 'none';
+      const txt = isTouch ? 'Tap A' : 'Space';
+      ctx.font = '8px monospace';
+      const tw = ctx.measureText(txt).width;
+      const bx = npc.x + npc.w/2 - tw/2 - 4;
+      const by = npc.y - 16;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(bx, by, tw + 8, 12);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(txt, bx + 4, by + 9);
+    }
+
+    ctx.restore();
+  }
+
+  function updateInterior(dt, ts){
+    // 대화/메뉴 중엔 이동 금지
+    if (npcState !== 'idle'){
+      walkFrame = 0; walkTimer = 0;
+      return;
+    }
+
+    let vx = 0, vy = 0;
+    if (keys.has('ArrowLeft')) vx = -1;
+    if (keys.has('ArrowRight')) vx = 1;
+    if (keys.has('ArrowUp')) vy = -1;
+    if (keys.has('ArrowDown')) vy = 1;
+    if (vx && vy){ vx *= 0.7071; vy *= 0.7071; }
+    vx *= 1.2; vy *= 1.2;
+
+    if (vx < 0) facing = 'left';
+    else if (vx > 0) facing = 'right';
+    else if (vy < 0) facing = 'up';
+    else if (vy > 0) facing = 'down';
+
+    const oldX = roomPlayer.x, oldY = roomPlayer.y;
+    roomPlayer.x = Math.max(6, Math.min(ROOM_W - roomPlayer.w - 6, roomPlayer.x + vx));
+    roomPlayer.y = Math.max(30, Math.min(ROOM_H - roomPlayer.h - 4, roomPlayer.y + vy));
+
+    // NPC 충돌(밀어내기)
+    if (rectsOverlap(roomPlayer.x, roomPlayer.y, roomPlayer.w, roomPlayer.h, npc.x-2, npc.y-2, npc.w+4, npc.h+6)){
+      roomPlayer.x = oldX; roomPlayer.y = oldY;
+    }
+
+    const moved = (roomPlayer.x !== oldX || roomPlayer.y !== oldY);
+
+    // 출구 도달 → 마을로
+    if (roomPlayer.y >= ROOM_H - roomPlayer.h - 5 &&
+        Math.abs((roomPlayer.x + roomPlayer.w/2) - ROOM_W/2) < 16 &&
+        keys.has('ArrowDown')){
+      exitInterior();
+      return;
+    }
+
+    if (moved){
+      if (ts - lastStepTime >= STEP_INTERVAL){
+        try { footstepAudio.currentTime = 0; footstepAudio.play(); } catch(e){}
+        lastStepTime = ts;
+      }
+      walkTimer += dt;
+      if (walkTimer >= WALK_INTERVAL){ walkTimer = 0; walkFrame = (walkFrame+1)%4; }
+    } else {
+      walkTimer = 0; walkFrame = 0;
+    }
+  }
+
   /* =========================
      Interact (Space / A버튼 / 탭 공용)
   ========================= */
@@ -1496,6 +1975,16 @@ window.addEventListener('load', () => {
       playTone({ type:'sine', freq: 660, dur:0.06, gain:0.07 });
       return;
     }
+    if (transition) return;
+
+    // ✅ 건물 내부: NPC와 대화
+    if (scene === 'interior'){
+      if (npcState !== 'idle' || nearNpc()){
+        talkNpc();
+      }
+      return;
+    }
+
     if (paused) return;
 
     const n = nearestNode();
@@ -1506,24 +1995,30 @@ window.addEventListener('load', () => {
     if (Math.abs(dx) > Math.abs(dy)) facing = dx > 0 ? 'right' : 'left';
     else facing = dy > 0 ? 'down' : 'up';
 
-    // ✅ 1차: 대화창으로 한 줄 소개 / 2차: 상세 시트 진입
+    // 연혁 기념비는 바로 패널 (내부 없음)
+    if (n.key === 'timeline'){
+      if (dlgNodeKey !== n.key){
+        showDialogue(n);
+        playTone({ type:'square', freq: 980, dur:0.04, gain:0.05, filter:{type:'highpass', freq:700, q:0.7} });
+        return;
+      }
+      hideDialogue();
+      spawnPop(n);
+      paused = true;
+      keys.clear();
+      playSfxForKey('timeline');
+      openModal(timelineModal);
+      return;
+    }
+
+    // ✅ 1차: 대화창으로 한 줄 소개 / 2차: 건물 내부 입장
     if (dlgNodeKey !== n.key){
       showDialogue(n);
       playTone({ type:'square', freq: 980, dur:0.04, gain:0.05, filter:{type:'highpass', freq:700, q:0.7} });
       return;
     }
 
-    hideDialogue();
-    spawnPop(n);
-    paused = true;
-    keys.clear();
-
-    if (n.key === 'timeline'){
-      playSfxForKey('timeline');
-      openModal(timelineModal);
-    } else {
-      openInfo(n.key);
-    }
+    enterInterior(n.key);
   }
 
   /* =========================
@@ -1548,11 +2043,38 @@ window.addEventListener('load', () => {
     }
 
     if (e.key === ' '){
+      // ✅ NPC 메뉴가 떠 있으면 선택
+      if (scene === 'interior' && npcState === 'menu'){
+        const sel = npcChoicesEl?.querySelector('.npc-choice.sel');
+        if (sel){ chooseNpc(sel.getAttribute('data-act')); return; }
+      }
       interactNearest();
       return;
     }
 
+    if (e.key === 'Enter'){
+      if (scene === 'interior' && npcState === 'menu'){
+        const sel = npcChoicesEl?.querySelector('.npc-choice.sel');
+        if (sel){ chooseNpc(sel.getAttribute('data-act')); return; }
+      }
+    }
+
+    // ✅ NPC 메뉴 위/아래 탐색
+    if (scene === 'interior' && npcState === 'menu' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')){
+      const n = npcChoicesEl ? npcChoicesEl.querySelectorAll('.npc-choice').length : 0;
+      if (n > 0){
+        npcMenuIdx = (npcMenuIdx + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
+        highlightChoice();
+        playTone({ type:'square', freq: 880, dur:0.03, gain:0.04 });
+      }
+      return;
+    }
+
     if (e.key === 'Escape'){
+      if (scene === 'interior'){
+        if (npcState !== 'idle'){ hideNpcDialogue(); npcState = 'idle'; return; }
+        exitInterior(); return;
+      }
       if (dlgNodeKey){ hideDialogue(); return; }
       if (infoModal?.classList.contains('on')) { closeModal(infoModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
       if (timelineModal?.classList.contains('on')) { closeModal(timelineModal); playTone({type:'sine', freq:520, dur:0.05, gain:0.06}); return; }
@@ -1606,8 +2128,16 @@ window.addEventListener('load', () => {
     actBtn.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  // 캔버스 탭/클릭: 가까운 노드를 탭하면 상호작용
+  // 캔버스 탭/클릭: 마을=노드 상호작용 / 내부=NPC 대화
   canvas.addEventListener('click', (e) => {
+    if (transition) return;
+
+    if (scene === 'interior'){
+      if (npcState === 'menu') return; // 메뉴는 버튼 탭으로
+      if (npcState !== 'idle' || nearNpc()) talkNpc();
+      return;
+    }
+
     if (paused) return;
     const rect = canvas.getBoundingClientRect();
     const cam = getCamera();

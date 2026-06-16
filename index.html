@@ -16,7 +16,7 @@
 		<meta name="theme-color" content="#080c12" />
 
 		<!-- Game CSS (v3: Quest Book 디자인) -->
-		<link rel="stylesheet" href="assets/css/game.css?v=4" />
+		<link rel="stylesheet" href="assets/css/game.css?v=5" />
 	</head>
 	<body class="game-on">
 
@@ -50,6 +50,16 @@
 					<div class="dlg-cta" id="dlgCta">▼ 들어가기</div>
 				</div>
 
+				<!-- ✅ NPC 대화창 (건물 내부) + 선택지 -->
+				<div id="npcDialogue" aria-hidden="true">
+					<div class="npc-box">
+						<div class="npc-name" id="npcName"></div>
+						<div class="npc-text" id="npcText"></div>
+						<div class="npc-cta" id="npcCta">▼</div>
+					</div>
+					<div class="npc-choices" id="npcChoices"></div>
+				</div>
+
 				<!-- ✅ 모바일 가상 컨트롤 (터치 기기에서만 표시) -->
 				<div id="touchControls" aria-hidden="true">
 					<div id="dpad">
@@ -72,7 +82,7 @@
 							<p class="modal-lead">
 								이 페이지는 <b>"이력서를 게임으로"</b> 만든 포트폴리오입니다.<br/>
 								마을을 돌아다니며 건물에 들어가면<br/>
-								제가 일해 온 기록을 하나씩 확인할 수 있어요.<br/>
+								안에서 기다리는 사람들과 이야기를 나눌 수 있어요.<br/>
 								즐겁게 봐주시기를 바라요 :)
 							</p>
 							<div class="modal-actions">
@@ -150,6 +160,6 @@
 		<!-- Scripts -->
 		<!-- ✅ 콘텐츠 데이터(이력 내용)는 content.js 로 분리 — 내용 수정은 이 파일에서! -->
 		<script src="./assets/js/content.js?v=1" defer></script>
-		<script src="./assets/js/game.js?v=5" defer></script>
+		<script src="./assets/js/game.js?v=6" defer></script>
 	</body>
 </html>
