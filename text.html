@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>박지영 — 서비스 기획 · 운영 | 포트폴리오</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/sunn-us/SUITE/fonts/static/woff2/SUITE.css');
+
+  :root {
+    --paper:   #FAF9F3;
+    --card:    #FFFFFF;
+    --ink:     #22301F;
+    --ink-sub: #5C6657;
+    --line:    #E6E2D4;
+    --accent:  #2F6B45;   /* 숲 초록 — 게임 마을과 톤 공유 */
+    --accent-soft: #EAF2EC;
+    --honey:   #C98A2D;   /* 배지/포인트 */
+    --honey-soft: #FBF3E4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'SUITE', sans-serif;
+    font-weight: 300;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.7;
+    letter-spacing: -0.01em;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 56px 24px 8px;
+  }
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  h1 {
+    font-weight: 800;
+    font-size: 29px;
+    letter-spacing: -0.03em;
+  }
+  h1 .en {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--ink-sub);
+    margin-left: 10px;
+    letter-spacing: 0.02em;
+  }
+  .job-title {
+    margin-top: 6px;
+    font-size: 15px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .mode-switch {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1.5px solid var(--accent);
+    background: var(--card);
+    color: var(--accent);
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .mode-switch:hover { background: var(--accent); color: #fff; }
+
+  /* ---------- Tabs ---------- */
+  nav {
+    position: sticky;
+    top: 0;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    z-index: 10;
+  }
+  .tabs {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 13px 13px 11px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-sub);
+    background: none;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* ---------- Content ---------- */
+  main {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 36px 24px 96px;
+  }
+  section[hidden] { display: none; }
+
+  .one-liner {
+    font-size: 16.5px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    padding-left: 14px;
+    border-left: 3px solid var(--accent);
+    margin-bottom: 28px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 26px;
+    margin-bottom: 18px;
+  }
+  .card h3 {
+    font-weight: 800;
+    font-size: 15.5px;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .card .meta {
+    font-size: 13.5px;
+    color: var(--ink-sub);
+    margin-bottom: 14px;
+  }
+  .card p { font-size: 14px; }
+
+  .item-list { list-style: none; }
+  .item-list li {
+    padding: 8px 0;
+    border-top: 1px solid var(--line);
+    font-size: 14px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .item-list li:first-child { border-top: none; }
+  .item-list b { font-weight: 700; flex-shrink: 0; }
+  .item-list span { color: var(--ink-sub); flex: 1; min-width: 200px; }
+
+  .insight {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: var(--accent-soft);
+    border-radius: 10px;
+    font-size: 13.5px;
+    color: var(--ink);
+  }
+  .insight::before {
+    content: '배운 것';
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 4px;
+    letter-spacing: 0.04em;
+  }
+
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tag {
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--honey-soft);
+    color: var(--honey);
+  }
+
+  .draft-badge {
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: #FDECEC;
+    color: #C0392B;
+    margin-left: 8px;
+    letter-spacing: 0.03em;
+  }
+
+  .video-frame { margin: 14px 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+  .video-frame video { display: block; width: 100%; }
+
+  /* stats bar (About) */
+  .stat-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+  .stat-row .label { width: 110px; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .stat-bar { flex: 1; height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .stat-bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+  .badge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 12px;
+  }
+  .badge {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: var(--card);
+  }
+  .badge .icon { font-size: 22px; }
+  .badge b { display: block; font-weight: 800; font-size: 14.5px; margin: 6px 0 2px; }
+  .badge span { font-size: 13px; color: var(--ink-sub); line-height: 1.55; }
+
+  /* contact */
+  .contact-list { list-style: none; font-size: 15px; }
+  .contact-list li { padding: 10px 0; border-top: 1px solid var(--line); display: flex; gap: 12px; }
+  .contact-list li:first-child { border-top: none; }
+  .contact-list b { width: 84px; font-weight: 800; flex-shrink: 0; }
+  .contact-list a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .contact-list a:hover { text-decoration: underline; }
+
+  h2.corner {
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    margin: 36px 0 14px;
+  }
+  h2.corner:first-of-type { margin-top: 0; }
+
+  footer {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-sub);
+    padding: 0 24px 48px;
+  }
+
+  @media (max-width: 520px) {
+    h1 { font-size: 27px; }
+    .card { padding: 18px 18px; }
+    .stat-row .label { width: 92px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1 id="name"></h1>
+      <div class="job-title" id="jobTitle"></div>
+    </div>
+    <a class="mode-switch" href="./index.html">🎮 게임으로 탐험하기</a>
+  </div>
+</header>
+
+<nav>
+  <div class="tabs" id="tabs" role="tablist"></div>
+</nav>
+
+<main id="main"></main>
+
+<footer>© 박지영 · 이 페이지는 게임 모드와 같은 데이터(data.js)로 만들어졌습니다.</footer>
+
+<script src="./assets/js/data.js"></script>
+<script>
+(function () {
+  const D = window.PORTFOLIO_DATA;
+  const $tabs = document.getElementById('tabs');
+  const $main = document.getElementById('main');
+
+  document.getElementById('name').innerHTML =
+    `${D.meta.name}<span class="en">${D.meta.nameEn}</span>`;
+  document.getElementById('jobTitle').textContent = D.meta.title;
+
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const draftBadge = on => on ? '<span class="draft-badge">초안 — 검토 필요</span>' : '';
+
+  /* ---------- 탭별 렌더러 ---------- */
+
+  function renderAbout() {
+    const a = D.about;
+    return `
+      <p class="one-liner">${esc(a.oneLiner)} ${draftBadge(a.draft)}</p>
+      <div class="card">
+        ${a.intro.map(p => `<p style="margin-bottom:12px;">${esc(p)}</p>`).join('')}
+      </div>
+      <div class="card">
+        <h3>역량 스탯</h3>
+        <div class="meta">클래스: ${esc(D.meta.className)}</div>
+        ${a.stats.map(s => `
+          <div class="stat-row">
+            <span class="label">${esc(s.label)}</span>
+            <span class="stat-bar"><i style="width:${s.value * 20}%"></i></span>
+          </div>`).join('')}
+      </div>
+      <h2 class="corner">업적 ${draftBadge(a.draft)}</h2>
+      <div class="badge-grid">
+        ${a.achievements.map(b => `
+          <div class="badge">
+            <span class="icon">${b.icon}</span>
+            <b>${esc(b.title)}</b>
+            <span>${esc(b.desc)}</span>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  /* 'YYYY.MM.DD ~ YYYY.MM.DD' → 재직 개월 수 (퇴사일 포함) */
+  function careerMonths(period) {
+    const m = period.match(/(\d{4})\.(\d{2})\.(\d{2})\s*~\s*(\d{4})\.(\d{2})\.(\d{2})/);
+    if (!m) return 0;
+    const s = new Date(+m[1], +m[2] - 1, +m[3]);
+    const e = new Date(+m[4], +m[5] - 1, +m[6] + 1); // 퇴사일 포함 계산
+    let months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+    if (e.getDate() < s.getDate()) months--;
+    return Math.max(0, months);
+  }
+  function formatMonths(m) {
+    const y = Math.floor(m / 12), r = m % 12;
+    return (y ? y + '년' : '') + (y && r ? ' ' : '') + (r ? r + '개월' : '') || '0개월';
+  }
+
+  function renderCareer() {
+    const total = D.careers.reduce((sum, c) => sum + careerMonths(c.period), 0);
+    return `
+      <p class="one-liner">${esc(D.careerSummary)}</p>
+      <div class="card" style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:14px;font-weight:800;color:var(--ink-sub);">총 경력</span>
+        <span style="font-size:21px;font-weight:800;color:var(--accent);letter-spacing:-0.02em;">${formatMonths(total)}</span>
+        <span style="font-size:13px;color:var(--ink-sub);">· ${D.careers.length}개 사 (재직일 기준 자동 계산)</span>
+      </div>
+      ${D.careers.map(c => `
+        <div class="card">
+          <h3>${esc(c.company)}</h3>
+          <div class="meta">${esc(c.period)} (${formatMonths(careerMonths(c.period))}) · ${esc(c.role)}</div>
+          <ul class="item-list">
+            ${c.tasks.map(t => `<li><b>${esc(t.title)}</b><span>${esc(t.desc)}</span></li>`).join('')}
+          </ul>
+          <div class="insight">${esc(c.insight)}</div>
+        </div>`).join('')}`;
+  }
+
+  function renderProjects() {
+    return D.projects.map(p => `
+      <div class="card">
+        <h3>${esc(p.title)} ${draftBadge(p.draft)}</h3>
+        <div class="tag-row">${p.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+        ${renderMedia(p.media)}
+        <ul class="item-list">
+          ${p.blocks.map(b => `<li><b>${esc(b.title)}</b><span>${esc(b.desc)}</span></li>`).join('')}
+        </ul>
+        <div class="insight">${esc(p.insight)}</div>
+      </div>`).join('');
+  }
+
+  function renderMedia(m) {
+    if (!m) return '';
+    const inner = m.type === 'video'
+      ? `<video controls playsinline preload="metadata"><source src="${m.src}" type="video/mp4" /></video>`
+      : `<img src="${m.src}" alt="${esc(m.caption || '')}" loading="lazy" style="display:block;width:100%;" />`;
+    const cap = m.caption
+      ? `<div style="font-size:12.5px;color:var(--ink-sub);padding:8px 12px;border-top:1px solid var(--line);">${esc(m.caption)}</div>`
+      : '';
+    return `<div class="video-frame">${inner}${cap}</div>`;
+  }
+
+  function renderEducation() {
+    const e = D.education;
+    return `
+      <h2 class="corner">학력</h2>
+      <p class="one-liner">${esc(e.oneLiner)}</p>
+      <div class="card">
+        <h3>${esc(e.school.name)}</h3>
+        <div class="meta">${esc(e.school.gpa)}</div>
+        <p style="margin-bottom:10px;">${esc(e.school.desc)}</p>
+        <ul class="item-list">
+          ${e.school.points.map(p => `<li><b>${esc(p.title)}</b><span>${esc(p.desc)}</span></li>`).join('')}
+        </ul>
+        <div class="insight">${esc(e.school.insight)}</div>
+      </div>
+      <h2 class="corner">교육 수료</h2>
+      <p class="one-liner">${esc(e.trainingOneLiner)}</p>
+      <div class="card">
+        <ul class="item-list">
+          ${e.trainings.map(t => `<li><b>${esc(t.name)}</b><span>${esc(t.period)}</span></li>`).join('')}
+        </ul>
+      </div>
+      <div class="card">
+        <h3>이 과정을 통해 강화한 역량</h3>
+        <ul class="item-list">
+          ${e.trainingPoints.map(p => `<li><b>${esc(p.title)}</b><span>${esc(p.desc)}</span></li>`).join('')}
+        </ul>
+        <div class="insight">${esc(e.trainingInsight)}</div>
+      </div>`;
+  }
+
+  function renderGrowth() {
+    const g = D.growth;
+    return `
+      <h2 class="corner">스킬 ${draftBadge(g.skills.draft)}</h2>
+      ${g.skills.groups.map(gr => `
+        <div class="card">
+          <h3>${esc(gr.name)}</h3>
+          <ul class="item-list">
+            ${gr.items.map(i => `<li>${esc(i)}</li>`).join('')}
+          </ul>
+        </div>`).join('')}
+
+      <h2 class="corner">자격증</h2>
+      <p class="one-liner">${esc(g.certifications.oneLiner)}</p>
+      <div class="card">
+        <ul class="item-list">
+          ${g.certifications.items.map(c => `<li><b>${esc(c.name)}</b><span>${esc(c.desc)} (${esc(c.date)})</span></li>`).join('')}
+        </ul>
+        <div class="insight">${esc(g.certifications.insight)}</div>
+      </div>
+
+      <h2 class="corner">언어</h2>
+      <p class="one-liner">${esc(g.languages.oneLiner)}</p>
+      ${g.languages.items.map(l => `
+        <div class="card">
+          <h3>${esc(l.name)}</h3>
+          <ul class="item-list">
+            ${l.points.map(p => `<li>${esc(p)}</li>`).join('')}
+          </ul>
+        </div>`).join('')}
+      <div class="card"><div class="insight" style="margin-top:0;">${esc(g.languages.insight)}</div></div>
+
+      <h2 class="corner">수상</h2>
+      <div class="card">
+        <ul class="item-list">
+          ${g.awards.items.map(a => `<li><b>${esc(a.name)}</b><span>${esc(a.desc)} (${esc(a.date)})</span></li>`).join('')}
+        </ul>
+      </div>`;
+  }
+
+  function renderContact() {
+    const c = D.contact;
+    return `
+      <p class="one-liner">${esc(c.message)}</p>
+      <div class="card">
+        <ul class="contact-list">
+          <li><b>Email</b><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></li>
+          <li><b>GitHub</b><a href="${esc(c.github)}" target="_blank" rel="noopener">${esc(c.github)}</a></li>
+          <li><b>Site</b><a href="${esc(c.site)}" target="_blank" rel="noopener">${esc(c.site)}</a></li>
+        </ul>
+      </div>`;
+  }
+
+  /* ---------- 탭 구성 ---------- */
+  const TABS = [
+    { id: 'about',    label: 'About',                  render: renderAbout },
+    { id: 'career',   label: 'Career',                 render: renderCareer },
+    { id: 'projects', label: 'Projects',               render: renderProjects },
+    { id: 'edu',      label: 'Education',              render: renderEducation },
+    { id: 'growth',   label: 'Skills & Certifications', render: renderGrowth },
+    { id: 'contact',  label: 'Contact',                render: renderContact }
+  ];
+
+  TABS.forEach((t, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (i === 0 ? ' active' : '');
+    btn.textContent = t.label;
+    btn.setAttribute('role', 'tab');
+    btn.addEventListener('click', () => activate(t.id));
+    btn.dataset.id = t.id;
+    $tabs.appendChild(btn);
+
+    const sec = document.createElement('section');
+    sec.id = 'sec-' + t.id;
+    sec.innerHTML = t.render();
+    if (i !== 0) sec.hidden = true;
+    $main.appendChild(sec);
+  });
+
+  function activate(id) {
+    TABS.forEach(t => {
+      document.getElementById('sec-' + t.id).hidden = (t.id !== id);
+    });
+    $tabs.querySelectorAll('.tab').forEach(b =>
+      b.classList.toggle('active', b.dataset.id === id));
+    window.scrollTo({ top: 0 });
+    if (history.replaceState) history.replaceState(null, '', '#' + id);
+  }
+
+  // URL 해시로 직접 진입 지원 (#projects 등)
+  const hash = location.hash.replace('#', '');
+  if (TABS.some(t => t.id === hash)) activate(hash);
+})();
+</script>
+</body>
+</html>

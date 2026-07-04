@@ -1,2 +1,0 @@
-# profile
-showing by myself

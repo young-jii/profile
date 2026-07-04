@@ -1,165 +1,432 @@
-<!DOCTYPE HTML>
-<html lang="ko" class="game-on">
-	<head>
-		<title>박지영 | 게임으로 즐기는 포트폴리오</title>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-		<meta name="description" content="화살표로 이동하고 Space로 확인하는 RPG형 이력서. 콘텐츠 기획 × 데이터 분석 × 자동화." />
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>박지영의 마을 — RPG 포트폴리오</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/sunn-us/SUITE/fonts/static/woff2/SUITE.css');
 
-		<!-- ✅ OG 메타태그: 카톡/링크드인 등 링크 공유 시 미리보기 -->
-		<meta property="og:type" content="website" />
-		<meta property="og:title" content="박지영 | 게임으로 즐기는 포트폴리오" />
-		<meta property="og:description" content="화살표로 이동하고 Space로 확인하는 RPG형 이력서. 콘텐츠 기획 × 데이터 분석 × 자동화." />
-		<meta property="og:image" content="https://young-jii.github.io/profile/images/og_thumb.png" />
-		<meta property="og:url" content="https://young-jii.github.io/profile/" />
-		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="theme-color" content="#080c12" />
+  :root {
+    --sky: #BFE0C8;
+    --ink: #22301F;
+    --accent: #2F6B45;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'SUITE', sans-serif;
+    background: linear-gradient(#CDE7D2, #BFE0C8 60%, #B3D9BE);
+    color: var(--ink);
+    touch-action: none;
+  }
 
-		<!-- Game CSS (v3: Quest Book 디자인) -->
-		<link rel="stylesheet" href="assets/css/game.css?v=5" />
-	</head>
-	<body class="game-on">
+  #game { display: block; width: 100vw; height: 100vh; }
 
-		<!-- Game Layer -->
-		<div id="gameLayer" aria-hidden="true">
-			<div class="game-stage">
-				<canvas id="gameCanvas" width="320" height="180"></canvas>
+  /* ---------- HUD ---------- */
+  .hud-top {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    pointer-events: none;
+  }
+  .hud-title {
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+    background: rgba(255,255,255,0.82);
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(34,48,31,0.12);
+  }
+  .hud-title small { font-weight: 400; color: #5C6657; margin-left: 6px; }
+  .to-text {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 12.5px;
+    text-decoration: none;
+  }
+  .to-text:hover { background: var(--accent); color: #fff; }
+  .hud-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto;
+  }
+  .hud-chip {
+    font-weight: 800;
+    font-size: 12.5px;
+    background: rgba(255,255,255,0.86);
+    padding: 8px 13px;
+    border-radius: 999px;
+    border: 1px solid rgba(34,48,31,0.14);
+  }
+  #like-btn {
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 12.5px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #D6536D;
+    background: #fff;
+    color: #D6536D;
+    cursor: pointer;
+    transition: transform .1s;
+  }
+  #like-btn:active { transform: scale(1.12); }
 
-				<!-- 상단 HUD -->
-				<div id="hudTop">
-					<div class="hud-left">
-						<div class="hud-title">JIYOUNG'S PORTFOLIO</div>
-						<div id="careerHUD" class="career-hud">경력 계산중…</div>
-					</div>
-					<div class="hud-right">
-						<div id="questCount" class="quest-count">★ 0/6</div>
-						<button id="exitGameBtn" type="button">EXIT</button>
-					</div>
-				</div>
+  .heart-fx {
+    position: fixed;
+    z-index: 60;
+    font-size: 20px;
+    pointer-events: none;
+    animation: heartUp 1s ease-out forwards;
+    opacity: 0;
+  }
+  @keyframes heartUp {
+    0%   { transform: translateY(0) scale(0.5); opacity: 0; }
+    20%  { opacity: 1; }
+    100% { transform: translateY(-100px) scale(1.35); opacity: 0; }
+  }
 
-				<!-- 하단 HUD: 퀘스트 칩 + 조작 힌트 -->
-				<div id="hudBottom">
-					<div id="questBar" class="quest-bar"></div>
-					<div id="gameHint">이동 ←↑↓→ · 확인 Space</div>
-				</div>
+  /* ---------- GAME CLEAR ---------- */
+  #clear {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 30, 22, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 50;
+  }
+  #clear.open { display: flex; }
+  .clear-card {
+    background: #FBF6E8;
+    border: 3px solid #7A5C3E;
+    border-radius: 18px;
+    padding: 34px 36px;
+    text-align: center;
+    max-width: 420px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(255,255,255,0.5);
+    animation: clearPop .45s cubic-bezier(.2, 1.4, .4, 1);
+  }
+  @keyframes clearPop {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .clear-emoji { font-size: 44px; animation: bob 1.2s ease-in-out infinite; }
+  .clear-card h2 {
+    font-weight: 800;
+    font-size: 28px;
+    letter-spacing: 0.02em;
+    color: var(--accent);
+    margin: 8px 0 10px;
+  }
+  .clear-card p { font-size: 14.5px; line-height: 1.7; margin-bottom: 20px; }
+  .clear-btns { display: flex; flex-direction: column; gap: 8px; }
+  .clear-btns button, .clear-btns a {
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 11px;
+    border-radius: 12px;
+    border: 1.5px solid var(--accent);
+    background: #fff;
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .clear-btns button:hover, .clear-btns a:hover { background: var(--accent); color: #fff; }
 
-				<!-- ✅ RPG 대화창 (건물 앞 1차 인터랙션) -->
-				<div id="dialogueBar" aria-hidden="true" role="button">
-					<div class="dlg-name" id="dlgName"></div>
-					<div class="dlg-text" id="dlgText"></div>
-					<div class="dlg-cta" id="dlgCta">▼ 들어가기</div>
-				</div>
+  .hint {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: var(--ink);
+    background: rgba(255,255,255,0.82);
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(34,48,31,0.12);
+    white-space: nowrap;
+  }
 
-				<!-- ✅ NPC 대화창 (건물 내부) + 선택지 -->
-				<div id="npcDialogue" aria-hidden="true">
-					<div class="npc-box">
-						<div class="npc-name" id="npcName"></div>
-						<div class="npc-text" id="npcText"></div>
-						<div class="npc-cta" id="npcCta">▼</div>
-					</div>
-					<div class="npc-choices" id="npcChoices"></div>
-				</div>
+  #loading {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--accent);
+    background: rgba(255,255,255,0.6);
+  }
 
-				<!-- ✅ 모바일 가상 컨트롤 (터치 기기에서만 표시) -->
-				<div id="touchControls" aria-hidden="true">
-					<div id="dpad">
-						<button type="button" class="dp up"    data-dir="ArrowUp"    aria-label="위로 이동">▲</button>
-						<button type="button" class="dp left"  data-dir="ArrowLeft"  aria-label="왼쪽으로 이동">◀</button>
-						<button type="button" class="dp right" data-dir="ArrowRight" aria-label="오른쪽으로 이동">▶</button>
-						<button type="button" class="dp down"  data-dir="ArrowDown"  aria-label="아래로 이동">▼</button>
-					</div>
-					<button type="button" id="actBtn" aria-label="상호작용">A</button>
-				</div>
+  /* ---------- 터치 D-패드 (모바일에서만) ---------- */
+  .dpad {
+    position: fixed;
+    right: 20px;
+    bottom: 56px;
+    display: none;
+    grid-template-columns: repeat(3, 52px);
+    grid-template-rows: repeat(3, 52px);
+    gap: 4px;
+    opacity: 0.92;
+  }
+  .dpad button {
+    border: none;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(34,48,31,0.16);
+    font-size: 20px;
+    color: var(--ink);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .dpad button:active { background: var(--accent); color: #fff; }
+  .dpad .u { grid-area: 1 / 2; }
+  .dpad .l { grid-area: 2 / 1; }
+  .dpad .r { grid-area: 2 / 3; }
+  .dpad .d { grid-area: 3 / 2; }
+  #action-btn {
+    grid-area: 2 / 2;
+    border-radius: 50%;
+    font-weight: 800;
+    font-size: 15px;
+    background: rgba(255,255,255,0.5);
+    color: rgba(34,48,31,0.35);
+    transition: background .15s, color .15s;
+  }
+  #action-btn.show {
+    background: var(--accent);
+    color: #fff;
+  }
+  @media (pointer: coarse) {
+    .dpad { display: grid; }
+    .hint { display: none; }
+  }
 
-				<!-- Intro: 타이틀 스크린 -->
-				<div id="introModal" class="game-modal on" aria-hidden="false">
-					<div class="game-modal-card">
-						<div class="game-modal-head">
-							<div class="game-modal-title">지영's 포트폴리오</div>
-							<button id="introCloseBtn" class="game-modal-close" type="button">×</button>
-						</div>
-						<div class="game-modal-body">
-							<p class="modal-lead">
-								이 페이지는 <b>"이력서를 게임으로"</b> 만든 포트폴리오입니다.<br/>
-								마을을 돌아다니며 건물에 들어가면<br/>
-								안에서 기다리는 사람들과 이야기를 나눌 수 있어요.<br/>
-								즐겁게 봐주시기를 바라요 :)
-							</p>
-							<div class="modal-actions">
-								<button id="startGameBtn" class="modal-primary" type="button">▶ START</button>
-								<a class="modal-secondary" href="resume.html">텍스트 이력서로 보기</a>
-							</div>
-							<div class="intro-kbd">
-								<b>PC</b> — 이동: 방향키 · 확인: Space · 나가기: ESC<br/>
-								<b>모바일</b> — 이동: D-pad · 확인: A 버튼
-							</div>
-						</div>
-					</div>
-				</div>
+  /* ---------- NPC 대화창 ---------- */
+  #dialog {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 14px;
+    width: min(680px, calc(100vw - 20px));
+    z-index: 30;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+  }
+  #dialog.open { display: flex; }
 
-				<!-- Outro -->
-				<div id="outroModal" class="game-modal" aria-hidden="true">
-					<div class="game-modal-card">
-						<div class="game-modal-head">
-							<div class="game-modal-title">지금까지 박지영이었습니다 :)</div>
-							<button id="outroCloseBtn" class="game-modal-close" type="button">×</button>
-						</div>
-						<div class="game-modal-body">
-							<p class="modal-lead">
-								이 페이지는 제가 어떻게 일해왔고,<br/>
-								어떤 방식으로 문제를 해결하는지를 담은 기록입니다.<br/><br/>
-								다음 스테이지를 함께 플레이할 동료를 만날 수 있기를 기대합니다.
-							</p>
-							<div class="modal-actions">
-								<a class="modal-primary" href="mailto:jiyoung16park@gmail.com">📧 Email</a>
-								<a class="modal-secondary" href="resume.html">텍스트 이력서</a>
-							</div>
-						</div>
-					</div>
-				</div>
+  #dlg-card {
+    display: none;
+    background: #FBF6E8;
+    border: 2.5px solid #7A5C3E;
+    border-radius: 12px;
+    padding: 12px 14px;
+    max-height: 38vh;
+    overflow-y: auto;
+    font-size: 12.5px;
+    line-height: 1.6;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.28);
+  }
+  #dlg-card.show { display: block; }
 
-				<!-- Info: 각 건물 콘텐츠 -->
-				<div id="infoModal" class="game-modal" aria-hidden="true">
-					<div class="game-modal-card">
-						<div class="game-modal-head">
-							<div class="game-modal-title" id="infoModalTitle">정보</div>
-							<button id="infoCloseBtn" class="game-modal-close" type="button">×</button>
-						</div>
-						<div class="game-modal-body" id="infoModalBody"></div>
-					</div>
-				</div>
+  .dlg-box {
+    position: relative;
+    height: 112px;
+    background: rgba(251, 246, 232, 0.97);
+    border: 3px solid #7A5C3E;
+    border-radius: 14px;
+    padding: 12px 44px 12px 14px;
+    display: flex;
+    gap: 12px;
+    cursor: pointer;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.28), inset 0 0 0 2px rgba(255,255,255,0.5);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .dlg-portrait {
+    width: 80px;
+    height: 68px;
+    flex-shrink: 0;
+    border: 2px solid #7A5C3E;
+    border-radius: 10px;
+    background: #DCEBDD url('./images/game/character.png') no-repeat 0 -2px;
+    image-rendering: pixelated;
+  }
+  .dlg-main { flex: 1; min-width: 0; }
+  .dlg-name {
+    font-weight: 800;
+    font-size: 13px;
+    color: #2F6B45;
+    margin-bottom: 4px;
+  }
+  .dlg-name span {
+    font-weight: 600;
+    font-size: 12px;
+    color: #8A8072;
+    margin-left: 6px;
+  }
+  #dlg-text {
+    font-size: 13.5px;
+    line-height: 1.6;
+    height: 64px;
+    overflow-y: auto;
+    letter-spacing: -0.01em;
+  }
+  #dlg-next {
+    position: absolute;
+    right: 14px;
+    bottom: 10px;
+    font-size: 13px;
+    color: #7A5C3E;
+    animation: bob 0.9s ease-in-out infinite;
+  }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+  #dlg-choices {
+    display: flex;
+    gap: 6px;
+    min-height: 42px;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 2px;
+    scrollbar-width: none;
+  }
+  #dlg-choices::-webkit-scrollbar { display: none; }
+  #dlg-choices { cursor: grab; }
+  #dlg-choices:active { cursor: grabbing; }
+  #dlg-choices button { white-space: nowrap; flex-shrink: 0; }
+  #dlg-choices button {
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 12.5px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1.5px solid #2F6B45;
+    background: #fff;
+    color: #2F6B45;
+    cursor: pointer;
+  }
+  #dlg-choices button:hover { background: #2F6B45; color: #fff; }
+  #dlg-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 7px;
+    background: rgba(122,92,62,0.16);
+    color: #7A5C3E;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .p-cap { font-size: 12px; color: #8A8072; margin: 2px 0 6px; }
 
-				<!-- Timeline -->
-				<div id="timelineModal" class="game-modal" aria-hidden="true">
-					<div class="game-modal-card">
-						<div class="game-modal-head">
-							<div class="game-modal-title">Life Timeline</div>
-							<button id="timelineCloseBtn" class="game-modal-close" type="button">×</button>
-						</div>
-						<div class="game-modal-body" id="timelineBody">
-							<div class="tl-item tl-edu"><span>은광여자고등학교 졸업 | 인문계</span><span>2012.03 ~ 2015.02</span></div>
-							<div class="tl-item tl-edu"><span>경희대학교 졸업 | 국어국문학과 | 학점: 3.92/4.5</span><span>2016.03 ~ 2022.02</span></div>
-							<div class="tl-item tl-cert"><span>워드프로세서 | 대한상공회의소</span><span>2019.09.13</span></div>
-							<div class="tl-item tl-cert"><span>GTQ그래픽기술자격 1급 | 한국생산성본부</span><span>2020.02.07</span></div>
-							<div class="tl-item tl-cert"><span>컴퓨터활용능력 1급 | 대한상공회의소</span><span>2020.08.28</span></div>
-							<div class="tl-item tl-work"><span>천재교과서 | 콘텐츠2 국어부 초등국어팀</span><span>2021.08 ~ 2023.06</span></div>
-							<div class="tl-item tl-train"><span>협업 필터링 및 자연어 처리 기반 A.I. 추천 분석 시스템 제작 과정 | 성균관대학교 산학협력단</span><span>2023.06 ~ 2023.12</span></div>
-							<div class="tl-item tl-award"><span>2023 제 1회 K - 디지털플랫폼 AI 경진대회 | 특별상 수상</span><span>2023.12.13</span></div>
-							<div class="tl-item tl-train"><span>고객경험데이터를 활용한 데이터 비즈니스 분석가 과정 | IT 여성기업인협회</span><span>2024.02 ~ 2024.07</span></div>
-							<div class="tl-item tl-cert"><span>SQL 개발자 | 한국데이터산업진흥원</span><span>2024.04.05</span></div>
-							<div class="tl-item tl-cert"><span>데이터 분석 준전문가 | 한국데이터산업진흥원</span><span>2025.09.05</span></div>
-							<div class="tl-item tl-lang"><span>TOEIC | 785점</span><span>2024.06.30</span></div>
-							<div class="tl-item tl-lang"><span>TOEIC Speaking | Intermediate High (Speaking Score 150)</span><span>2025.09.13</span></div>
-							<div class="tl-item tl-work"><span>EBS(한국교육방송공사) | 디지털교육서비스부</span><span>2024.07 ~ (현재)</span></div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
+  /* 대화 카드 내부 콘텐츠 */
 
-		<!-- Scripts -->
-		<!-- ✅ 콘텐츠 데이터(이력 내용)는 content.js 로 분리 — 내용 수정은 이 파일에서! -->
-		<script src="./assets/js/content.js?v=1" defer></script>
-		<script src="./assets/js/game.js?v=6" defer></script>
-	</body>
+  .p-hero { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 10px; }
+  .p-meta { font-size: 13px; color: #6B6152; margin-bottom: 10px; }
+  .p-sub { font-weight: 800; font-size: 14.5px; margin: 16px 0 8px; color: #2F6B45; }
+  .p-p { margin-bottom: 10px; }
+  .p-list { list-style: none; margin-bottom: 6px; }
+  .p-list li { padding: 7px 0; border-top: 1px solid rgba(122,92,62,0.18); display: flex; gap: 8px; flex-wrap: wrap; }
+  .p-list li:first-child { border-top: none; }
+  .p-list b { font-weight: 800; flex-shrink: 0; }
+  .p-list span { color: #6B6152; flex: 1; min-width: 160px; }
+  .p-list a { color: #2F6B45; font-weight: 700; }
+  .p-insight { margin-top: 10px; padding: 10px 12px; background: rgba(47,107,69,0.1); border-radius: 8px; font-size: 13.5px; }
+  .p-stat { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+  .p-stat span { width: 96px; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .p-stat i { flex: 1; height: 9px; background: rgba(122,92,62,0.2); border-radius: 999px; overflow: hidden; display: block; }
+  .p-stat b { display: block; height: 100%; background: #2F6B45; border-radius: 999px; }
+  .p-badges { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .p-badge { border: 1px solid rgba(122,92,62,0.25); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; background: rgba(255,255,255,0.55); }
+  .p-badge b { display: block; font-weight: 800; }
+  .p-badge span { color: #6B6152; }
+  .p-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+  .p-tags em { font-style: normal; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: rgba(201,138,45,0.16); color: #A06E20; }
+  .p-img { display: block; width: 100%; border-radius: 8px; border: 1px solid rgba(122,92,62,0.25); margin: 8px 0; }
+  .p-hr { border: none; border-top: 1.5px dashed rgba(122,92,62,0.3); margin: 16px 0; }
+  .p-draft { font-size: 10.5px; font-weight: 800; padding: 2px 6px; border-radius: 5px; background: #FDECEC; color: #C0392B; vertical-align: middle; }
+  @media (max-width: 460px) { .p-badges { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div class="hud-top">
+  <div class="hud-title">박지영의 마을 <small>v2 — 마을에 오신 걸 환영해요!</small></div>
+  <div class="hud-right">
+    <button class="hud-chip" id="sound-btn" aria-label="사운드 켜기/끄기" style="cursor:pointer;border:1px solid rgba(34,48,31,0.14);font-family:inherit;">🔊</button>
+    <span class="hud-chip" id="progress"></span>
+    <button id="like-btn" aria-label="좋아요">💚 <span id="like-count">0</span></button>
+    <a class="to-text" href="./text.html">📄 문서로 보기</a>
+  </div>
+</div>
+
+<div class="hint">방향키 / WASD 이동 · 문 앞에서 Space 입장</div>
+
+<div class="dpad">
+  <button class="u" data-dir="up" aria-label="위로">▲</button>
+  <button class="l" data-dir="left" aria-label="왼쪽">◀</button>
+  <button class="r" data-dir="right" aria-label="오른쪽">▶</button>
+  <button class="d" data-dir="down" aria-label="아래로">▼</button>
+  <button id="action-btn" aria-label="들어가기">A</button>
+</div>
+
+<div id="dialog">
+  <div id="dlg-card"></div>
+  <div id="dlg-choices"></div>
+  <div class="dlg-box">
+    <div class="dlg-portrait" aria-hidden="true"></div>
+    <div class="dlg-main">
+      <div class="dlg-name">지영 <span id="dlg-building"></span></div>
+      <div id="dlg-text"></div>
+    </div>
+    <div id="dlg-next">▼</div>
+    <button id="dlg-close" aria-label="대화 닫기">✕</button>
+  </div>
+</div>
+
+<div id="clear">
+  <div class="clear-card">
+    <div class="clear-emoji">🎉</div>
+    <h2>GAME CLEAR!</h2>
+    <p>마을의 일곱 장소를 모두 둘러보셨어요.<br/>제 이야기를 끝까지 들어주셔서 정말 고마워요 💚</p>
+    <div class="clear-btns">
+      <button id="clear-like">💚 좋아요 남기기</button>
+      <a href="./text.html" target="_blank" rel="noopener">📄 문서로 보기</a>
+      <button id="clear-continue">🌳 계속 둘러보기</button>
+    </div>
+  </div>
+</div>
+
+<div id="loading">마을을 불러오는 중...</div>
+
+<script src="./assets/js/data.js"></script>
+<script src="./assets/js/game.js"></script>
+</body>
 </html>
